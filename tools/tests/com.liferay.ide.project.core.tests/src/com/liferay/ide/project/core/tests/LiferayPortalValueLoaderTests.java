@@ -19,10 +19,13 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 import com.liferay.ide.core.ILiferayConstants;
+import com.liferay.ide.server.core.ILiferayRuntime;
 import com.liferay.ide.server.util.LiferayPortalValueLoader;
+import com.liferay.ide.server.util.ServerUtil;
 
-import org.eclipse.core.runtime.IPath;
+import org.eclipse.wst.server.core.IRuntime;
 import org.eclipse.wst.server.core.ServerCore;
+import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
 import org.osgi.framework.Version;
@@ -33,9 +36,16 @@ import org.osgi.framework.Version;
 public class LiferayPortalValueLoaderTests extends ProjectCoreBase
 {
 
-    private LiferayPortalValueLoader loader( final IPath runtimeLocation )
+    @AfterClass
+    public static void removePluginsSDK() throws Exception
     {
-        return new LiferayPortalValueLoader( runtimeLocation, runtimeLocation.append( "webapps/ROOT" ) );
+        deleteAllWorkspaceProjects();
+    }
+
+    private LiferayPortalValueLoader loader( final IRuntime runtime )
+    {
+        ILiferayRuntime liferayRutime = ServerUtil.getLiferayRuntime( runtime );
+        return new LiferayPortalValueLoader( liferayRutime.getUserLibs() );
     }
 
     @Before
@@ -51,9 +61,9 @@ public class LiferayPortalValueLoaderTests extends ProjectCoreBase
 
         setupPluginsSDKAndRuntime();
 
-        final IPath runtimeLocation = ServerCore.getRuntimes()[0].getLocation();
+        final IRuntime runtime = ServerCore.getRuntimes()[0];
 
-        final String[] props = loader( runtimeLocation ).loadHookPropertiesFromClass();
+        final String[] props = loader( runtime ).loadHookPropertiesFromClass();
 
         assertNotNull( props );
 
@@ -67,9 +77,9 @@ public class LiferayPortalValueLoaderTests extends ProjectCoreBase
 
         setupPluginsSDKAndRuntime();
 
-        final IPath runtimeLocation = ServerCore.getRuntimes()[0].getLocation();
+        final IRuntime runtime = ServerCore.getRuntimes()[0];
 
-        final String info = loader( runtimeLocation ).loadServerInfoFromClass();
+        final String info = loader( runtime ).loadServerInfoFromClass();
 
         assertNotNull( info );
 
@@ -83,9 +93,9 @@ public class LiferayPortalValueLoaderTests extends ProjectCoreBase
 
         setupPluginsSDKAndRuntime();
 
-        final IPath runtimeLocation = ServerCore.getRuntimes()[0].getLocation();
+        final IRuntime runtime = ServerCore.getRuntimes()[0];
 
-        final Version version = loader( runtimeLocation ).loadVersionFromClass();
+        final Version version = loader( runtime ).loadVersionFromClass();
 
         assertNotNull( version );
 

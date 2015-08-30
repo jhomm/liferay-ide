@@ -24,16 +24,13 @@ import com.liferay.ide.project.core.model.internal.CreateNewPortletDefaultValueS
 import com.liferay.ide.project.core.model.internal.DisplayNameDefaultValueService;
 import com.liferay.ide.project.core.model.internal.GroupIdDefaultValueService;
 import com.liferay.ide.project.core.model.internal.GroupIdValidationService;
+import com.liferay.ide.project.core.model.internal.HasWorkspaceSdkDefaultValueService;
 import com.liferay.ide.project.core.model.internal.IncludeSampleCodeDefaultValueService;
 import com.liferay.ide.project.core.model.internal.LocationListener;
 import com.liferay.ide.project.core.model.internal.LocationValidationService;
 import com.liferay.ide.project.core.model.internal.PluginTypeListener;
 import com.liferay.ide.project.core.model.internal.PluginTypePossibleValuesService;
 import com.liferay.ide.project.core.model.internal.PluginTypeValidationService;
-import com.liferay.ide.project.core.model.internal.PluginsSDKNameDefaultValueService;
-import com.liferay.ide.project.core.model.internal.PluginsSDKNameListener;
-import com.liferay.ide.project.core.model.internal.PluginsSDKNamePossibleValuesService;
-import com.liferay.ide.project.core.model.internal.PluginsSDKNameValidationService;
 import com.liferay.ide.project.core.model.internal.PortletFrameworkAdvancedPossibleValuesService;
 import com.liferay.ide.project.core.model.internal.PortletFrameworkPossibleValuesService;
 import com.liferay.ide.project.core.model.internal.PortletFrameworkValidationService;
@@ -43,12 +40,11 @@ import com.liferay.ide.project.core.model.internal.ProjectNameValidationService;
 import com.liferay.ide.project.core.model.internal.ProjectProviderDefaultValueService;
 import com.liferay.ide.project.core.model.internal.ProjectProviderListener;
 import com.liferay.ide.project.core.model.internal.ProjectProviderPossibleValuesService;
-import com.liferay.ide.project.core.model.internal.ProjectProviderValidationService;
-import com.liferay.ide.project.core.model.internal.RuntimeNameValidationService;
+import com.liferay.ide.project.core.model.internal.SDKLocationListener;
+import com.liferay.ide.project.core.model.internal.SDKLocationValidationService;
 import com.liferay.ide.project.core.model.internal.ThemeFrameworkValidationService;
 import com.liferay.ide.project.core.model.internal.UseDefaultLocationListener;
 import com.liferay.ide.project.core.model.internal.UseDefaultLocationValidationService;
-import com.liferay.ide.project.core.model.internal.UseSdkLocationListener;
 
 import org.eclipse.sapphire.ElementList;
 import org.eclipse.sapphire.ElementType;
@@ -81,7 +77,7 @@ import org.eclipse.sapphire.modeling.annotations.Whitespace;
  * @author Kuo Zhang
  * @author Tao Tao
  */
-public interface NewLiferayPluginProjectOp extends ExecutableElement, HasLiferayRuntime
+public interface NewLiferayPluginProjectOp extends ExecutableElement
 {
     ElementType TYPE = new ElementType( NewLiferayPluginProjectOp.class );
 
@@ -115,10 +111,16 @@ public interface NewLiferayPluginProjectOp extends ExecutableElement, HasLiferay
     void setDisplayName( String value );
 
 
+    @Type( base = Boolean.class )
+    @Service( impl = HasWorkspaceSdkDefaultValueService.class )
+    ValueProperty PROP_HAS_WORKSPACE_SDK = new ValueProperty( TYPE, "HasWorkspaceSDK" ); //$NON-NLS-1$
+
+
     // *** UseDefaultLocation ***
 
     @Type( base = Boolean.class )
     @DefaultValue( text = "true" )
+    @Enablement( expr = "${ ProjectProvider != 'ant' }" )
     @Label( standard = "use default location" )
     @Listeners( UseDefaultLocationListener.class )
     @Service( impl = UseDefaultLocationValidationService.class )
@@ -133,7 +135,7 @@ public interface NewLiferayPluginProjectOp extends ExecutableElement, HasLiferay
 
     @Type( base = Path.class )
     @AbsolutePath
-    @Enablement( expr = "${ UseDefaultLocation == 'false' }" )
+    @Enablement( expr = "${ UseDefaultLocation == 'false' && ProjectProvider != 'ant' }" )
     @ValidFileSystemResourceType( FileSystemResourceType.FOLDER )
     @Label( standard = "location" )
     @Service( impl = LocationValidationService.class )
@@ -155,8 +157,7 @@ public interface NewLiferayPluginProjectOp extends ExecutableElement, HasLiferay
         value=
         {
             @Service( impl = ProjectProviderPossibleValuesService.class ),
-            @Service( impl = ProjectProviderDefaultValueService.class ),
-            @Service( impl = ProjectProviderValidationService.class )
+            @Service( impl = ProjectProviderDefaultValueService.class )
         }
     )
     ValueProperty PROP_PROJECT_PROVIDER = new ValueProperty( TYPE, "ProjectProvider" ); //$NON-NLS-1$
@@ -165,44 +166,18 @@ public interface NewLiferayPluginProjectOp extends ExecutableElement, HasLiferay
     void setProjectProvider( String value );
     void setProjectProvider( NewLiferayProjectProvider value );
 
+    // *** SDK Location ***
+    @Type( base = Path.class )
+    @AbsolutePath
+    @ValidFileSystemResourceType( FileSystemResourceType.FOLDER )
+    @Label( standard = "SDK Location" )
+    @Listeners( SDKLocationListener.class )
+    @Service( impl = SDKLocationValidationService.class )
+    ValueProperty PROP_SDK_LOCATION = new ValueProperty( TYPE, "SdkLocation" ); //$NON-NLS-1$
 
-    // *** UseSDKLocation ***
-
-    @Type( base = Boolean.class )
-    @DefaultValue( text = "true" )
-    @Label( standard = "use sdk location" )
-    @Listeners( UseSdkLocationListener.class )
-    ValueProperty PROP_USE_SDK_LOCATION = new ValueProperty( TYPE, "UseSdkLocation" ); //$NON-NLS-1$
-
-    Value<Boolean> getUseSdkLocation();
-    void setUseSdkLocation( String value );
-    void setUseSdkLocation( Boolean value );
-
-
-    // *** PluginsSDKName ***
-
-    @Label( standard = "Plugins SDK" )
-    @Services
-    (
-        value =
-        {
-            @Service( impl = PluginsSDKNamePossibleValuesService.class ),
-            @Service( impl = PluginsSDKNameDefaultValueService.class ),
-            @Service( impl = PluginsSDKNameValidationService.class )
-        }
-    )
-    @Listeners( PluginsSDKNameListener.class )
-    ValueProperty PROP_PLUGINS_SDK_NAME = new ValueProperty( TYPE, "PluginsSDKName" ); //$NON-NLS-1$
-
-    Value<String> getPluginsSDKName();
-    void setPluginsSDKName( String value );
-
-
-    // *** RuntimeName ***
-
-    @Service( impl = RuntimeNameValidationService.class )
-    ValueProperty PROP_RUNTIME_NAME = new ValueProperty( TYPE, HasLiferayRuntime.PROP_RUNTIME_NAME ); //$NON-NLS-1$
-
+    Value<Path> getSdkLocation();
+    void setSdkLocation( String value );
+    void setSdkLocation( Path value );
 
     // *** PluginType ***
 
@@ -212,10 +187,10 @@ public interface NewLiferayPluginProjectOp extends ExecutableElement, HasLiferay
     @DefaultValue( text = "portlet" )
     @Services
     (
-        value =
+        value=
         {
-            @Service( impl = PluginTypeValidationService.class ),
             @Service( impl = PluginTypePossibleValuesService.class ),
+            @Service( impl = PluginTypeValidationService.class )
         }
     )
     ValueProperty PROP_PLUGIN_TYPE = new ValueProperty( TYPE, "PluginType" ); //$NON-NLS-1$
@@ -254,10 +229,10 @@ public interface NewLiferayPluginProjectOp extends ExecutableElement, HasLiferay
     @DefaultValue( text = "mvc" )
     @Services
     (
-        value =
+        value=
         {
-            @Service( impl = PortletFrameworkPossibleValuesService.class ),
-            @Service( impl = PortletFrameworkValidationService.class )
+            @Service( impl = PortletFrameworkValidationService.class ),
+            @Service( impl = PortletFrameworkPossibleValuesService.class )
         }
     )
     ValueProperty PROP_PORTLET_FRAMEWORK = new ValueProperty( TYPE, "PortletFramework" ); //$NON-NLS-1$
@@ -390,6 +365,7 @@ public interface NewLiferayPluginProjectOp extends ExecutableElement, HasLiferay
 
     // *** Method: execute ***
 
+    @Override
     @DelegateImplementation( NewLiferayPluginProjectOpMethods.class )
     Status execute( ProgressMonitor monitor );
 }

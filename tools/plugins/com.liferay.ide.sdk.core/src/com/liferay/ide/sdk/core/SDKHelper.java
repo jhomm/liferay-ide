@@ -15,6 +15,7 @@
 
 package com.liferay.ide.sdk.core;
 
+import com.liferay.ide.core.LiferayRuntimeClasspathEntry;
 import com.liferay.ide.core.util.CoreUtil;
 import com.liferay.ide.core.util.LaunchHelper;
 import com.liferay.ide.core.util.RuntimeClasspathModel;
@@ -36,7 +37,6 @@ import org.eclipse.debug.core.ILaunchConfigurationWorkingCopy;
 import org.eclipse.debug.core.ILaunchManager;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.launching.IJavaLaunchConfigurationConstants;
-import org.eclipse.jdt.launching.JavaRuntime;
 
 /**
  * @author Greg Amerson
@@ -141,6 +141,7 @@ public class SDKHelper extends LaunchHelper
         return args.toString();
     }
 
+    @Override
     public String getClasspathProviderAttributeValue()
     {
         // return ANT_CLASSPATH_PROVIDER;
@@ -155,6 +156,7 @@ public class SDKHelper extends LaunchHelper
      * @param targetAttribute
      * @return
      */
+    @Override
     public String getNewLaunchConfigurationName()
     {
         StringBuffer buffer = new StringBuffer();
@@ -201,6 +203,7 @@ public class SDKHelper extends LaunchHelper
         this.currentTargets = null;
     }
 
+    @Override
     protected void addUserEntries( RuntimeClasspathModel model ) throws CoreException
     {
         IPath[] antLibs = sdk.getAntLibraries();
@@ -211,7 +214,7 @@ public class SDKHelper extends LaunchHelper
             {
                 model.addEntry(
                     RuntimeClasspathModel.USER,
-                    JavaRuntime.newArchiveRuntimeClasspathEntry( antLib.makeAbsolute() ) );
+                    new LiferayRuntimeClasspathEntry( JavaCore.newLibraryEntry( antLib.makeAbsolute(), null, null ) ) );
             }
         }
 
@@ -224,7 +227,7 @@ public class SDKHelper extends LaunchHelper
             {
                 model.addEntry(
                     RuntimeClasspathModel.USER,
-                    JavaRuntime.newArchiveRuntimeClasspathEntry( new Path( bundleFile.getAbsolutePath() ) ) );
+                    new LiferayRuntimeClasspathEntry( JavaCore.newLibraryEntry( new Path( bundleFile.getAbsolutePath() ), null, null ) ) );
             }
         }
         catch( Exception e )

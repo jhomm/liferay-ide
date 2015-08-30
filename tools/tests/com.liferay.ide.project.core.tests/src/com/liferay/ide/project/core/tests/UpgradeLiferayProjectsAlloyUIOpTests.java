@@ -39,6 +39,7 @@ import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.sapphire.platform.ProgressMonitorBridge;
+import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -48,6 +49,11 @@ import org.junit.Test;
  */
 public class UpgradeLiferayProjectsAlloyUIOpTests extends ProjectCoreBase
 {
+    @AfterClass
+    public static void removePluginsSDK() throws Exception
+    {
+        deleteAllWorkspaceProjects();
+    }
 
     @Override
     protected IPath getLiferayPluginsSdkDir()

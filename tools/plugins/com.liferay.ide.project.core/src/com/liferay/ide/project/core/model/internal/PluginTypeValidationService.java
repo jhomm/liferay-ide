@@ -18,7 +18,10 @@ import static com.liferay.ide.project.core.model.NewLiferayPluginProjectOpMethod
 
 import com.liferay.ide.project.core.model.NewLiferayPluginProjectOp;
 import com.liferay.ide.project.core.model.PluginType;
+import com.liferay.ide.sdk.core.SDK;
+import com.liferay.ide.sdk.core.SDKUtil;
 
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.sapphire.FilteredListener;
 import org.eclipse.sapphire.Listener;
 import org.eclipse.sapphire.PropertyContentEvent;
@@ -28,6 +31,7 @@ import org.eclipse.sapphire.services.ValidationService;
 
 /**
  * @author Gregory Amerson
+ * @author Simon Jiang
  */
 public class PluginTypeValidationService extends ValidationService
 {
@@ -39,6 +43,7 @@ public class PluginTypeValidationService extends ValidationService
 
         final Listener listener = new FilteredListener<PropertyContentEvent>()
         {
+            @Override
             protected void handleTypedEvent( PropertyContentEvent event )
             {
                 refresh();
@@ -46,7 +51,6 @@ public class PluginTypeValidationService extends ValidationService
         };
 
         op().getProjectProvider().attach( listener );
-        op().getPluginsSDKName().attach( listener );
     }
 
     @Override
@@ -54,13 +58,24 @@ public class PluginTypeValidationService extends ValidationService
     {
         Status retval = Status.createOkStatus();
 
-        final NewLiferayPluginProjectOp op = op();
-
-        if( op.getPluginType().content().equals( PluginType.web ) && ! supportsWebTypePlugin( op ) )
+        try
         {
-            retval =
-                Status.createErrorStatus( "The selected Plugins SDK does not support creating new web type plugins.  " +
-                    "Please configure version 7.0.0 or greater." );
+            SDK sdk = SDKUtil.getWorkspaceSDK();
+
+            if ( sdk != null )
+            {
+                final NewLiferayPluginProjectOp op = op();
+
+                if( op.getPluginType().content().equals( PluginType.web ) && ! supportsWebTypePlugin( op ) )
+                {
+                    retval =
+                        Status.createErrorStatus( "The selected Plugins SDK does not support creating new web type plugins.  " +
+                            "Please configure version 7.0.0 or greater." );
+                }
+            }
+        }
+        catch( CoreException e )
+        {
         }
 
         return retval;

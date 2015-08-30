@@ -81,6 +81,7 @@ import org.eclipse.wst.common.project.facet.core.ProjectFacetsManager;
 
 /**
  * @author Greg Amerson
+ * @author Simon Jiang
  */
 @SuppressWarnings( "restriction" )
 public class PluginPackageResourceListener implements IResourceChangeListener, IResourceDeltaVisitor
@@ -424,7 +425,8 @@ public class PluginPackageResourceListener implements IResourceChangeListener, I
         {
             if( entry.getEntryKind() == IClasspathEntry.CPE_CONTAINER )
             {
-                if( entry.getPath().segment( 0 ).equals( PluginClasspathContainerInitializer.ID ) )
+                if( entry.getPath().segment( 0 ).equals( PluginClasspathContainerInitializer.ID ) ||
+                                entry.getPath().segment( 0 ).equals( SDKClasspathContainer.ID ))
                 {
                     containerPath = entry.getPath();
 
@@ -437,10 +439,14 @@ public class PluginPackageResourceListener implements IResourceChangeListener, I
         {
             IClasspathContainer classpathContainer = JavaCore.getClasspathContainer( containerPath, javaProject );
 
-            PluginClasspathContainerInitializer initializer =
-                (PluginClasspathContainerInitializer) JavaCore.getClasspathContainerInitializer( PluginClasspathContainerInitializer.ID );
+            final String id = containerPath.segment( 0 );
 
-            initializer.requestClasspathContainerUpdate( containerPath, javaProject, classpathContainer );
+            if ( id.equals( PluginClasspathContainerInitializer.ID ) ||
+                 id.equals( SDKClasspathContainer.ID ) )
+            {
+                ClasspathContainerInitializer initializer = JavaCore.getClasspathContainerInitializer( id );
+                initializer.requestClasspathContainerUpdate( containerPath, javaProject, classpathContainer );
+            }
         }
 
         Properties props = new Properties();

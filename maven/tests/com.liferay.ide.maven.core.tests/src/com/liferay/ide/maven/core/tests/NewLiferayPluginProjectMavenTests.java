@@ -42,6 +42,7 @@ import org.eclipse.sapphire.EnablementService;
 import org.eclipse.sapphire.PossibleValuesService;
 import org.eclipse.sapphire.platform.PathBridge;
 import org.eclipse.sapphire.services.ValidationService;
+import org.junit.Ignore;
 import org.junit.Test;
 
 /**
@@ -206,7 +207,15 @@ public class NewLiferayPluginProjectMavenTests extends ProjectCoreBase
         //assertEquals( expected3, op.getLocation().validation().message() );
 
         op.setLocation( "" );
+        
+        //IDE-2069
+        invalidLocation = getLiferayRuntimeDir().removeLastSegments( 2 ).toOSString();
+        op.setLocation( invalidLocation );
 
+        final String expected5 = "Project location is not empty or a parent pom.";
+
+        assertEquals( expected5, vs.validation().message() );
+        
         final String expected4 = "Location must be specified.";
         assertEquals( expected4, vs.validation().message() );
         assertEquals( expected4, op.getLocation().validation().message() );
@@ -252,6 +261,7 @@ public class NewLiferayPluginProjectMavenTests extends ProjectCoreBase
     }
 
     @Test
+    @Ignore
     public void testPortletFrameworkValidation() throws Exception
     {
         if( shouldSkipBundleTests() ) return;
@@ -269,7 +279,6 @@ public class NewLiferayPluginProjectMavenTests extends ProjectCoreBase
 
         op.setProjectProvider( "ant" );
         op.setPortletFramework( "jsf" );
-        op.setPluginsSDKName( newSDK.getName() );
 
         assertEquals(
             "Selected portlet framework requires SDK version at least " + jsf.getRequiredSDKVersion(),
@@ -423,8 +432,8 @@ public class NewLiferayPluginProjectMavenTests extends ProjectCoreBase
         {
             op.setProjectProvider( "ant" );
 
-            assertEquals( true, op.getUseDefaultLocation().service( EnablementService.class ).enablement() );
-            assertEquals( true, op.getUseDefaultLocation().enabled() );
+            assertEquals( false, op.getUseDefaultLocation().service( EnablementService.class ).enablement() );
+            assertEquals( false, op.getUseDefaultLocation().enabled() );
         }
     }
 

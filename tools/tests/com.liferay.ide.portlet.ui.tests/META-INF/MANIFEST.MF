@@ -10,8 +10,13 @@ Require-Bundle: org.eclipse.core.runtime,
  com.liferay.ide.server.core.tests,
  com.liferay.ide.project.core.tests,
  com.liferay.ide.core.tests,
+ com.liferay.ide.ui.tests,
  com.liferay.ide.portlet.core,
  com.liferay.ide.portlet.ui,
+ com.liferay.ide.service.core,
+ com.liferay.ide.service.ui,
+ com.liferay.ide.portlet.vaadin.core,
+ com.liferay.ide.portlet.vaadin.ui,
  org.eclipse.ui.workbench,
  org.junit
 Bundle-ActivationPolicy: lazy

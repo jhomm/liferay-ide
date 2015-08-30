@@ -30,6 +30,7 @@
    </plugins>
 
    <features>
+      <feature id="blade.tools" />
       <feature id="com.liferay.ide.common" />
       <feature id="com.liferay.ide.hidden" />
       <feature id="org.apache.ivyde.feature" />
@@ -49,7 +50,7 @@
       <feature id="org.eclipse.sapphire.ui.swt.xml.editor" />
       <feature id="org.eclipse.wst.xml.search.core-feature" />
       <feature id="org.sonatype.m2e.mavenarchiver.feature" />
-      <feature id="org.springsource.ide.eclipse.gradle.feature" />
+      <feature id="org.sonatype.tycho.m2e.feature" />
       <feature id="tern-feature" />
       <feature id="tern-jsdt-feature" />
       <feature id="tern-server-nodejs-feature" />

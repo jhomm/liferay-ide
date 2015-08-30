@@ -20,6 +20,7 @@ import static org.junit.Assert.assertNotNull;
 
 import com.liferay.ide.core.util.ZipUtil;
 import com.liferay.ide.project.core.ProjectRecord;
+import com.liferay.ide.project.core.util.ProjectImportUtil;
 import com.liferay.ide.project.core.util.ProjectUtil;
 import com.liferay.ide.sdk.core.SDKManager;
 import com.liferay.ide.server.util.ServerUtil;
@@ -37,12 +38,19 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.wst.server.core.IRuntime;
 import org.eclipse.wst.server.core.ServerCore;
+import org.junit.AfterClass;
 
 /**
  * @author Kuo Zhang
  */
 public class XmlTestsBase extends ProjectCoreBase
 {
+    @AfterClass
+    public static void removePluginsSDK() throws Exception
+    {
+        deleteAllWorkspaceProjects();
+    }
+
     protected boolean checkMarker( IFile descriptorFile, String markerType, String markerMessage ) throws Exception
     {
         final IMarker[] markers = descriptorFile.findMarkers( markerType, false, IResource.DEPTH_ZERO );
@@ -59,6 +67,7 @@ public class XmlTestsBase extends ProjectCoreBase
         return false;
     }
 
+    @Override
     protected IProject importProject( String path, String bundleId, String projectName ) throws Exception
     {
         final IPath sdkLocation = SDKManager.getInstance().getDefaultSDK().getLocation();
@@ -80,7 +89,7 @@ public class XmlTestsBase extends ProjectCoreBase
         final IRuntime runtime = ServerCore.findRuntime( getRuntimeVersion() );
         assertNotNull( runtime );
 
-        final IProject project = ProjectUtil.importProject(
+        final IProject project = ProjectImportUtil.importProject(
             projectRecord, ServerUtil.getFacetRuntime( runtime ), sdkLocation.toOSString(),new NullProgressMonitor() );
 
         assertNotNull( project );

@@ -65,4 +65,24 @@
             shortName="noop">
       </liferayProjectProvider>
    </extension>
+   <extension
+         id="com.liferay.ide.core.liferayNature"
+         point="org.eclipse.core.resources.natures">
+      <runtime>
+         <run
+               class="com.liferay.ide.core.LiferayNature">
+         </run>
+      </runtime>
+   </extension>
+   <extension
+         id="MigrationProblemMarker"
+         name="Migration Problem"
+         point="org.eclipse.core.resources.markers">
+      <super
+            type="org.eclipse.core.resources.problemmarker">
+      </super>
+      <persistent
+            value="true">
+      </persistent>
+   </extension>
 </plugin>

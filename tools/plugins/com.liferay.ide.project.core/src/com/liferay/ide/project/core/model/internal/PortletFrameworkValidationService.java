@@ -19,8 +19,9 @@ import com.liferay.ide.core.util.CoreUtil;
 import com.liferay.ide.project.core.IPortletFramework;
 import com.liferay.ide.project.core.model.NewLiferayPluginProjectOp;
 import com.liferay.ide.sdk.core.SDK;
-import com.liferay.ide.sdk.core.SDKManager;
+import com.liferay.ide.sdk.core.SDKUtil;
 
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.sapphire.FilteredListener;
 import org.eclipse.sapphire.PropertyContentEvent;
 import org.eclipse.sapphire.modeling.Status;
@@ -49,7 +50,6 @@ public class PortletFrameworkValidationService extends ValidationService
             }
         };
 
-        op().property( NewLiferayPluginProjectOp.PROP_PLUGINS_SDK_NAME ).attach( this.listener );
         op().property( NewLiferayPluginProjectOp.PROP_PROJECT_PROVIDER ).attach( this.listener );
     }
 
@@ -69,33 +69,31 @@ public class PortletFrameworkValidationService extends ValidationService
         }
         else
         {
-            final SDK sdk = SDKManager.getInstance().getSDK( op().getPluginsSDKName().content() );
-
-            if( "ant".equals( projectProvider.getShortName() ) && portletFramework != null && sdk != null )
+            try
             {
-                final Version requiredVersion = new Version( portletFramework.getRequiredSDKVersion() );
-                final Version sdkVersion = new Version( sdk.getVersion() );
 
-                if( CoreUtil.compareVersions( requiredVersion, sdkVersion ) > 0 )
+                if( "ant".equals( projectProvider.getShortName() ) && portletFramework != null )
                 {
-                    retval =
-                        Status.createErrorStatus( "Selected portlet framework requires SDK version at least " +
-                            requiredVersion );
+                    SDK sdk = SDKUtil.getWorkspaceSDK();
+
+                    if ( sdk != null )
+                    {
+                        final Version requiredVersion = new Version( portletFramework.getRequiredSDKVersion() );
+                        final Version sdkVersion = new Version( sdk.getVersion() );
+
+                        if( CoreUtil.compareVersions( requiredVersion, sdkVersion ) > 0 )
+                        {
+                            retval =
+                                Status.createErrorStatus( "Selected portlet framework requires SDK version at least " +
+                                    requiredVersion );
+                        }
+
+                    }
                 }
+
             }
-        }
-        final SDK sdk = SDKManager.getInstance().getSDK( op().getPluginsSDKName().content() );
-
-        if( "ant".equals( projectProvider.getShortName() ) && portletFramework != null && sdk != null )
-        {
-            final Version requiredVersion = new Version( portletFramework.getRequiredSDKVersion() );
-            final Version sdkVersion = new Version( sdk.getVersion() );
-
-            if( CoreUtil.compareVersions( requiredVersion, sdkVersion ) > 0 )
+            catch( CoreException e )
             {
-                retval =
-                    Status.createErrorStatus( "Selected portlet framework requires SDK version at least " +
-                        requiredVersion );
             }
         }
 
@@ -105,9 +103,7 @@ public class PortletFrameworkValidationService extends ValidationService
     @Override
     public void dispose()
     {
-        op().property( NewLiferayPluginProjectOp.PROP_PLUGINS_SDK_NAME ).detach( this.listener );
         op().property( NewLiferayPluginProjectOp.PROP_PROJECT_PROVIDER ).detach( this.listener );
-
         super.dispose();
     }
 

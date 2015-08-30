@@ -18,6 +18,8 @@ package com.liferay.ide.project.core.tests;
 import com.liferay.ide.project.core.ProjectCore;
 
 import org.eclipse.core.runtime.IPath;
+import org.junit.AfterClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 /**
@@ -26,6 +28,19 @@ import org.junit.Test;
  */
 public class NewLiferayPluginProjectOp612Tests extends NewLiferayPluginProjectOpBase
 {
+
+    @AfterClass
+    public static void removePluginsSDK() throws Exception
+    {
+        deleteAllWorkspaceProjects();
+
+        IPath sdkPath = ProjectCore.getDefault().getStateLocation().append( "liferay-plugins-sdk-6.1.2" );
+
+        if ( sdkPath != null && sdkPath.toFile() != null )
+        {
+            sdkPath.toFile().delete();
+        }
+    }
 
     @Override
     protected IPath getLiferayPluginsSdkDir()
@@ -69,7 +84,9 @@ public class NewLiferayPluginProjectOp612Tests extends NewLiferayPluginProjectOp
         return "6.1.2";
     }
 
+    @Override
     @Test
+    @Ignore
     public void testPluginTypeListener() throws Exception
     {
         if( shouldSkipBundleTests() ) return;
@@ -83,6 +100,7 @@ public class NewLiferayPluginProjectOp612Tests extends NewLiferayPluginProjectOp
         return "service-builder PUBLIC \"-//Liferay//DTD Service Builder 6.1.0//EN\" \"http://www.liferay.com/dtd/liferay-service-builder_6_1_0.dtd";
     }
 
+    @Override
     @Test
     public void testNewJsfRichfacesProjects() throws Exception
     {

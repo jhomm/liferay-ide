@@ -24,6 +24,7 @@ import com.liferay.ide.project.core.ProjectCore;
 import com.liferay.ide.project.core.ProjectRecord;
 import com.liferay.ide.project.core.model.NewLiferayPluginProjectOp;
 import com.liferay.ide.project.core.model.PluginType;
+import com.liferay.ide.project.core.util.ProjectImportUtil;
 import com.liferay.ide.project.core.util.ProjectUtil;
 import com.liferay.ide.sdk.core.SDK;
 import com.liferay.ide.sdk.core.SDKManager;
@@ -32,9 +33,14 @@ import com.liferay.ide.server.core.tests.ServerCoreBase;
 import com.liferay.ide.server.util.ServerUtil;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URL;
+import java.util.Properties;
 
+import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.commons.io.FileUtils;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IWorkspaceRoot;
@@ -67,6 +73,18 @@ public class ProjectCoreBase extends ServerCoreBase
 
     private static final String bundleId = "com.liferay.ide.project.core.tests";
 
+    public static void deleteAllWorkspaceProjects() throws Exception
+    {
+        for( IProject project : CoreUtil.getAllProjects() )
+        {
+            if ( project != null && project.isAccessible() && project.exists())
+            {
+                project.delete( true, true, new NullProgressMonitor() );
+            }
+        }
+    }
+
+    @SuppressWarnings( "restriction" )
     protected void waitForBuildAndValidation() throws Exception
     {
         IWorkspaceRoot root = null;
@@ -308,7 +326,7 @@ public class ProjectCoreBase extends ServerCoreBase
         final IRuntime runtime = ServerCore.findRuntime( getRuntimeVersion() );
         assertNotNull( runtime );
 
-        final IProject project = ProjectUtil.importProject(
+        final IProject project = ProjectImportUtil.importProject(
             projectRecord, ServerUtil.getFacetRuntime( runtime ), sdkLocation.toOSString(),new NullProgressMonitor() );
 
         assertNotNull( project );
@@ -333,6 +351,39 @@ public class ProjectCoreBase extends ServerCoreBase
         op.setProjectName( projectName + "-" + getRuntimeVersion() );
 
         return op;
+    }
+
+    private void persistAppServerProperties() throws FileNotFoundException, IOException, ConfigurationException
+    {
+        Properties initProps = new Properties();
+        initProps.put( "app.server.type", "tomcat" );
+        initProps.put( "app.server.tomcat.dir", getLiferayRuntimeDir().toPortableString() );
+        initProps.put( "app.server.tomcat.deploy.dir", getLiferayRuntimeDir().append( "webapps" ).toPortableString() );
+        initProps.put( "app.server.tomcat.lib.global.dir", getLiferayRuntimeDir().append( "lib/ext" ).toPortableString() );
+        initProps.put( "app.server.parent.dir", getLiferayRuntimeDir().removeLastSegments( 1 ).toPortableString() );
+        initProps.put( "app.server.tomcat.portal.dir", getLiferayRuntimeDir().append( "webapps/ROOT" ).toPortableString() );
+
+        IPath loc = getLiferayPluginsSdkDir();
+        String userName = System.getProperty( "user.name" ); //$NON-NLS-1$
+        File userBuildFile = loc.append( "build." + userName + ".properties" ).toFile(); //$NON-NLS-1$ //$NON-NLS-2$
+
+        if( userBuildFile.exists() )
+        {
+            PropertiesConfiguration propsConfig = new PropertiesConfiguration( userBuildFile );
+            for( Object key : initProps.keySet() )
+            {
+                propsConfig.setProperty( (String) key, initProps.get( key ) );
+            }
+            propsConfig.setHeader( "" );
+            propsConfig.save( userBuildFile );
+
+        }
+        else
+        {
+            Properties props = new Properties();
+            props.putAll( initProps );
+            props.store( new FileOutputStream( userBuildFile ), "" );
+        }
     }
 
     protected void removeAllRuntimes() throws Exception
@@ -431,6 +482,16 @@ public class ProjectCoreBase extends ServerCoreBase
 
             assertEquals( "Unable to delete pre-existing customBaseDir", false, customBaseDir.exists() );
         }
+
+        persistAppServerProperties();
+
+        SDK workspaceSdk = SDKUtil.getWorkspaceSDK();
+        if ( workspaceSdk == null)
+        {
+            SDKUtil.openAsProject( sdk );
+        }
+
+
     }
 
     @Override

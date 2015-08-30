@@ -23,7 +23,6 @@ import com.liferay.ide.project.core.NewLiferayProjectProvider;
 import com.liferay.ide.project.core.ProjectCore;
 import com.liferay.ide.project.core.descriptor.RemoveSampleElementsOperation;
 import com.liferay.ide.sdk.core.SDK;
-import com.liferay.ide.sdk.core.SDKManager;
 import com.liferay.ide.sdk.core.SDKUtil;
 
 import java.io.File;
@@ -45,10 +44,9 @@ import org.eclipse.sapphire.ElementList;
 import org.eclipse.sapphire.modeling.Path;
 import org.eclipse.sapphire.modeling.ProgressMonitor;
 import org.eclipse.sapphire.modeling.Status;
+import org.eclipse.sapphire.platform.PathBridge;
 import org.eclipse.sapphire.platform.ProgressMonitorBridge;
 import org.eclipse.sapphire.platform.StatusBridge;
-import org.eclipse.wst.server.core.IRuntime;
-import org.eclipse.wst.server.core.ServerCore;
 import org.osgi.framework.Version;
 
 
@@ -69,25 +67,6 @@ public class NewLiferayPluginProjectOpMethods
         if( op.getProjectProvider().content( true ).getShortName().equals( "maven" ) )
         {
             retval = true;
-        }
-        else
-        {
-            final SDK sdk = SDKManager.getInstance().getSDK( op.getPluginsSDKName().content( true ) );
-
-            if( sdk != null && !SDKUtil.hasGradleTools( sdk.getLocation() ) )
-            {
-                final Version version = new Version( sdk.getVersion() );
-
-                final boolean greaterThan611 = CoreUtil.compareVersions( version, ILiferayConstants.V611 ) > 0;
-                final boolean lessThan6110 = CoreUtil.compareVersions( version, ILiferayConstants.V6110 ) < 0;
-                final boolean greaterThanEqualTo6130 =
-                    CoreUtil.compareVersions( version, ILiferayConstants.V6130 ) >= 0;
-
-                if( ( greaterThan611 && lessThan6110 ) || greaterThanEqualTo6130 )
-                {
-                    retval = true;
-                }
-            }
         }
 
         return retval;
@@ -294,13 +273,6 @@ public class NewLiferayPluginProjectOpMethods
         return possibleProfileIds;
     }
 
-    public static IRuntime getRuntime( NewLiferayPluginProjectOp op )
-    {
-        final String runtimeName = op.getRuntimeName().content( true );
-
-        return ServerCore.findRuntime( runtimeName );
-    }
-
     private static IStatus removeSampleCodeAndFiles( NewLiferayPluginProjectOp op )
     {
         IStatus status = org.eclipse.core.runtime.Status.OK_STATUS;
@@ -365,7 +337,25 @@ public class NewLiferayPluginProjectOpMethods
         }
         else
         {
-            final SDK sdk = SDKManager.getInstance().getSDK( op.getPluginsSDKName().content( true ) );
+            SDK sdk = null;
+
+            try
+            {
+                sdk = SDKUtil.getWorkspaceSDK();
+            }
+            catch( CoreException e )
+            {
+            }
+
+            if ( sdk == null )
+            {
+                final Path sdkLocation = op.getSdkLocation().content();
+
+                if ( sdkLocation != null )
+                {
+                    sdk = SDKUtil.createSDKFromLocation( PathBridge.create( sdkLocation ) );
+                }
+            }
 
             if( sdk != null )
             {
@@ -377,6 +367,10 @@ public class NewLiferayPluginProjectOpMethods
                 {
                     retval = true;
                 }
+            }
+            else
+            {
+                retval = true;
             }
         }
 
@@ -430,6 +424,11 @@ public class NewLiferayPluginProjectOpMethods
     public static void updateLocation( final NewLiferayPluginProjectOp op, final Path baseLocation )
     {
         final String projectName = getProjectNameWithSuffix( op );
+
+        if ( baseLocation == null)
+        {
+            return ;
+        }
 
         final String lastSegment = baseLocation.lastSegment();
 

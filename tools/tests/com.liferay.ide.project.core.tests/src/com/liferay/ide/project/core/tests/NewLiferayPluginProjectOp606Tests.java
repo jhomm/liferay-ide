@@ -24,6 +24,7 @@ import com.liferay.ide.project.core.model.NewLiferayPluginProjectOp;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.IPath;
+import org.junit.AfterClass;
 import org.junit.Test;
 
 /**
@@ -32,6 +33,12 @@ import org.junit.Test;
  */
 public class NewLiferayPluginProjectOp606Tests extends NewLiferayPluginProjectOpBase
 {
+
+    @AfterClass
+    public static void removePluginsSDK() throws Exception
+    {
+        deleteAllWorkspaceProjects();
+    }
 
     @Override
     protected IProject checkNewJsfAntProjectIvyFile( IProject jsfProject, String jsfSuite ) throws Exception
@@ -114,35 +121,12 @@ public class NewLiferayPluginProjectOp606Tests extends NewLiferayPluginProjectOp
     }
 
     @Override
-    public void testNewProjectCustomLocationPortlet() throws Exception
-    {
-        // not supported in 6.0.6
-    }
-
-    @Override
-    public void testNewProjectCustomLocationWrongSuffix() throws Exception
-    {
-        // not supported in 6.0.6
-    }
-
-    @Override
-    public void testNewSDKProjectCustomLocation() throws Exception
-    {
-        // not supported in 6.0.6
-    }
-
-    @Override
-    public void testNewSDKProjectEclipseWorkspace() throws Exception
-    {
-        // not supported in 6.0.6
-    }
-
-    @Override
     public void testNewVaadinAntProject() throws Exception
     {
         // vaadin projets not supported in 6.0.6
     }
 
+    @Override
     @Test
     public void testPluginTypeListener() throws Exception
     {

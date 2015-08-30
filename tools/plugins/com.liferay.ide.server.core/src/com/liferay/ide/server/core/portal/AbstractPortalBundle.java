@@ -16,20 +16,27 @@ package com.liferay.ide.server.core.portal;
 
 import com.liferay.ide.core.ILiferayConstants;
 import com.liferay.ide.core.util.CoreUtil;
+import com.liferay.ide.core.util.FileListing;
 import com.liferay.ide.core.util.StringPool;
 import com.liferay.ide.server.core.LiferayServerCore;
 import com.liferay.ide.server.util.LiferayPortalValueLoader;
+import com.liferay.ide.server.util.ServerUtil;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.jar.Attributes;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
 
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.Path;
 import org.osgi.framework.Version;
 
 /**
@@ -37,7 +44,6 @@ import org.osgi.framework.Version;
  */
 public abstract class AbstractPortalBundle implements PortalBundle
 {
-
     private static final String CONFIG_TYPE_SERVER = "server";
     private static final String CONFIG_TYPE_VERSION = "version";
     private static final Version MANIFEST_VERSION_REQUIRED = ILiferayConstants.V700;
@@ -59,18 +65,84 @@ public abstract class AbstractPortalBundle implements PortalBundle
         this.bundlePath = path;
 
         this.liferayHome = bundlePath.append( ".." );
+
         this.jmxRemotePort = getDefaultJMXRemotePort();
 
         this.autoDeployPath = this.liferayHome.append( "deploy" );
 
-        this.version = getPortalVersion( this.bundlePath, getPortalDir( bundlePath ) );
+        this.version = getPortalVersion( getAppServerPortalDir(), getBundleDependencyJars()  );
 
         this.modulesPath = this.liferayHome.append( "osgi" );
     }
 
+    public AbstractPortalBundle( Map<String, String> appServerProperties)
+    {
+        if( appServerProperties == null )
+        {
+            throw new IllegalArgumentException( "bundle parameters cannot be null" );
+        }
+
+        final String appServerPath = (appServerProperties.get( "app.server.dir"));
+        final String appServerDeployPath = (appServerProperties.get( "app.server.deploy.dir"));
+        //final String appServerLibPath = (String) (appServerProperties.get( "app.server.lib.global.dir"));
+        final String appServerParentPath = (appServerProperties.get( "app.server.parent.dir"));
+        //final String appServerPortalPath = (String) (appServerProperties.get( "app.server.portal.dir"));
+
+        this.bundlePath = new Path(appServerPath);
+
+        this.liferayHome = new Path(appServerParentPath);
+
+        this.jmxRemotePort = getDefaultJMXRemotePort();
+
+        this.autoDeployPath = new Path(appServerDeployPath);
+
+        this.version = getPortalVersion( getAppServerPortalDir(), getBundleDependencyJars() );
+
+        this.modulesPath = null;
+    }
+
+    @Override
+    public IPath getAppServerDir()
+    {
+        return this.bundlePath;
+    }
+
+    @Override
+    public IPath[] getBundleDependencyJars()
+    {
+        List<IPath> libs = new ArrayList<IPath>();
+        IPath bundleLibPath =  getAppServerLibDir();
+        List<File> libFiles;
+        try
+        {
+            libFiles = FileListing.getFileListing( new File( bundleLibPath.toOSString() ) );
+            for( File lib : libFiles )
+            {
+                if( lib.exists() && lib.getName().endsWith( ".jar" ) ) //$NON-NLS-1$
+                {
+                    libs.add( new Path( lib.getPath() ) );
+                }
+            }
+        }
+        catch( FileNotFoundException e )
+        {
+        }
+
+        return libs.toArray( new IPath[libs.size()] );
+    }
+
+    protected abstract IPath getAppServerLibDir();
+
     protected abstract int getDefaultJMXRemotePort();
 
-    protected abstract IPath getPortalDir( IPath portalDir );
+    @Override
+    public String[] getHookSupportedProperties()
+    {
+        IPath portalDir = getAppServerPortalDir();
+        IPath[] extraLibs = getBundleDependencyJars();
+
+        return new LiferayPortalValueLoader( portalDir, extraLibs ).loadHookPropertiesFromClass();
+    }
 
     @Override
     public int getJmxRemotePort()
@@ -78,16 +150,19 @@ public abstract class AbstractPortalBundle implements PortalBundle
         return this.jmxRemotePort;
     }
 
+    @Override
     public IPath getAutoDeployPath()
     {
         return this.autoDeployPath;
     }
 
+    @Override
     public IPath getModulesPath()
     {
         return this.modulesPath;
     }
 
+    @Override
     public IPath getLiferayHome()
     {
         return this.liferayHome;
@@ -97,6 +172,18 @@ public abstract class AbstractPortalBundle implements PortalBundle
     public String getVersion()
     {
         return this.version;
+    }
+
+    @Override
+    public Properties getPortletCategories()
+    {
+        return ServerUtil.getPortletCategories( getAppServerPortalDir() );
+    }
+
+    @Override
+    public Properties getPortletEntryCategories()
+    {
+        return ServerUtil.getEntryCategories( getAppServerPortalDir(), getVersion() );
     }
 
     private String getConfigInfoFromCache( String configType, IPath portalDir )
@@ -145,7 +232,7 @@ public abstract class AbstractPortalBundle implements PortalBundle
         return null;
     }
 
-    private String getPortalVersion( IPath location, IPath portalDir )
+    private String getPortalVersion( IPath portalDir, IPath[] extraLib)
     {
         String version = getConfigInfoFromCache( CONFIG_TYPE_VERSION, portalDir );
 
@@ -155,7 +242,7 @@ public abstract class AbstractPortalBundle implements PortalBundle
 
             if( version == null )
             {
-                final LiferayPortalValueLoader loader = new LiferayPortalValueLoader( location, portalDir );
+                final LiferayPortalValueLoader loader = new LiferayPortalValueLoader( portalDir, extraLib );
 
                 final Version loadedVersion = loader.loadVersionFromClass();
 

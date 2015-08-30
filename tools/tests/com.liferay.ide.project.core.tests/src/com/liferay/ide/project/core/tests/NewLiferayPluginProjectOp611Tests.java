@@ -19,6 +19,8 @@ import com.liferay.ide.project.core.ProjectCore;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.IPath;
+import org.junit.AfterClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 /**
@@ -27,6 +29,12 @@ import org.junit.Test;
  */
 public class NewLiferayPluginProjectOp611Tests extends NewLiferayPluginProjectOpBase
 {
+
+    @AfterClass
+    public static void removePluginsSDK() throws Exception
+    {
+        deleteAllWorkspaceProjects();
+    }
 
     @Override
     protected IProject checkNewJsfAntProjectIvyFile( IProject jsfProject, String jsfSuite ) throws Exception
@@ -78,30 +86,8 @@ public class NewLiferayPluginProjectOp611Tests extends NewLiferayPluginProjectOp
     }
 
     @Override
-    public void testNewProjectCustomLocationPortlet() throws Exception
-    {
-        // not supported in 6.1.1
-    }
-
-    @Override
-    public void testNewProjectCustomLocationWrongSuffix() throws Exception
-    {
-        // not supported in 6.1.1
-    }
-
-    @Override
-    public void testNewSDKProjectCustomLocation() throws Exception
-    {
-        // not supported in 6.1.1
-    }
-
-    @Override
-    public void testNewSDKProjectEclipseWorkspace() throws Exception
-    {
-        // not supported in 6.1.1
-    }
-
     @Test
+    @Ignore
     public void testPluginTypeListener() throws Exception
     {
         if( shouldSkipBundleTests() ) return;
@@ -115,6 +101,7 @@ public class NewLiferayPluginProjectOp611Tests extends NewLiferayPluginProjectOp
         return "service-builder PUBLIC \"-//Liferay//DTD Service Builder 6.1.0//EN\" \"http://www.liferay.com/dtd/liferay-service-builder_6_1_0.dtd";
     }
 
+    @Override
     @Test
     public void testNewJsfRichfacesProjects() throws Exception
     {

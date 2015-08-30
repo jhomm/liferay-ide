@@ -15,11 +15,15 @@
 
 package com.liferay.ide.project.core.tests;
 
+import static org.junit.Assert.assertEquals;
+
 import com.liferay.ide.project.core.ProjectCore;
 import com.liferay.ide.project.core.model.NewLiferayPluginProjectOp;
 import com.liferay.ide.project.core.model.PluginType;
 
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.sapphire.platform.PathBridge;
+import org.junit.AfterClass;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -28,6 +32,12 @@ import org.junit.Test;
  */
 public class NewLiferayPluginProjectOp623Tests extends NewLiferayPluginProjectOpBase
 {
+
+    @AfterClass
+    public static void removePluginsSDK() throws Exception
+    {
+        deleteAllWorkspaceProjects();
+    }
 
     @Override
     protected IPath getLiferayPluginsSdkDir()
@@ -77,6 +87,7 @@ public class NewLiferayPluginProjectOp623Tests extends NewLiferayPluginProjectOp
         return "service-builder PUBLIC \"-//Liferay//DTD Service Builder 6.2.0//EN\" \"http://www.liferay.com/dtd/liferay-service-builder_6_2_0.dtd";
     }
 
+    @Override
     @Test
     public void testLocationListener() throws Exception
     {
@@ -85,6 +96,7 @@ public class NewLiferayPluginProjectOp623Tests extends NewLiferayPluginProjectOp
         super.testLocationListener();
     }
 
+    @Override
     @Test
     public void testNewJsfRichfacesProjects() throws Exception
     {
@@ -93,6 +105,7 @@ public class NewLiferayPluginProjectOp623Tests extends NewLiferayPluginProjectOp
         super.testNewJsfRichfacesProjects();
     }
 
+    @Override
     @Test
     public void testNewLayoutAntProject() throws Exception
     {
@@ -129,6 +142,7 @@ public class NewLiferayPluginProjectOp623Tests extends NewLiferayPluginProjectOp
         // not supported in 6.2.3
     }
 
+    @Override
     @Test
     public void testNewSDKProjectInSDK() throws Exception
     {
@@ -137,6 +151,7 @@ public class NewLiferayPluginProjectOp623Tests extends NewLiferayPluginProjectOp
         super.testNewSDKProjectInSDK();
     }
 
+    @Override
     @Test
     public void testNewThemeProjects() throws Exception
     {
@@ -145,6 +160,7 @@ public class NewLiferayPluginProjectOp623Tests extends NewLiferayPluginProjectOp
         super.testNewThemeProjects();
     }
 
+    @Override
     @Test
     public void testPluginTypeListener() throws Exception
     {
@@ -161,6 +177,7 @@ public class NewLiferayPluginProjectOp623Tests extends NewLiferayPluginProjectOp
         super.testProjectNameValidation( "project-name-validation-623" );
     }
 
+    @Override
     @Test
     public void testNewSDKProjects() throws Exception
     {
@@ -177,10 +194,21 @@ public class NewLiferayPluginProjectOp623Tests extends NewLiferayPluginProjectOp
     }
 
     @Test
-    public void testUseSdkLocationListener() throws Exception
+    public void testNewWebAntProjectValidation() throws Exception
     {
         if( shouldSkipBundleTests() ) return;
 
-        super.testUseSdkLocationListener();
+        final String projectName = "test-web-project-sdk";
+
+        final NewLiferayPluginProjectOp op = newProjectOp( projectName );
+
+        op.setPluginType( PluginType.web );
+
+        op.setSdkLocation( PathBridge.create( getLiferayPluginsSdkDir() ) );
+
+        assertEquals(
+            "The selected Plugins SDK does not support creating new web type plugins.  Please configure version 7.0.0 or greater.",
+            op.getSdkLocation().validation().message() );
     }
+
 }
