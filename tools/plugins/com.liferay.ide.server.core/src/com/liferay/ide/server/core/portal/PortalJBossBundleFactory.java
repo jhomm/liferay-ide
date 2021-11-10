@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,15 +10,13 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.server.core.portal;
 
-import com.liferay.ide.server.util.ServerUtil;
+import com.liferay.ide.core.util.FileUtil;
+import com.liferay.ide.server.util.JavaUtil;
 
-import java.io.File;
-import java.io.FileFilter;
 import java.util.Map;
 
 import org.eclipse.core.runtime.IPath;
@@ -27,150 +25,42 @@ import org.eclipse.core.runtime.Path;
 /**
  * @author Simon Jiang
  */
-public class PortalJBossBundleFactory implements PortalBundleFactory
-{
+public class PortalJBossBundleFactory extends AbstractPortalBundleFactory {
 
-    @Override
-    public PortalBundle create( Map<String, String> appServerProperties )
-    {
-        return new PortalJBossBundle( appServerProperties );
-    }
+	@Override
+	public PortalBundle create(IPath location) {
+		return new PortalJBossBundle(location);
+	}
 
-    @Override
-    public IPath canCreateFromPath( Map<String, Object> appServerProperties )
-    {
-        IPath retval = null;
+	@Override
+	public PortalBundle create(Map<String, String> appServerProperties) {
+		return new PortalJBossBundle(appServerProperties);
+	}
 
-        final String appServerPath = (String) (appServerProperties.get( "app.server.dir"));
-        final String appServerParentPath = (String) (appServerProperties.get( "app.server.parent.dir"));
-        final String appServerDeployPath = (String) (appServerProperties.get( "app.server.deploy.dir"));
-        final String appServerGlobalLibPath = (String) (appServerProperties.get( "app.server.lib.global.dir"));
-        final String appServerPortalPath = (String) (appServerProperties.get( "app.server.portal.dir"));
+	@Override
+	protected boolean detectBundleDir(IPath path) {
+		if (FileUtil.notExists(path)) {
+			return false;
+		}
 
-        if ( !ServerUtil.verifyPath(appServerPath) ||
-             !ServerUtil.verifyPath(appServerParentPath) ||
-             !ServerUtil.verifyPath(appServerDeployPath) ||
-             !ServerUtil.verifyPath(appServerPortalPath) ||
-             !ServerUtil.verifyPath(appServerGlobalLibPath) )
-        {
-            return retval;
-        }
+		IPath bundlesPath = path.append("bundles");
+		IPath modulesPath = path.append("modules");
+		IPath standalonePath = path.append("standalone");
+		IPath binPath = path.append("bin");
 
-        final IPath appServerLocation = new Path(appServerPath);
-        final IPath liferayHomelocation = new Path(appServerParentPath);
+		if (FileUtil.exists(bundlesPath) && FileUtil.exists(modulesPath) && FileUtil.exists(standalonePath) &&
+			FileUtil.exists(binPath)) {
 
-        if( detectBundleDir( appServerLocation )  )
-        {
-            retval = appServerLocation;
-        }
-        else if( detectLiferayHome( liferayHomelocation ) )
-        {
-            final File[] directories = liferayHomelocation.toFile().listFiles
-            (
-                new FileFilter()
-                {
-                    @Override
-                    public boolean accept( File file )
-                    {
-                        return file.isDirectory();
-                    }
-                }
-            );
+			String mainFolder = new Path(
+				"modules/org/jboss/as/server/main"
+			).toOSString();
 
-            for( File directory : directories )
-            {
-                final Path dirPath = new Path( directory.getAbsolutePath() );
+			return JavaUtil.scanFolderJarsForManifestProp(path.toFile(), mainFolder, _JBAS7_RELEASE_VERSION, "7.");
+		}
 
-                if( detectBundleDir( dirPath ) )
-                {
-                    retval = dirPath;
-                    break;
-                }
-            }
-        }
+		return false;
+	}
 
-        return retval;
-    }
-
-    @Override
-    public IPath canCreateFromPath( IPath location )
-    {
-        IPath retval = null;
-
-        if( detectBundleDir( location ) && detectLiferayHome( location.append( ".." ) ) )
-        {
-            retval = location;
-        }
-        else if( detectLiferayHome( location ) )
-        {
-            final File[] directories = location.toFile().listFiles( new FileFilter()
-            {
-
-                @Override
-                public boolean accept( File file )
-                {
-                    return file.isDirectory();
-                }
-            } );
-
-            for( File directory : directories )
-            {
-                final Path dirPath = new Path( directory.getAbsolutePath() );
-
-                if( detectBundleDir( dirPath ) )
-                {
-                    retval = dirPath;
-                    break;
-                }
-            }
-        }
-
-        return retval;
-    }
-
-    @Override
-    public PortalBundle create( IPath location )
-    {
-        return new PortalJBossBundle( location );
-    }
-
-    private boolean detectLiferayHome( IPath path )
-    {
-        if( !path.toFile().exists() )
-        {
-            return false;
-        }
-
-        if( path.append( "data" ).toFile().exists() && path.append( "osgi" ).toFile().exists() )
-        {
-            return true;
-        }
-
-        if( path.append( "portal-ext.properties" ).toFile().exists() ||
-            path.append( "portal-setup-wizard.properties" ).toFile().exists() )
-        {
-            return true;
-        }
-
-        return false;
-    }
-
-    private boolean detectBundleDir( IPath path )
-    {
-        if( !path.toFile().exists() )
-        {
-            return false;
-        }
-
-        if( path.append( "bundles" ).toFile().exists() && path.append( "modules" ).toFile().exists() &&
-            path.append( "standalone" ).toFile().exists() && path.append( "bin" ).toFile().exists() )
-        {
-            return true;
-        }
-
-        return false;
-    }
-
-
+	private static final String _JBAS7_RELEASE_VERSION = "JBossAS-Release-Version";
 
 }

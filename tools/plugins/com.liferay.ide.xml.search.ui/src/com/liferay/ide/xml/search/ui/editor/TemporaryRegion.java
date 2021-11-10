@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,68 +10,62 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.xml.search.ui.editor;
+
+import com.liferay.ide.core.util.StringUtil;
 
 import org.eclipse.jface.text.IRegion;
 import org.eclipse.wst.sse.ui.internal.reconcile.TemporaryAnnotation;
 
 /**
- * @author Kuo Zhang
- *
  * the region used to locate TemporaryAnnotation
+ * @author Kuo Zhang
  */
-@SuppressWarnings( "restriction" )
-public class TemporaryRegion implements IRegion
-{
+@SuppressWarnings("restriction")
+public class TemporaryRegion implements IRegion {
 
-    private final TemporaryAnnotation annotation;
-    private final int length;
-    private final int offset;
+	public TemporaryRegion(int offset, int length, TemporaryAnnotation applicable) {
+		_offset = offset;
+		_length = length;
+		_annotation = applicable;
+	}
 
-    public TemporaryRegion( int offset, int length, TemporaryAnnotation applicable )
-    {
-        this.offset = offset;
-        this.length = length;
-        this.annotation = applicable;
-    }
+	@Override
+	public boolean equals(Object obj) {
+		if (!(obj instanceof TemporaryRegion)) {
+			return false;
+		}
 
-    @Override
-    public boolean equals( Object obj )
-    {
-        if( !( obj instanceof TemporaryRegion ) )
-        {
-            return false;
-        }
+		TemporaryRegion compared = (TemporaryRegion)obj;
 
-        TemporaryRegion compared = (TemporaryRegion) obj;
+		String annotationText = _annotation.getText();
+		TemporaryAnnotation comparedAnnotation = compared._annotation;
 
-        if( this.length == compared.length &&
-            this.offset == compared.offset &&
-            this.annotation.getText() != null &&
-            compared.annotation.getText() != null &&
-            this.annotation.getText().equals( compared.annotation.getText() ) )
-        {
-            return true;
-        }
+		if ((_length == compared._length) && (_offset == compared._offset) &&
+			StringUtil.equals(annotationText, comparedAnnotation.getText())) {
 
-        return super.equals( obj );
-    }
+			return true;
+		}
 
-    public TemporaryAnnotation getAnnotation()
-    {
-        return annotation;
-    }
+		return super.equals(obj);
+	}
 
-    public int getLength()
-    {
-        return length;
-    }
+	public TemporaryAnnotation getAnnotation() {
+		return _annotation;
+	}
 
-    public int getOffset()
-    {
-        return offset;
-    }
+	public int getLength() {
+		return _length;
+	}
+
+	public int getOffset() {
+		return _offset;
+	}
+
+	private final TemporaryAnnotation _annotation;
+	private final int _length;
+	private final int _offset;
+
 }

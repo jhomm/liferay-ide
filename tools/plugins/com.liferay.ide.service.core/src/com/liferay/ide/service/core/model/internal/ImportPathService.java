@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,15 +10,16 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.service.core.model.internal;
 
 import java.io.File;
+
 import java.util.Collections;
 import java.util.List;
 
+import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.sapphire.Element;
@@ -29,68 +30,66 @@ import org.eclipse.sapphire.services.RelativePathService;
 /**
  * @author Gregory Amerson
  */
-public class ImportPathService extends RelativePathService
-{
+public class ImportPathService extends RelativePathService {
 
-    @Override
-    public List<Path> roots()
-    {
-        final File file = context( Element.class ).adapt( File.class );
+	@Override
+	public Path convertToAbsolute(Path path) {
+		if (path != null) {
+			Element element = context(Element.class);
 
-        if( file == null )
-        {
-            return Collections.emptyList();
-        }
-        else
-        {
-            return Collections.singletonList( new Path( file.getParent() ) );
-        }
-    }
+			IFile file = element.adapt(IFile.class);
 
-    @Override
-    public boolean enclosed()
-    {
-        return false;
-    }
+			if (file != null) {
+				IContainer parent = file.getParent();
 
-    @Override
-    public Path convertToAbsolute( Path path )
-    {
-        if( path != null )
-        {
-            final IFile file = context( Element.class ).adapt( IFile.class );
+				IPath baseLocation = parent.getLocation();
 
-            if( file != null )
-            {
-                final IPath baseLocation = file.getParent().getLocation();
+				IPath absoluteLocation = baseLocation.append(PathBridge.create(path));
 
-                final IPath absoluteLocation = baseLocation.append( PathBridge.create( path ) );
-                Path absolute = PathBridge.create( absoluteLocation.makeAbsolute() );
+				return PathBridge.create(absoluteLocation.makeAbsolute());
+			}
+		}
 
-                return absolute;
-            }
-        }
-        return super.convertToAbsolute( path );
-    }
+		return super.convertToAbsolute(path);
+	}
 
-    @Override
-    public Path convertToRelative( Path path )
-    {
-        if( path != null )
-        {
-            final IFile file = context( Element.class ).adapt( IFile.class );
+	@Override
+	public Path convertToRelative(Path path) {
+		if (path != null) {
+			Element element = context(Element.class);
 
-            if( file != null )
-            {
-                IPath baseLocation = file.getParent().getLocation();
+			IFile file = element.adapt(IFile.class);
 
-                if( baseLocation != null )
-                {
-                    return path.makeRelativeTo( PathBridge.create( baseLocation ) );
-                }
-            }
-        }
+			if (file != null) {
+				IContainer parent = file.getParent();
 
-        return null;
-    }
+				IPath baseLocation = parent.getLocation();
+
+				if (baseLocation != null) {
+					return path.makeRelativeTo(PathBridge.create(baseLocation));
+				}
+			}
+		}
+
+		return null;
+	}
+
+	@Override
+	public boolean enclosed() {
+		return false;
+	}
+
+	@Override
+	public List<Path> roots() {
+		Element element = context(Element.class);
+
+		File file = element.adapt(File.class);
+
+		if (file == null) {
+			return Collections.emptyList();
+		}
+
+		return Collections.singletonList(new Path(file.getParent()));
+	}
+
 }

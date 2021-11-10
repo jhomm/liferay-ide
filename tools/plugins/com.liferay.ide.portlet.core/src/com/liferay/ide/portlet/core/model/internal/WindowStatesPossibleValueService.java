@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,14 +10,11 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- * Contributors:
- *    Kamesh Sampath - initial implementation
- *    Greory Amerson - initial implementation review and ongoing maintenance
- ******************************************************************************/
+ */
 
 package com.liferay.ide.portlet.core.model.internal;
 
+import com.liferay.ide.core.util.SapphireUtil;
 import com.liferay.ide.portlet.core.model.CustomWindowState;
 import com.liferay.ide.portlet.core.model.PortletApp;
 
@@ -36,100 +33,85 @@ import org.eclipse.sapphire.modeling.ElementDisposeEvent;
  * @author Kamesh Sampath
  * @author Gregory Amerson
  */
-public class WindowStatesPossibleValueService extends PossibleValuesService
-{
-    // provided by Portlet Specification
-    private static final String[] DEFAULT_STATES = { "maximized", "minimized", "normal" }; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+public class WindowStatesPossibleValueService extends PossibleValuesService {
 
-    private boolean initialized;
-    private boolean readPriorToInit;
-    private Set<String> values = Collections.emptySet();
+	// provided by Portlet Specification
 
-    /*
-     * (non-Javadoc)
-     * @see org.eclipse.sapphire.modeling.PossibleValuesService#fillPossibleValues(java.util.SortedSet)
-     */
-    @Override
-    protected void compute( final Set<String> values )
-    {
-        if( ! this.initialized )
-        {
-            this.readPriorToInit = true;
-        }
+	@Override
+	protected void compute(Set<String> values) {
+		if (!_initialized) {
+			_readPriorToInit = true;
+		}
 
-        values.addAll( this.values );
-    }
+		values.addAll(_values);
+	}
 
-    @Override
-    protected void initPossibleValuesService()
-    {
-        super.initPossibleValuesService();
+	@Override
+	protected void initPossibleValuesService() {
+		super.initPossibleValuesService();
 
-        final PortletApp portletApp = context( PortletApp.class );
+		PortletApp portletApp = context(PortletApp.class);
 
-        final Listener listener = new FilteredListener<PropertyContentEvent>()
-        {
-            @Override
-            protected void handleTypedEvent( PropertyContentEvent event )
-            {
-                refreshValues();
-            }
-        };
+		Listener listener = new FilteredListener<PropertyContentEvent>() {
 
-        portletApp.attach( listener, PortletApp.PROP_CUSTOM_WINDOW_STATES.name() );
+			@Override
+			protected void handleTypedEvent(PropertyContentEvent event) {
+				_refreshValues();
+			}
 
-        refreshValues();
+		};
 
-        portletApp.attach
-        (
-            new FilteredListener<ElementDisposeEvent>()
-            {
-                @Override
-                protected void handleTypedEvent( final ElementDisposeEvent event )
-                {
-                    portletApp.detach( listener, PortletApp.PROP_CUSTOM_WINDOW_STATES.name() );
-                }
-            }
-        );
+		portletApp.attach(listener, PortletApp.PROP_CUSTOM_WINDOW_STATES.name());
 
-        this.initialized = true;
-    }
+		_refreshValues();
 
-    private void refreshValues()
-    {
-        final PortletApp portletApp = context( PortletApp.class );
+		portletApp.attach(
+			new FilteredListener<ElementDisposeEvent>() {
 
-        if( portletApp != null && ! portletApp.disposed() )
-        {
-            final Set<String> newValues = new TreeSet<String>();
+				@Override
+				protected void handleTypedEvent(ElementDisposeEvent event) {
+					portletApp.detach(listener, PortletApp.PROP_CUSTOM_WINDOW_STATES.name());
+				}
 
-            for( int i = 0; i < DEFAULT_STATES.length; i++ )
-            {
-                newValues.add( DEFAULT_STATES[i] );
-            }
+			});
 
-            final List<CustomWindowState> customWindowStates = portletApp.getCustomWindowStates();
+		_initialized = true;
+	}
 
-            for( CustomWindowState iCustomWindowState : customWindowStates )
-            {
-                String customWindowState = iCustomWindowState.getWindowState().text( false );
+	private void _refreshValues() {
+		PortletApp portletApp = context(PortletApp.class);
 
-                if( customWindowState != null )
-                {
-                    newValues.add( customWindowState );
-                }
-            }
+		if ((portletApp != null) && !portletApp.disposed()) {
+			Set<String> newValues = new TreeSet<>();
 
-            if( ! this.values.equals( newValues ) )
-            {
-                this.values = Collections.unmodifiableSet( newValues );
-            }
+			for (String state : _DEFAULT_STATES) {
+				newValues.add(state);
+			}
 
-            if( this.initialized || this.readPriorToInit )
-            {
-                refresh();
-            }
-        }
-    }
+			List<CustomWindowState> customWindowStates = portletApp.getCustomWindowStates();
+
+			for (CustomWindowState iCustomWindowState : customWindowStates) {
+				String customWindowState = SapphireUtil.getText(iCustomWindowState.getWindowState());
+
+				if (customWindowState != null) {
+					newValues.add(customWindowState);
+				}
+			}
+
+			if (!_values.equals(newValues)) {
+				_values = Collections.unmodifiableSet(newValues);
+			}
+
+			if (_initialized || _readPriorToInit) {
+				refresh();
+			}
+		}
+	}
+
+	private static final String[] _DEFAULT_STATES = {"maximized", "minimized", "normal"};
+
+	private boolean _initialized;
+	private boolean _readPriorToInit;
+	private Set<String> _values = Collections.emptySet();
 
 }

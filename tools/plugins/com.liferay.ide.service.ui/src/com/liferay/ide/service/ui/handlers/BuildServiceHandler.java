@@ -1,7 +1,22 @@
+/**
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
+ *
+ * This library is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU Lesser General Public License as published by the Free
+ * Software Foundation; either version 2.1 of the License, or (at your option)
+ * any later version.
+ *
+ * This library is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+ * details.
+ */
+
 package com.liferay.ide.service.ui.handlers;
 
 import com.liferay.ide.core.ILiferayConstants;
 import com.liferay.ide.core.util.CoreUtil;
+import com.liferay.ide.core.util.FileUtil;
 import com.liferay.ide.service.core.ServiceCore;
 import com.liferay.ide.service.core.job.BuildServiceJob;
 
@@ -17,6 +32,7 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.internal.ui.packageview.PackageFragmentRootContainer;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
@@ -27,87 +43,89 @@ import org.eclipse.ui.handlers.HandlerUtil;
  * @author Simon Jiang
  * @author Kuo Zhang
  */
-@SuppressWarnings( "restriction" )
-public class BuildServiceHandler extends AbstractHandler
-{
+@SuppressWarnings("restriction")
+public class BuildServiceHandler extends AbstractHandler {
 
-    public Object execute( ExecutionEvent event ) throws ExecutionException
-    {
-        IStatus retval = null;
-        IProject project = null;
+	public Object execute(ExecutionEvent event) throws ExecutionException {
+		IStatus retval = null;
+		IProject project = null;
 
-        final ISelection selection = HandlerUtil.getCurrentSelection( event );
+		ISelection selection = HandlerUtil.getCurrentSelection(event);
 
-        if( selection instanceof IStructuredSelection )
-        {
-            final IStructuredSelection structuredSelection = (IStructuredSelection) selection;
+		if (selection instanceof IStructuredSelection) {
+			IStructuredSelection structuredSelection = (IStructuredSelection)selection;
 
-            final Object selected = structuredSelection.getFirstElement();
+			Object selected = structuredSelection.getFirstElement();
 
-            if( selected instanceof IResource )
-            {
-                project = ( (IResource) selected ).getProject();
-            }
-            else if( selected instanceof IJavaElement )
-            {
-                project = ( (IJavaElement) selected ).getJavaProject().getProject();
-            }
-            else if( selected instanceof PackageFragmentRootContainer )
-            {
-                project = ( (PackageFragmentRootContainer) selected ).getJavaProject().getProject();
-            }
-        }
+			if (selected instanceof IResource) {
+				IResource selectedResource = (IResource)selected;
 
-        if( project == null )
-        {
-            final IEditorInput editorInput = HandlerUtil.getActiveEditorInput( event );
+				project = selectedResource.getProject();
+			}
+			else if (selected instanceof IJavaElement) {
+				IJavaElement selectedJavaElement = (IJavaElement)selected;
 
-            if( editorInput != null && editorInput.getAdapter( IResource.class ) != null )
-            {
-                project = ( (IResource) editorInput.getAdapter( IResource.class ) ).getProject();
-            }
-        }
+				IJavaProject javaProject = selectedJavaElement.getJavaProject();
 
-        if( project != null )
-        {
-            retval = executeServiceBuild( project );
-        }
+				project = javaProject.getProject();
+			}
+			else if (selected instanceof PackageFragmentRootContainer) {
+				PackageFragmentRootContainer selectedContainer = (PackageFragmentRootContainer)selected;
 
-        return retval;
-    }
+				IJavaProject javaProject = selectedContainer.getJavaProject();
 
-    protected IStatus executeServiceBuild( final IProject project )
-    {
-        IStatus retval = null;
+				project = javaProject.getProject();
+			}
+		}
 
-        try
-        {
-            new BuildServiceJob( project ).schedule();
-            retval = Status.OK_STATUS;
-        }
-        catch( Exception e )
-        {
-            retval = ServiceCore.createErrorStatus( "Unable to execute build-service command", e );
-        }
+		if (project == null) {
+			IEditorInput editorInput = HandlerUtil.getActiveEditorInput(event);
 
-        return retval;
-    }
+			if ((editorInput != null) && (editorInput.getAdapter(IResource.class) != null)) {
+				IResource editorInputAdapter = (IResource)editorInput.getAdapter(IResource.class);
 
-    protected IFile getServiceFile( IProject project )
-    {
-        final IFolder docroot = CoreUtil.getDefaultDocrootFolder( project );
+				project = editorInputAdapter.getProject();
+			}
+		}
 
-        if( docroot != null && docroot.exists() )
-        {
-            final IPath path = new Path( "WEB-INF/" + ILiferayConstants.SERVICE_XML_FILE );
-            final IFile serviceFile = docroot.getFile( path );
+		if (project != null) {
+			retval = executeServiceBuild(project);
+		}
 
-            if( serviceFile.exists() )
-            {
-                return serviceFile;
-            }
-        }
+		return retval;
+	}
 
-        return null;
-    }
+	protected IStatus executeServiceBuild(IProject project) {
+		IStatus retval = null;
+
+		try {
+			new BuildServiceJob(
+				project
+			).schedule();
+
+			retval = Status.OK_STATUS;
+		}
+		catch (Exception e) {
+			retval = ServiceCore.createErrorStatus("Unable to execute build-service command", e);
+		}
+
+		return retval;
+	}
+
+	protected IFile getServiceFile(IProject project) {
+		IFolder docroot = CoreUtil.getDefaultDocrootFolder(project);
+
+		if (FileUtil.exists(docroot)) {
+			IPath path = new Path("WEB-INF/" + ILiferayConstants.SERVICE_XML_FILE);
+
+			IFile serviceFile = docroot.getFile(path);
+
+			if (FileUtil.exists(serviceFile)) {
+				return serviceFile;
+			}
+		}
+
+		return null;
+	}
+
 }

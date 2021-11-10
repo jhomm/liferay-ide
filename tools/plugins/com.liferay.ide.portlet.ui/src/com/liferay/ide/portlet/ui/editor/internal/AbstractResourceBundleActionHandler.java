@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,22 +10,26 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- * Contributors:
- *      Kamesh Sampath - initial implementation
- *      Gregory Amerson - initial implementation review and ongoing maintanence
- *******************************************************************************/
+ */
 
 package com.liferay.ide.portlet.ui.editor.internal;
 
 import com.liferay.ide.core.model.internal.GenericResourceBundlePathService;
 import com.liferay.ide.core.util.CoreUtil;
+import com.liferay.ide.core.util.FileUtil;
+import com.liferay.ide.core.util.ListUtil;
+import com.liferay.ide.core.util.SapphireUtil;
 import com.liferay.ide.core.util.StringPool;
+import com.liferay.ide.core.util.StringUtil;
 import com.liferay.ide.portlet.core.util.PortletUtil;
 import com.liferay.ide.portlet.ui.PortletUIPlugin;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+
 import java.lang.reflect.InvocationTargetException;
+
 import java.util.List;
 import java.util.ListIterator;
 
@@ -33,9 +37,7 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
-import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.resources.IWorkspaceRoot;
-import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -57,168 +59,171 @@ import org.eclipse.sapphire.ui.forms.swt.SwtPresentation;
 /**
  * @author Kamesh Sampath
  */
-public abstract class AbstractResourceBundleActionHandler extends PropertyEditorActionHandler
-{
+public abstract class AbstractResourceBundleActionHandler extends PropertyEditorActionHandler {
 
-    final IWorkspace workspace = ResourcesPlugin.getWorkspace();
-    final IWorkspaceRoot wroot = workspace.getRoot();
-    protected Listener listener;
+	public IWorkspaceRoot wroot = CoreUtil.getWorkspaceRoot();
 
-    /*
-     * (non-Javadoc)
-     * @see org.eclipse.sapphire.ui.SapphirePropertyEditorActionHandler#computeEnablementState()
-     */
-    @Override
-    protected boolean computeEnablementState()
-    {
-        boolean isEnabled = super.computeEnablementState();
+	/**
+	 * (non-Javadoc)
+	 *
+	 * @see org.eclipse.sapphire.ui.SapphirePropertyEditorActionHandler#computeEnablementState()
+	 */
+	@Override
+	protected boolean computeEnablementState() {
+		boolean enabled = super.computeEnablementState();
 
-        if( isEnabled )
-        {
-            final Element element = getModelElement();
-            final Property property = property();
-            final IProject project = element.adapt( IProject.class );
-            String rbFile = element.property( (ValueProperty) property.definition() ).text();
-            if( rbFile != null )
-            {
-                String ioFileName =
-                    PortletUtil.convertJavaToIoFileName( rbFile, GenericResourceBundlePathService.RB_FILE_EXTENSION );
-                isEnabled = !getFileFromClasspath( project, ioFileName );
-            }
-            else
-            {
-                isEnabled = false;
-            }
-        }
+		if (enabled) {
+			Element element = getModelElement();
+			Property property = property();
+			IProject project = element.adapt(IProject.class);
 
-        return isEnabled;
-    }
+			String rbFile = SapphireUtil.getText(element.property((ValueProperty)property.definition()));
 
-    /**
-     * @param project
-     * @param ioFileName
-     * @return
-     */
-    protected final boolean getFileFromClasspath( IProject project, String ioFileName )
-    {
+			if (rbFile != null) {
+				String ioFileName = PortletUtil.convertJavaToIoFileName(
+					rbFile, GenericResourceBundlePathService.RB_FILE_EXTENSION);
 
-        IClasspathEntry[] cpEntries = CoreUtil.getClasspathEntries( project );
-        for( IClasspathEntry iClasspathEntry : cpEntries )
-        {
-            if( IClasspathEntry.CPE_SOURCE == iClasspathEntry.getEntryKind() )
-            {
-                IPath entryPath = wroot.getFolder( iClasspathEntry.getPath() ).getLocation();
-                entryPath = entryPath.append( ioFileName );
-                IFile resourceBundleFile = wroot.getFileForLocation( entryPath );
-                if( resourceBundleFile != null && resourceBundleFile.exists() )
-                {
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
-            }
-        }
-        return false;
-    }
+				enabled = !getFileFromClasspath(project, ioFileName);
+			}
+			else {
+				enabled = false;
+			}
+		}
 
-    /**
-     * @param project
-     * @param ioFileName
-     * @return
-     */
-    protected final IFolder getResourceBundleFolderLocation( IProject project, String ioFileName )
-    {
+		return enabled;
+	}
 
-        IClasspathEntry[] cpEntries = CoreUtil.getClasspathEntries( project );
-        for( IClasspathEntry iClasspathEntry : cpEntries )
-        {
-            if( IClasspathEntry.CPE_SOURCE == iClasspathEntry.getEntryKind() )
-            {
-                IFolder srcFolder = wroot.getFolder( iClasspathEntry.getPath() );
-                IPath rbSourcePath = srcFolder.getLocation();
-                rbSourcePath = rbSourcePath.append( ioFileName );
-                IFile resourceBundleFile = wroot.getFileForLocation( rbSourcePath );
-                if( resourceBundleFile != null )
-                {
-                    return srcFolder;
-                }
-            }
-        }
-        return null;
-    }
+	/**
+	 * @param packageName
+	 * @param rbFiles
+	 * @param rbFileBuffer
+	 */
+	protected void createFiles(
+		Presentation context, IProject project, String packageName, List<IFile> rbFiles, StringBuilder rbFileBuffer) {
 
-    /**
-     * @param packageName
-     * @param rbFiles
-     * @param rbFileBuffer
-     */
-    protected final void createFiles(
-        final Presentation context, final IProject project, final String packageName,
-        final List<IFile> rbFiles, final StringBuilder rbFileBuffer )
-    {
-        if( !rbFiles.isEmpty() )
-        {
-            final int workUnit = rbFiles.size() + 2;
-            final IRunnableWithProgress rbCreationProc = new IRunnableWithProgress()
-            {
+		if (ListUtil.isEmpty(rbFiles)) {
+			return;
+		}
 
-                public void run( final IProgressMonitor monitor ) throws InvocationTargetException,
-                    InterruptedException
-                {
-                    monitor.beginTask( StringPool.EMPTY, workUnit );
-                    try
-                    {
-                        IJavaProject javaProject = JavaCore.create( project );
-                        IPackageFragmentRoot pkgSrc = PortletUtil.getSourceFolder( javaProject );
-                        IPackageFragment rbPackageFragment = pkgSrc.getPackageFragment( packageName );
-                        if( rbPackageFragment != null && !rbPackageFragment.exists() )
-                        {
-                            pkgSrc.createPackageFragment( packageName, true, monitor );
-                        }
-                        monitor.worked( 1 );
-                        ListIterator<IFile> rbFilesIterator = rbFiles.listIterator();
-                        while( rbFilesIterator.hasNext() )
-                        {
+		int workUnit = rbFiles.size() + 2;
 
-                            IFile rbFile = rbFilesIterator.next();
+		IRunnableWithProgress rbCreationProc = new IRunnableWithProgress() {
 
-                            rbFile.create(
-                                new ByteArrayInputStream( rbFileBuffer.toString().getBytes() ), true, monitor );
-                            monitor.worked( 1 );
-                        }
+			public void run(IProgressMonitor monitor) throws InterruptedException, InvocationTargetException {
+				monitor.beginTask(StringPool.EMPTY, workUnit);
 
-                        project.refreshLocal( IResource.DEPTH_INFINITE, monitor );
+				try {
+					IJavaProject javaProject = JavaCore.create(project);
 
-                    }
-                    catch( CoreException e )
-                    {
-                        PortletUIPlugin.logError( e );
-                    }
-                    finally
-                    {
-                        monitor.done();
-                    }
+					IPackageFragmentRoot pkgSrc = PortletUtil.getResourcesFolderPackageFragmentRoot(javaProject);
 
-                }
-            };
+					IPackageFragment rbPackageFragment = pkgSrc.getPackageFragment(packageName);
 
-            try
-            {
-                ( new ProgressMonitorDialog( ( (SwtPresentation) context ).shell() ) ).run(
-                    false, false, rbCreationProc );
-                rbFiles.clear();
-            }
-            catch( InvocationTargetException e )
-            {
-                PortletUIPlugin.logError( e );
-            }
-            catch( InterruptedException e )
-            {
-                PortletUIPlugin.logError( e );
-            }
-        }
-    }
+					if ((rbPackageFragment != null) && !rbPackageFragment.exists()) {
+						pkgSrc.createPackageFragment(packageName, true, monitor);
+					}
+
+					monitor.worked(1);
+					ListIterator<IFile> rbFilesIterator = rbFiles.listIterator();
+
+					while (rbFilesIterator.hasNext()) {
+						IFile rbFile = rbFilesIterator.next();
+
+						try (InputStream inputStream = new ByteArrayInputStream(
+								StringUtil.getBytes(rbFileBuffer.toString()))) {
+
+							rbFile.create(inputStream, true, monitor);
+						}
+						catch (IOException ioe) {
+							throw new CoreException(PortletUIPlugin.createErrorStatus(ioe));
+						}
+
+						monitor.worked(1);
+					}
+
+					project.refreshLocal(IResource.DEPTH_INFINITE, monitor);
+				}
+				catch (CoreException ce) {
+					PortletUIPlugin.logError(ce);
+				}
+				finally {
+					monitor.done();
+				}
+			}
+
+		};
+
+		try {
+			SwtPresentation swtPresentation = (SwtPresentation)context;
+
+			new ProgressMonitorDialog(
+				swtPresentation.shell()
+			).run(
+				false, false, rbCreationProc
+			);
+
+			rbFiles.clear();
+		}
+		catch (InvocationTargetException ite) {
+			PortletUIPlugin.logError(ite);
+		}
+		catch (InterruptedException ie) {
+			PortletUIPlugin.logError(ie);
+		}
+	}
+
+	/**
+	 * @param project
+	 * @param ioFileName
+	 * @return
+	 */
+	protected boolean getFileFromClasspath(IProject project, String ioFileName) {
+		IClasspathEntry classpathEntry = PortletUtil.getResourceFolderClasspathEntry(project);
+
+		if (classpathEntry != null) {
+			IFolder folder = wroot.getFolder(classpathEntry.getPath());
+
+			IPath entryPath = folder.getLocation();
+
+			entryPath = entryPath.append(ioFileName);
+
+			IFile resourceBundleFile = wroot.getFileForLocation(entryPath);
+
+			if (FileUtil.exists(resourceBundleFile)) {
+				return true;
+			}
+
+			return false;
+		}
+
+		return false;
+	}
+
+	/**
+	 * @param project
+	 * @param ioFileName
+	 * @return
+	 */
+	protected IFolder getResourceBundleFolderLocation(IProject project, String ioFileName) {
+		IClasspathEntry classpathEntry = PortletUtil.getResourceFolderClasspathEntry(project);
+
+		if (classpathEntry != null) {
+			IFolder srcFolder = wroot.getFolder(classpathEntry.getPath());
+
+			IPath rbSourcePath = srcFolder.getLocation();
+
+			rbSourcePath = rbSourcePath.append(ioFileName);
+
+			IFile resourceBundleFile = wroot.getFileForLocation(rbSourcePath);
+
+			if (resourceBundleFile != null) {
+				return srcFolder;
+			}
+		}
+
+		return null;
+	}
+
+	protected Listener listener;
 
 }

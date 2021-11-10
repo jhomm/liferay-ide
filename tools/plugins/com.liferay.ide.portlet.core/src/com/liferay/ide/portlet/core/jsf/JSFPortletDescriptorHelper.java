@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,11 +10,11 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.portlet.core.jsf;
 
+import com.liferay.ide.core.util.StringUtil;
 import com.liferay.ide.portlet.core.dd.PortletDescriptorHelper;
 
 import org.eclipse.core.resources.IProject;
@@ -25,31 +25,24 @@ import org.eclipse.wst.common.frameworks.datamodel.IDataModel;
  * @author Simon Jiang
  * @author Kuo Zhang
  */
+public class JSFPortletDescriptorHelper
+	extends PortletDescriptorHelper implements INewJSFPortletClassDataModelProperties {
 
-public class JSFPortletDescriptorHelper extends PortletDescriptorHelper
-                                        implements INewJSFPortletClassDataModelProperties
-{
+	public JSFPortletDescriptorHelper() {
+	}
 
-    public JSFPortletDescriptorHelper()
-    {
-        super();
-    }
+	public JSFPortletDescriptorHelper(IProject project) {
+		super(project);
+	}
 
-    public JSFPortletDescriptorHelper( IProject project )
-    {
-        super( project );
-    }
+	@Override
+	public boolean canAddNewPortlet(IDataModel model) {
+		return StringUtil.contains(model.getID(), "NewJSFPortlet");
+	}
 
-    @Override
-    public boolean canAddNewPortlet( IDataModel model )
-    {
-        return model.getID().contains( "NewJSFPortlet" );
-    }
-
-    @Override
-    protected String getPortletClassText( IDataModel model )
-    {
-        return model.getStringProperty( JSF_PORTLET_CLASS );
-    }
+	@Override
+	protected String getPortletClassText(IDataModel model) {
+		return model.getStringProperty(JSF_PORTLET_CLASS);
+	}
 
 }

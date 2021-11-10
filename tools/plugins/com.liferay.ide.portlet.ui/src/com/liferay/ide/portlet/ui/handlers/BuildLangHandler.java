@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,17 +10,19 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
+
 package com.liferay.ide.portlet.ui.handlers;
 
 import com.liferay.ide.core.util.CoreUtil;
+import com.liferay.ide.core.util.FileUtil;
 import com.liferay.ide.portlet.core.PortletCore;
 import com.liferay.ide.portlet.core.job.BuildLanguageJob;
 import com.liferay.ide.portlet.ui.PortletUIPlugin;
 import com.liferay.ide.ui.util.UIUtil;
 
 import java.util.List;
+import java.util.Objects;
 
 import org.eclipse.core.commands.AbstractHandler;
 import org.eclipse.core.commands.ExecutionEvent;
@@ -35,6 +37,7 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.internal.ui.packageview.PackageFragmentRootContainer;
 import org.eclipse.jface.dialogs.MessageDialog;
@@ -42,161 +45,154 @@ import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.osgi.util.NLS;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.IEditorInput;
-import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.handlers.HandlerUtil;
 import org.eclipse.ui.ide.IDE;
-
 
 /**
  * @author Gregory Amerson
  */
-@SuppressWarnings( "restriction" )
-public class BuildLangHandler extends AbstractHandler
-{
+@SuppressWarnings("restriction")
+public class BuildLangHandler extends AbstractHandler {
 
-    @Override
-    public Object execute( ExecutionEvent event ) throws ExecutionException
-    {
-        IStatus retval = null;
-        IProject project = null;
-        IFile langFile = null;
+	@Override
+	public Object execute(ExecutionEvent event) throws ExecutionException {
+		IStatus retval = null;
+		IProject project = null;
+		IFile langFile = null;
 
-        final ISelection selection = HandlerUtil.getCurrentSelection( event );
+		ISelection selection = HandlerUtil.getCurrentSelection(event);
 
-        if( selection instanceof IStructuredSelection )
-        {
-            final IStructuredSelection structuredSelection = (IStructuredSelection) selection;
+		if (selection instanceof IStructuredSelection) {
+			IStructuredSelection structuredSelection = (IStructuredSelection)selection;
 
-            final Object selected = structuredSelection.getFirstElement();
+			Object selected = structuredSelection.getFirstElement();
 
-            if( selected instanceof IResource )
-            {
-                project = ( (IResource) selected ).getProject();
-            }
-            else if( selected instanceof IJavaElement )
-            {
-                project = ( (IJavaElement) selected ).getJavaProject().getProject();
-            }
-            else if( selected instanceof PackageFragmentRootContainer )
-            {
-                project = ( (PackageFragmentRootContainer) selected ).getJavaProject().getProject();
-            }
-        }
+			if (selected instanceof IResource) {
+				IResource resource = (IResource)selected;
 
-        if( project == null )
-        {
-            IEditorInput activeInput = HandlerUtil.getActiveEditorInput( event );
-            IFile file = (IFile) activeInput.getAdapter( IFile.class );
+				project = resource.getProject();
+			}
+			else if (selected instanceof IJavaElement) {
+				IJavaElement javaElement = (IJavaElement)selected;
 
-            if( file != null )
-            {
-                project = file.getProject();
-            }
-        }
+				IJavaProject javaProject = javaElement.getJavaProject();
 
-        if( project != null )
-        {
-            final List<IFolder> srcFolders = CoreUtil.getSourceFolders( JavaCore.create( project ) );
+				project = javaProject.getProject();
+			}
+			else if (selected instanceof PackageFragmentRootContainer) {
+				PackageFragmentRootContainer packageFragmentRootContainer = (PackageFragmentRootContainer)selected;
 
-            for( IFolder src : srcFolders )
-            {
-                IFile file = src.getFile( "content/Language.properties" );
+				IJavaProject javaProject = packageFragmentRootContainer.getJavaProject();
 
-                if( file.exists() )
-                {
-                    langFile = file;
-                    break;
-                }
-            }
+				project = javaProject.getProject();
+			}
+		}
 
-            if( langFile != null && langFile.exists() )
-            {
-                try
-                {
-                    boolean shouldContinue = checkLanguageFileEncoding( langFile );
+		if (project == null) {
+			IEditorInput activeInput = HandlerUtil.getActiveEditorInput(event);
 
-                    if( !shouldContinue )
-                    {
-                        retval = Status.OK_STATUS;
-                    }
+			IFile file = (IFile)activeInput.getAdapter(IFile.class);
 
-                    BuildLanguageJob job = PortletCore.createBuildLanguageJob( langFile );
+			if (file != null) {
+				project = file.getProject();
+			}
+		}
 
-                    job.schedule();
-                }
-                catch( Exception e2 )
-                {
-                    retval = PortletUIPlugin.createErrorStatus( e2 );
-                }
-            }
-        }
+		if (project != null) {
+			List<IFolder> srcFolders = CoreUtil.getSourceFolders(JavaCore.create(project));
 
-        return retval;
-    }
+			for (IFolder src : srcFolders) {
+				IFile file = src.getFile("content/Language.properties");
 
-    protected boolean checkLanguageFileEncoding( IFile langFile ) throws CoreException
-    {
-        IProgressMonitor monitor = new NullProgressMonitor();
+				if (file.exists()) {
+					langFile = file;
 
-        try
-        {
-            langFile.refreshLocal( IResource.DEPTH_INFINITE, monitor );
-        }
-        catch( Exception e )
-        {
-            PortletUIPlugin.logError( e );
-        }
+					break;
+				}
+			}
 
-        String charset = langFile.getCharset( true );
+			if (FileUtil.exists(langFile)) {
+				try {
+					boolean shouldContinue = checkLanguageFileEncoding(langFile);
 
-        if( !"UTF-8".equals( charset ) )
-        {
-            String dialogMessage = NLS.bind( Msgs.languageFileCharacterSet, charset );
+					if (!shouldContinue) {
+						retval = Status.OK_STATUS;
+					}
 
-            MessageDialog dialog =
-                new MessageDialog(
-                    UIUtil.getActiveShell(), Msgs.incompatibleCharacterSet,
-                    UIUtil.getActiveShell().getDisplay().getSystemImage( SWT.ICON_WARNING ), dialogMessage,
-                    MessageDialog.WARNING, new String[] { Msgs.yes, Msgs.no, Msgs.cancel }, 0 );
+					BuildLanguageJob job = PortletCore.createBuildLanguageJob(langFile);
 
-            int retval = dialog.open();
+					job.schedule();
+				}
+				catch (Exception e2) {
+					retval = PortletUIPlugin.createErrorStatus(e2);
+				}
+			}
+		}
 
-            if( retval == 0 )
-            {
-                langFile.setCharset( "UTF-8", monitor ); //$NON-NLS-1$
+		return retval;
+	}
 
-                String question = NLS.bind( Msgs.forcedEditFile, langFile.getName() );
+	protected boolean checkLanguageFileEncoding(IFile langFile) throws CoreException {
+		IProgressMonitor monitor = new NullProgressMonitor();
 
-                if( MessageDialog.openQuestion( UIUtil.getActiveShell(), Msgs.previewFile, question ) )
-                {
-                    IDE.openEditor( PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage(), langFile );
-                }
+		try {
+			langFile.refreshLocal(IResource.DEPTH_INFINITE, monitor);
+		}
+		catch (Exception e) {
+			PortletUIPlugin.logError(e);
+		}
 
-                return false;
-            }
-            else if( retval == 2 )
-            {
-                return false;
-            }
-        }
+		String charset = langFile.getCharset(true);
 
-        return true;
-    }
+		if (!Objects.equals("UTF-8", charset)) {
+			String dialogMessage = NLS.bind(Msgs.languageFileCharacterSet, charset);
 
-    private static class Msgs extends NLS
-    {
-        public static String cancel;
-        public static String forcedEditFile;
-        public static String incompatibleCharacterSet;
-        public static String languageFileCharacterSet;
-        public static String no;
-        public static String previewFile;
-        public static String yes;
+			Shell shell = UIUtil.getActiveShell();
 
-        static
-        {
-            initializeMessages( BuildLangHandler.class.getName(), Msgs.class );
-        }
-    }
+			Display display = shell.getDisplay();
+
+			MessageDialog dialog = new MessageDialog(
+				shell, Msgs.incompatibleCharacterSet, display.getSystemImage(SWT.ICON_WARNING), dialogMessage,
+				MessageDialog.WARNING, new String[] {Msgs.yes, Msgs.no, Msgs.cancel}, 0);
+
+			int retval = dialog.open();
+
+			if (retval == 0) {
+				langFile.setCharset("UTF-8", monitor);
+
+				String question = NLS.bind(Msgs.forcedEditFile, langFile.getName());
+
+				if (MessageDialog.openQuestion(shell, Msgs.previewFile, question)) {
+					IDE.openEditor(UIUtil.getActivePage(), langFile);
+				}
+
+				return false;
+			}
+			else if (retval == 2) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	private static class Msgs extends NLS {
+
+		public static String cancel;
+		public static String forcedEditFile;
+		public static String incompatibleCharacterSet;
+		public static String languageFileCharacterSet;
+		public static String no;
+		public static String previewFile;
+		public static String yes;
+
+		static {
+			initializeMessages(BuildLangHandler.class.getName(), Msgs.class);
+		}
+
+	}
+
 }

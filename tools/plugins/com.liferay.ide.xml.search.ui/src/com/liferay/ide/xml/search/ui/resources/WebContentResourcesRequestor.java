@@ -1,15 +1,20 @@
-/*******************************************************************************
- * Copyright (c) 2013-2014 Angelo ZERR.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+/**
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
- * Contributors:
- *     Angelo Zerr <angelo.zerr@gmail.com> - initial API and implementation
- *******************************************************************************/
+ * This library is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU Lesser General Public License as published by the Free
+ * Software Foundation; either version 2.1 of the License, or (at your option)
+ * any later version.
+ *
+ * This library is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+ * details.
+ */
 
 package com.liferay.ide.xml.search.ui.resources;
+
+import java.util.Objects;
 
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IResource;
@@ -17,26 +22,27 @@ import org.eclipse.wst.xml.search.core.resource.DefaultResourceRequestor;
 import org.eclipse.wst.xml.search.core.resource.IResourceRequestor;
 import org.eclipse.wst.xml.search.core.resource.IURIResolver;
 
-public class WebContentResourcesRequestor extends DefaultResourceRequestor
-{
+/**
+ * @author Gregory Amerson
+ */
+public class WebContentResourcesRequestor extends DefaultResourceRequestor {
 
-    public static final IResourceRequestor INSTANCE = new WebContentResourcesRequestor();
+	public static final IResourceRequestor INSTANCE = new WebContentResourcesRequestor();
 
-    @Override
-    public boolean accept(
-        Object selectedNode, IResource rootContainer, IFolder folder, IURIResolver resolver, String matching,
-        boolean fullMatch )
-    {
-        if( "WEB-INF".equals( folder.getName() ) )
-        {
-            return false;
-        }
+	@Override
+	public boolean accept(
+		Object selectedNode, IResource rootContainer, IFolder folder, IURIResolver resolver, String matching,
+		boolean fullMatch) {
 
-        if( "META-INF".equals( folder.getName() ) )
-        {
-            return false;
-        }
+		if (Objects.equals("WEB-INF", folder.getName())) {
+			return false;
+		}
 
-        return super.accept( selectedNode, rootContainer, folder, resolver, matching, fullMatch );
-    }
+		if (Objects.equals("META-INF", folder.getName())) {
+			return false;
+		}
+
+		return super.accept(selectedNode, rootContainer, folder, resolver, matching, fullMatch);
+	}
+
 }

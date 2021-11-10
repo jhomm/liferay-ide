@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,14 +10,15 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.xml.search.ui.validators;
 
+import com.liferay.ide.core.ILiferayProject;
 import com.liferay.ide.core.LiferayCore;
+import com.liferay.ide.core.util.FileUtil;
+import com.liferay.ide.core.util.StringUtil;
 import com.liferay.ide.project.core.ValidationPreferences;
-import com.liferay.ide.project.core.ValidationPreferences.ValidationType;
 import com.liferay.ide.xml.search.ui.PortalLanguagePropertiesCacheUtil;
 import com.liferay.ide.xml.search.ui.XMLSearchConstants;
 
@@ -26,8 +27,10 @@ import java.util.Properties;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.Platform;
+import org.eclipse.core.runtime.preferences.IPreferencesService;
 import org.eclipse.osgi.util.NLS;
 import org.eclipse.wst.sse.core.internal.validate.ValidationMessage;
+import org.eclipse.wst.validation.Validator;
 import org.eclipse.wst.validation.internal.provisional.core.IMessage;
 import org.eclipse.wst.validation.internal.provisional.core.IReporter;
 import org.eclipse.wst.validation.internal.provisional.core.IValidator;
@@ -40,330 +43,301 @@ import org.eclipse.wst.xml.search.core.properties.IPropertiesRequestor;
 import org.eclipse.wst.xml.search.core.util.DOMUtils;
 import org.eclipse.wst.xml.search.editor.references.IXMLReferenceTo;
 import org.eclipse.wst.xml.search.editor.references.IXMLReferenceToProperty;
+import org.eclipse.wst.xml.search.editor.searchers.IXMLSearcher;
 import org.eclipse.wst.xml.search.editor.util.PropertiesQuerySpecificationUtil;
 import org.eclipse.wst.xml.search.editor.validation.IValidationResult;
 import org.eclipse.wst.xml.search.editor.validation.LocalizedMessage;
 import org.eclipse.wst.xml.search.editor.validation.XMLReferencesBatchValidator;
+
+import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 
 /**
  * @author Terry Jia
  */
-@SuppressWarnings( "restriction" )
-public class LiferayJspValidator extends LiferayBaseValidator
-{
+@SuppressWarnings("restriction")
+public class LiferayJspValidator extends LiferayBaseValidator {
 
-    private final String ACTION_REQUEST_ACTION_NAME = "ActionRequest.ACTION_NAME";
-    private final String AUI_PREFIX = "aui";
-    private final String JAVAX_PORTLET_ACTION = "javax.portlet.action";
-    private final String JSP_TAG_START = "<%";
-    private final String JSP_TAG_END = "%>";
-    private final String[] SUPPORTED_TAGS = { "liferay-portlet:param", "portlet:param" };
+	public static final String MESSAGE_CLASS_ATTRIBUTE_NOT_WORK = Msgs.classAttributeNotWork;
 
-    public static final String MESSAGE_CLASS_ATTRIBUTE_NOT_WORK = Msgs.classAttributeNotWork;
+	protected void addMessage(
+		IDOMNode node, IFile file, IValidator validator, IReporter reporter, boolean batchMode, String messageText,
+		int severity, String liferayPluginValidationType, String querySpecificationId) {
 
-    protected void addMessage(
-        IDOMNode node, IFile file, IValidator validator, IReporter reporter, boolean batchMode,
-        String messageText, int severity, String liferayPluginValidationType, String querySpecificationId )
-    {
-        final String textContent = DOMUtils.getNodeValue( node );
-        int startOffset = getStartOffset( node );
+		String textContent = DOMUtils.getNodeValue(node);
+		int startOffset = getStartOffset(node);
 
-        if( textContent != null )
-        {
-            int length = textContent.trim().length() + 2;
+		if (textContent != null) {
+			textContent = textContent.trim();
 
-            final LocalizedMessage message =
-                createMessage( startOffset, length, messageText, severity, node.getStructuredDocument() );
+			int length = textContent.length() + 2;
 
-            if( message != null )
-            {
-                message.setAttribute( MARKER_QUERY_ID, querySpecificationId );
-                message.setAttribute( XMLSearchConstants.TEXT_CONTENT, textContent );
-                message.setAttribute( XMLSearchConstants.FULL_PATH, file.getFullPath().toPortableString() );
-                message.setAttribute( XMLSearchConstants.MARKER_TYPE, XMLSearchConstants.LIFERAY_JSP_MARKER_ID );
-                message.setAttribute(
-                    XMLSearchConstants.LIFERAY_PLUGIN_VALIDATION_TYPE, liferayPluginValidationType );
-                message.setTargetObject( file );
-                reporter.addMessage( validator, message );
-            }
-        }
-    }
+			LocalizedMessage message = createMessage(
+				startOffset, length, messageText, severity, node.getStructuredDocument());
 
-    protected String getMessageText(
-        ValidationType validationType, IXMLReferenceTo referenceTo, Node node, IFile file )
-    {
-        if( node.toString().equals( "class" ) && validationType.equals( ValidationType.STATIC_VALUE_UNDEFINED ) )
-        {
-            return NLS.bind( MESSAGE_CLASS_ATTRIBUTE_NOT_WORK, null );
-        }
-        else
-        {
-            return super.getMessageText( validationType, referenceTo, node, file );
-        }
-    }
+			if (message != null) {
+				message.setAttribute(MARKER_QUERY_ID, querySpecificationId);
+				message.setAttribute(XMLSearchConstants.FULL_PATH, FileUtil.getFullPathPortableString(file));
+				message.setAttribute(XMLSearchConstants.LIFERAY_PLUGIN_VALIDATION_TYPE, liferayPluginValidationType);
+				message.setAttribute(XMLSearchConstants.MARKER_TYPE, XMLSearchConstants.LIFERAY_JSP_MARKER_ID);
+				message.setAttribute(XMLSearchConstants.TEXT_CONTENT, textContent);
+				message.setTargetObject(file);
 
-    @Override
-    protected IFile getReferencedFile( IXMLReferenceTo referenceTo, Node node, IFile file )
-    {
-        if( referenceTo instanceof IXMLReferenceToProperty )
-        {
-            IXMLReferenceToProperty referenceToProperty = (IXMLReferenceToProperty) referenceTo;
+				reporter.addMessage(validator, message);
+			}
+		}
+	}
 
-            IPropertiesQuerySpecification[] querySpecifications =
-                PropertiesQuerySpecificationUtil.getQuerySpecifications( referenceToProperty );
+	@Override
+	protected String getLiferayPluginValidationType(ValidationPreferences.ValidationType validationType, IFile file) {
+		String retval = null;
 
-            if( querySpecifications == null || querySpecifications.length < 1 )
-            {
-                return null;
-            }
+		if (ValidationPreferences.ValidationType.PROPERTY_NOT_FOUND.equals(validationType)) {
+			retval = ValidationPreferences.LIFERAY_JSP_PROPERTY_NOT_FOUND;
+		}
+		else if (ValidationPreferences.ValidationType.METHOD_NOT_FOUND.equals(validationType)) {
+			retval = ValidationPreferences.LIFERAY_JSP_METHOD_NOT_FOUND;
+		}
+		else if (ValidationPreferences.ValidationType.REFERENCE_NOT_FOUND.equals(validationType)) {
+			retval = ValidationPreferences.LIFERAY_JSP_REFERENCE_NOT_FOUND;
+		}
+		else if (ValidationPreferences.ValidationType.RESOURCE_NOT_FOUND.equals(validationType)) {
+			retval = ValidationPreferences.LIFERAY_JSP_RESOURCE_NOT_FOUND;
+		}
+		else if (ValidationPreferences.ValidationType.STATIC_VALUE_UNDEFINED.equals(validationType)) {
+			retval = ValidationPreferences.LIFERAY_JSP_STATIC_VALUE_UNDEFINED;
+		}
+		else if (ValidationPreferences.ValidationType.TYPE_HIERARCHY_INCORRECT.equals(validationType)) {
+			retval = ValidationPreferences.LIFERAY_JSP_TYPE_HIERARCHY_INCORRECT;
+		}
+		else if (ValidationPreferences.ValidationType.TYPE_NOT_FOUND.equals(validationType)) {
+			retval = ValidationPreferences.LIFERAY_JSP_TYPE_NOT_FOUND;
+		}
 
-            IPropertiesQuerySpecification querySpecification = null;
+		return retval;
+	}
 
-            querySpecification = querySpecifications[0];
+	protected String getMessageText(
+		ValidationPreferences.ValidationType validationType, IXMLReferenceTo referenceTo, Node node, IFile file) {
 
-            IPropertiesRequestor requestor = querySpecification.getRequestor();
+		if (StringUtil.equals("class", node) &&
+			validationType.equals(ValidationPreferences.ValidationType.STATIC_VALUE_UNDEFINED)) {
 
-            IResource resource = querySpecification.getResource( node, file );
+			return NLS.bind(MESSAGE_CLASS_ATTRIBUTE_NOT_WORK, null);
+		}
 
-            return new ReferencedPropertiesVisitor().getReferencedFile( requestor, resource );
-        }
+		return super.getMessageText(validationType, referenceTo, node, file);
+	}
 
-        return null;
-    }
+	@Override
+	protected IFile getReferencedFile(IXMLReferenceTo referenceTo, Node node, IFile file) {
+		if (referenceTo instanceof IXMLReferenceToProperty) {
+			IXMLReferenceToProperty referenceToProperty = (IXMLReferenceToProperty)referenceTo;
 
-    @Override
-    protected int getServerity( ValidationType validationType, IFile file )
-    {
-        int retval = -1;
-        String liferayPluginValidationType = getLiferayPluginValidationType( validationType, file );
+			IPropertiesQuerySpecification[] querySpecifications =
+				PropertiesQuerySpecificationUtil.getQuerySpecifications(referenceToProperty);
 
-        if( liferayPluginValidationType != null )
-        {
-            retval =
-                Platform.getPreferencesService().getInt(
-                    PREFERENCE_NODE_QUALIFIER, liferayPluginValidationType, IMessage.NORMAL_SEVERITY,
-                    getScopeContexts( file.getProject() ) );
-        }
-        else
-        {
-            retval = super.getServerity( validationType, file );
-        }
+			if ((querySpecifications == null) || (querySpecifications.length < 1)) {
+				return null;
+			}
 
-        return retval;
-    }
+			IPropertiesQuerySpecification querySpecification = querySpecifications[0];
 
+			IPropertiesRequestor requestor = querySpecification.getRequestor();
 
-    @Override
-    protected String getLiferayPluginValidationType( ValidationType validationType, IFile file )
-    {
-        String retval = null;
+			IResource resource = querySpecification.getResource(node, file);
 
-        if( ValidationType.PROPERTY_NOT_FOUND.equals( validationType ) )
-        {
-            retval = ValidationPreferences.LIFERAY_JSP_PROPERTY_NOT_FOUND;
-        }
-        else if( ValidationType.METHOD_NOT_FOUND.equals( validationType ) )
-        {
-            retval = ValidationPreferences.LIFERAY_JSP_METHOD_NOT_FOUND;
-        }
-        else if( ValidationType.REFERENCE_NOT_FOUND.equals( validationType ) )
-        {
-            retval = ValidationPreferences.LIFERAY_JSP_REFERENCE_NOT_FOUND;
-        }
-        else if( ValidationType.RESOURCE_NOT_FOUND.equals( validationType ) )
-        {
-            retval = ValidationPreferences.LIFERAY_JSP_RESOURCE_NOT_FOUND;
-        }
-        else if( ValidationType.STATIC_VALUE_UNDEFINED.equals( validationType ) )
-        {
-            retval = ValidationPreferences.LIFERAY_JSP_STATIC_VALUE_UNDEFINED;
-        }
-        else if( ValidationType.TYPE_HIERARCHY_INCORRECT.equals( validationType ) )
-        {
-            retval = ValidationPreferences.LIFERAY_JSP_TYPE_HIERARCHY_INCORRECT;
-        }
-        else if( ValidationType.TYPE_NOT_FOUND.equals( validationType ) )
-        {
-            retval = ValidationPreferences.LIFERAY_JSP_TYPE_NOT_FOUND;
-        }
+			return new ReferencedPropertiesVisitor().getReferencedFile(requestor, resource);
+		}
 
-        return retval;
-    }
+		return null;
+	}
 
-    private boolean isSupportedTag( String tagName )
-    {
-        for( String supportTag : SUPPORTED_TAGS )
-        {
-            if( supportTag.equals( tagName ) )
-            {
-                return true;
-            }
-        }
+	@Override
+	protected int getServerity(ValidationPreferences.ValidationType validationType, IFile file) {
+		int retval = -1;
+		String liferayPluginValidationType = getLiferayPluginValidationType(validationType, file);
 
-        return false;
-    }
+		if (liferayPluginValidationType != null) {
+			IPreferencesService preferencesService = Platform.getPreferencesService();
 
-    @Override
-    protected void setMarker( IValidator validator, IFile file )
-    {
-        if( ( validator instanceof XMLReferencesBatchValidator ) && file.getFileExtension().equals( "jsp" ) )
-        {
-            ( (XMLReferencesBatchValidator) validator ).getParent().setMarkerId(
-                XMLSearchConstants.LIFERAY_JSP_MARKER_ID );
-        }
-    }
+			retval = preferencesService.getInt(
+				PREFERENCE_NODE_QUALIFIER, liferayPluginValidationType, IMessage.NORMAL_SEVERITY,
+				getScopeContexts(file.getProject()));
+		}
+		else {
+			retval = super.getServerity(validationType, file);
+		}
 
-    @Override
-    protected void validateReferenceToJava(
-        IXMLReferenceTo referenceTo, IDOMNode node, IFile file, IValidator validator, IReporter reporter,
-        boolean batchMode )
-    {
-        if( node instanceof AttrImpl )
-        {
-            final AttrImpl attrNode = (AttrImpl) node;
+		return retval;
+	}
 
-            Node parentNode = attrNode.getOwnerElement();
+	@Override
+	protected void setMarker(IValidator validator, IFile file) {
+		String extension = file.getFileExtension();
 
-            if( isSupportedTag( parentNode.getNodeName() ) )
-            {
-                IDOMAttr nameAttr = DOMUtils.getAttr( (IDOMElement) parentNode, "name" );
+		if ((validator instanceof XMLReferencesBatchValidator) && extension.equals("jsp")) {
+			XMLReferencesBatchValidator xmlValidator = (XMLReferencesBatchValidator)validator;
 
-                if( nameAttr != null &&
-                    ( nameAttr.getNodeValue().contains( ACTION_REQUEST_ACTION_NAME ) ||
-                      nameAttr.getNodeValue().contains( JAVAX_PORTLET_ACTION ) ) )
-                {
-                    super.validateReferenceToJava( referenceTo, attrNode, file, validator, reporter, batchMode );
-                }
-            }
-        }
-    }
+			Validator.V2 parent = xmlValidator.getParent();
 
-    @Override
-    protected void validateReferenceToProperty(
-        IXMLReferenceTo referenceTo, IDOMNode node, IFile file, IValidator validator, IReporter reporter,
-        boolean batchMode )
-    {
-        final String languageKey = DOMUtils.getNodeValue( node );
+			parent.setMarkerId(XMLSearchConstants.LIFERAY_JSP_MARKER_ID);
+		}
+	}
 
-        if( !languageKey.contains( JSP_TAG_START ) && !languageKey.contains( JSP_TAG_END ) )
-        {
-            final IValidationResult result =
-                referenceTo.getSearcher().searchForValidation( node, languageKey, -1, -1, file, referenceTo );
+	@Override
+	protected void validateReferenceToJava(
+		IXMLReferenceTo referenceTo, IDOMNode node, IFile file, IValidator validator, IReporter reporter,
+		boolean batchMode) {
 
-            if( result != null )
-            {
-                boolean addMessage = false;
+		if (node instanceof AttrImpl) {
+			AttrImpl attrNode = (AttrImpl)node;
 
-                int nbElements = result.getNbElements();
+			Node parentNode = attrNode.getOwnerElement();
 
-                if( nbElements > 0 )
-                {
-                    if( nbElements > 1 && !isMultipleElementsAllowed( node, nbElements ) )
-                    {
-                        addMessage = true;
-                    }
-                }
-                else
-                {
-                    addMessage = true;
-                }
+			if (_isSupportedTag(parentNode.getNodeName())) {
+				IDOMAttr nameAttr = DOMUtils.getAttr((IDOMElement)parentNode, "name");
 
-                if( addMessage )
-                {
-                    final Properties properties =
-                        PortalLanguagePropertiesCacheUtil.getPortalLanguageProperties( LiferayCore.create( file.getProject() ) );
+				if (StringUtil.contains(nameAttr.getNodeValue(), _action_request_action_name) ||
+					StringUtil.contains(nameAttr.getNodeValue(), _javax_portlet_action)) {
 
-                    if( properties != null )
-                    {
-                        try
-                        {
-                            String languageValue = (String) properties.get( languageKey );
+					super.validateReferenceToJava(referenceTo, attrNode, file, validator, reporter, batchMode);
+				}
+			}
+		}
+	}
 
-                            if( !languageValue.equals( "" ) )
-                            {
-                                addMessage = false;
-                            }
-                        }
-                        catch( Exception e )
-                        {
-                        }
+	@Override
+	protected void validateReferenceToProperty(
+		IXMLReferenceTo referenceTo, IDOMNode node, IFile file, IValidator validator, IReporter reporter,
+		boolean batchMode) {
 
-                        if( addMessage )
-                        {
-                            final ValidationType validationType = getValidationType( referenceTo, nbElements );
-                            final int severity = getServerity( validationType, file );
+		String languageKey = DOMUtils.getNodeValue(node);
 
-                            if( severity != ValidationMessage.IGNORE )
-                            {
-                                final String liferayPluginValidationType =
-                                    getLiferayPluginValidationType( validationType, file );
-                                final String querySpecificationId = referenceTo.getQuerySpecificationId();
-                                final String messageText =
-                                    getMessageText( validationType, referenceTo, node, file );
+		if (file.exists() && !languageKey.contains(_jsp_rag_start) && !languageKey.contains(_jsp_rag_end)) {
+			IXMLSearcher searcher = referenceTo.getSearcher();
 
-                                addMessage(
-                                    node, file, validator, reporter, batchMode, messageText, severity,
-                                    liferayPluginValidationType, querySpecificationId );
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
+			IValidationResult result = searcher.searchForValidation(node, languageKey, -1, -1, file, referenceTo);
 
-    protected void validateReferenceToStatic(
-        IXMLReferenceTo referenceTo, IDOMNode node, IFile file, IValidator validator, IReporter reporter,
-        boolean batchMode )
-    {
-        if( node instanceof AttrImpl )
-        {
-            final AttrImpl attrNode = (AttrImpl) node;
+			if (result == null) {
+				return;
+			}
 
-            if( attrNode.getOwnerElement().getNodeName().startsWith( AUI_PREFIX ) )
-            {
-                final String nodeValue = node.toString();
+			boolean addMessage = false;
 
-                boolean addMessage = false;
+			int nbElements = result.getNbElements();
 
-                if( nodeValue.equals( "class" ) )
-                {
-                    addMessage = true;
-                }
+			if (nbElements > 0) {
+				if ((nbElements > 1) && !isMultipleElementsAllowed(node, nbElements)) {
+					addMessage = true;
+				}
+			}
+			else {
+				addMessage = true;
+			}
 
-                if( addMessage )
-                {
-                    final ValidationType validationType = getValidationType( referenceTo, 0 );
-                    final int severity = getServerity( validationType, file );
+			if (!addMessage) {
+				return;
+			}
 
-                    if( severity != ValidationMessage.IGNORE )
-                    {
-                        final String liferayPluginValidationType = getLiferayPluginValidationType( validationType, file );
-                        final String querySpecificationId = referenceTo.getQuerySpecificationId();
-                        final String messageText = getMessageText( validationType, referenceTo, node, file );
+			Properties properties = PortalLanguagePropertiesCacheUtil.getPortalLanguageProperties(
+				LiferayCore.create(ILiferayProject.class, file.getProject()));
 
-                        addMessage(
-                            node, file, validator, reporter, batchMode, messageText, severity, liferayPluginValidationType,
-                            querySpecificationId );
-                    }
-                }
-            }
-            else
-            {
-                super.validateReferenceToStatic( referenceTo, attrNode, file, validator, reporter, batchMode );
-            }
-        }
-    }
+			if (properties != null) {
+				try {
+					String languageValue = (String)properties.get(languageKey);
 
-    protected static class Msgs extends NLS
-    {
-        public static String classAttributeNotWork;
+					if (!languageValue.equals("")) {
+						addMessage = false;
+					}
+				}
+				catch (Exception e) {
+				}
+			}
 
-        static
-        {
-            initializeMessages( LiferayJspValidator.class.getName(), Msgs.class );
-        }
-    }
+			if (addMessage) {
+				ValidationPreferences.ValidationType validationType = getValidationType(referenceTo, nbElements);
+
+				int severity = getServerity(validationType, file);
+
+				if (severity != ValidationMessage.IGNORE) {
+					String liferayPluginValidationType = getLiferayPluginValidationType(validationType, file);
+					String querySpecificationId = referenceTo.getQuerySpecificationId();
+					String messageText = getMessageText(validationType, referenceTo, node, file);
+
+					addMessage(
+						node, file, validator, reporter, batchMode, messageText, severity, liferayPluginValidationType,
+						querySpecificationId);
+				}
+			}
+		}
+	}
+
+	protected void validateReferenceToStatic(
+		IXMLReferenceTo referenceTo, IDOMNode node, IFile file, IValidator validator, IReporter reporter,
+		boolean batchMode) {
+
+		if (node instanceof AttrImpl) {
+			AttrImpl attrNode = (AttrImpl)node;
+
+			Element ownerElement = attrNode.getOwnerElement();
+
+			if (StringUtil.startsWith(ownerElement.getNodeName(), _aui_prefix)) {
+				String nodeValue = node.toString();
+
+				boolean addMessage = false;
+
+				if (nodeValue.equals("class")) {
+					addMessage = true;
+				}
+
+				if (addMessage) {
+					ValidationPreferences.ValidationType validationType = getValidationType(referenceTo, 0);
+
+					int severity = getServerity(validationType, file);
+
+					if (severity != ValidationMessage.IGNORE) {
+						String liferayPluginValidationType = getLiferayPluginValidationType(validationType, file);
+						String querySpecificationId = referenceTo.getQuerySpecificationId();
+						String messageText = getMessageText(validationType, referenceTo, node, file);
+
+						addMessage(
+							node, file, validator, reporter, batchMode, messageText, severity,
+							liferayPluginValidationType, querySpecificationId);
+					}
+				}
+			}
+			else {
+				super.validateReferenceToStatic(referenceTo, attrNode, file, validator, reporter, batchMode);
+			}
+		}
+	}
+
+	protected static class Msgs extends NLS {
+
+		public static String classAttributeNotWork;
+
+		static {
+			initializeMessages(LiferayJspValidator.class.getName(), Msgs.class);
+		}
+
+	}
+
+	private boolean _isSupportedTag(String tagName) {
+		for (String supportTag : _supported_tags) {
+			if (supportTag.equals(tagName)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private final String _action_request_action_name = "ActionRequest.ACTION_NAME";
+	private final String _aui_prefix = "aui";
+	private final String _javax_portlet_action = "javax.portlet.action";
+	private final String _jsp_rag_end = "%>";
+	private final String _jsp_rag_start = "<%";
+	private final String[] _supported_tags = {"liferay-portlet:param", "portlet:param"};
 
 }

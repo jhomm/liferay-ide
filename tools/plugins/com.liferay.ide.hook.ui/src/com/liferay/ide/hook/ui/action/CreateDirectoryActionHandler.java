@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,18 +10,19 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- * Contributors:
- * 		Gregory Amerson - initial implementation and ongoing maintenance
- *******************************************************************************/
+ */
 
 package com.liferay.ide.hook.ui.action;
 
 import com.liferay.ide.core.IWebProject;
 import com.liferay.ide.core.LiferayCore;
 import com.liferay.ide.core.util.CoreUtil;
+import com.liferay.ide.core.util.FileUtil;
+import com.liferay.ide.core.util.SapphireContentAccessor;
 import com.liferay.ide.hook.core.model.CustomJspDir;
 import com.liferay.ide.hook.ui.HookUI;
+
+import java.io.File;
 
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
@@ -31,6 +32,7 @@ import org.eclipse.sapphire.Event;
 import org.eclipse.sapphire.FilteredListener;
 import org.eclipse.sapphire.Listener;
 import org.eclipse.sapphire.Property;
+import org.eclipse.sapphire.PropertyDef;
 import org.eclipse.sapphire.PropertyEvent;
 import org.eclipse.sapphire.Value;
 import org.eclipse.sapphire.ValueProperty;
@@ -48,141 +50,137 @@ import org.eclipse.sapphire.ui.forms.PropertyEditorPart;
 /**
  * @author Gregory Amerson
  */
-public class CreateDirectoryActionHandler extends PropertyEditorActionHandler
-{
+public class CreateDirectoryActionHandler extends PropertyEditorActionHandler implements SapphireContentAccessor {
 
-    public CreateDirectoryActionHandler()
-    {
-        super();
-    }
+	public CreateDirectoryActionHandler() {
+	}
 
-    @Override
-    public void init( SapphireAction action, ActionHandlerDef def )
-    {
-        super.init( action, def );
+	@Override
+	public void init(SapphireAction action, ActionHandlerDef def) {
+		super.init(action, def);
 
-        final Element element = getModelElement();
-        final ValueProperty property = (ValueProperty) property().definition();
+		Element element = getModelElement();
+		ValueProperty property = (ValueProperty)property().definition();
 
-        final Listener listener = new FilteredListener<PropertyEvent>()
-        {
-            @Override
-            public void handleTypedEvent( final PropertyEvent event )
-            {
-                refreshEnablementState();
-            }
-        };
+		Listener listener = new FilteredListener<PropertyEvent>() {
 
-        element.attach( listener, property.name() );
+			@Override
+			public void handleTypedEvent(PropertyEvent event) {
+				refreshEnablementState();
+			}
 
-        attach
-        (
-            new Listener()
-            {
-                @Override
-                public void handle( final Event event )
-                {
-                    if( event instanceof DisposeEvent )
-                    {
-                        element.detach( listener, property.name() );
-                    }
-                }
-            }
-        );
-    }
+		};
 
-    @Override
-    protected boolean computeEnablementState()
-    {
-        boolean enabled = super.computeEnablementState();
+		element.attach(listener, property.name());
 
-        if( enabled )
-        {
-            @SuppressWarnings( "unchecked" )
-            final Value<Path> value = (Value<Path>) getModelElement().property( property().definition() );
-            final Path path = value.content();
-            final Path absolutePath = property().service( RelativePathService.class ).convertToAbsolute( path );
+		attach(
+			new Listener() {
 
-            enabled = absolutePath != null && ( ! absolutePath.toFile().exists() );
-        }
+				@Override
+				public void handle(Event event) {
+					if (event instanceof DisposeEvent) {
+						element.detach(listener, property.name());
+					}
+				}
 
-        return enabled;
-    }
+			});
+	}
 
-    @Override
-    protected Object run( Presentation context )
-    {
-        try
-        {
-            final Element element = getModelElement();
-            final IProject project = element.adapt( IProject.class );
+	public static class Condition extends PropertyEditorCondition {
 
-            final CustomJspDir customJspDir = (CustomJspDir) element;
+		@Override
+		protected boolean evaluate(PropertyEditorPart part) {
+			Property property = part.property();
+			Element element = part.getModelElement();
 
-            Path customJspDirValue = customJspDir.getValue().content( false );
+			PropertyDef propertyDef = property.definition();
 
-            if( customJspDirValue == null )
-            {
-                customJspDirValue = customJspDir.getValue().content( true );
-                customJspDir.setValue( customJspDirValue );
-            }
+			if ((propertyDef instanceof ValueProperty) && (element != null) && propertyDef.isOfType(Path.class)) {
+				ValidFileSystemResourceType typeAnnotation = propertyDef.getAnnotation(
+					ValidFileSystemResourceType.class);
 
-            customJspDir.setValue( customJspDirValue );
+				if ((typeAnnotation != null) && (typeAnnotation.value() == FileSystemResourceType.FOLDER)) {
+					return true;
+				}
+			}
 
-            final Path absolutePath = property().service( RelativePathService.class ).convertToAbsolute( customJspDirValue );
+			return false;
+		}
 
-            if( !absolutePath.toFile().exists() )
-            {
-                final IWebProject webproject = LiferayCore.create( IWebProject.class, project );
+	}
 
-                if( webproject != null && webproject.getDefaultDocrootFolder() != null )
-                {
-                    IFolder defaultDocroot = webproject.getDefaultDocrootFolder();
+	@Override
+	protected boolean computeEnablementState() {
+		boolean enabled = super.computeEnablementState();
 
-                    IFolder customJspFolder =
-                        defaultDocroot.getFolder( new org.eclipse.core.runtime.Path(
-                            customJspDirValue.toPortableString() ) );
+		if (enabled) {
+			@SuppressWarnings("unchecked")
+			Value<Path> value = (Value<Path>)getModelElement().property(property().definition());
 
-                    CoreUtil.makeFolders( customJspFolder );
+			Path path = value.content();
 
-                    // force a refresh of validation
-                    customJspDir.setValue( (Path) null );
-                    customJspDir.setValue( customJspDirValue );
+			RelativePathService service = property().service(RelativePathService.class);
 
-                    refreshEnablementState();
-                }
-            }
-        }
-        catch( Exception e )
-        {
-            HookUI.logError( e );
-        }
+			Path absolutePath = service.convertToAbsolute(path);
 
-        return null;
-    }
+			if (absolutePath != null) {
+				File file = absolutePath.toFile();
 
-    public static class Condition extends PropertyEditorCondition
-    {
-        @Override
-        protected final boolean evaluate( final PropertyEditorPart part )
-        {
-            final Property property = part.property();
-            final Element element = part.getModelElement();
+				enabled = !file.exists();
+			}
+		}
 
-            if( property.definition() instanceof ValueProperty && element != null && property.definition().isOfType( Path.class ) )
-            {
-                final ValidFileSystemResourceType typeAnnotation =
-                    property.definition().getAnnotation( ValidFileSystemResourceType.class );
+		return enabled;
+	}
 
-                if( typeAnnotation != null && typeAnnotation.value() == FileSystemResourceType.FOLDER )
-                {
-                    return true;
-                }
-            }
+	@Override
+	protected Object run(Presentation context) {
+		try {
+			Element element = getModelElement();
 
-            return false;
-        }
+			IProject project = element.adapt(IProject.class);
 
-    }
+			CustomJspDir customJspDir = (CustomJspDir)element;
+
+			Path customJspDirValue = get(customJspDir.getValue(), false);
+
+			if (customJspDirValue == null) {
+				customJspDirValue = get(customJspDir.getValue());
+
+				customJspDir.setValue(customJspDirValue);
+			}
+
+			customJspDir.setValue(customJspDirValue);
+
+			RelativePathService service = property().service(RelativePathService.class);
+
+			Path absolutePath = service.convertToAbsolute(customJspDirValue);
+
+			if (FileUtil.notExists(absolutePath)) {
+				IWebProject webproject = LiferayCore.create(IWebProject.class, project);
+
+				if ((webproject != null) && (webproject.getDefaultDocrootFolder() != null)) {
+					IFolder defaultDocroot = webproject.getDefaultDocrootFolder();
+
+					IFolder customJspFolder = defaultDocroot.getFolder(
+						new org.eclipse.core.runtime.Path(customJspDirValue.toPortableString()));
+
+					CoreUtil.makeFolders(customJspFolder);
+
+					// force a refresh of validation
+
+					customJspDir.setValue((Path)null);
+					customJspDir.setValue(customJspDirValue);
+
+					refreshEnablementState();
+				}
+			}
+		}
+		catch (Exception e) {
+			HookUI.logError(e);
+		}
+
+		return null;
+	}
 
 }

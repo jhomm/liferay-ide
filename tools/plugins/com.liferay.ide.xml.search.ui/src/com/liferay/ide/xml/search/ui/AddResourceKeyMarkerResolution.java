@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,129 +10,126 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.xml.search.ui;
 
 import com.liferay.ide.core.util.CoreUtil;
+import com.liferay.ide.core.util.StringUtil;
 
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.io.InputStream;
+
 import java.net.URL;
+
 import java.util.Properties;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.graphics.Image;
 
+import org.osgi.framework.Bundle;
+
 /**
  * @author Terry Jia
  */
-public class AddResourceKeyMarkerResolution extends AbstractResourceBundleMarkerResolution
-{
+public class AddResourceKeyMarkerResolution extends AbstractResourceBundleMarkerResolution {
 
-    private IFile resourceBundle = null;
+	public AddResourceKeyMarkerResolution(IMarker marker, IFile languageFile) {
+		super(marker);
 
-    public AddResourceKeyMarkerResolution( IMarker marker, IFile languageFile )
-    {
-        super( marker );
+		_resourceBundle = languageFile;
+	}
 
-        this.resourceBundle = languageFile;
-    }
+	public Image getImage() {
+		LiferayXMLSearchUI plugin = LiferayXMLSearchUI.getDefault();
 
-    public String getLabel()
-    {
-        final StringBuffer sb = new StringBuffer();
+		Bundle bundle = plugin.getBundle();
 
-        sb.append( "Add missing key to " );
-        sb.append( resourceBundle.getProjectRelativePath().toString() );
+		URL url = bundle.getEntry("/icons/resource-bundle.png");
 
-        return sb.toString();
-    }
+		ImageDescriptor imageDescriptor = ImageDescriptor.createFromURL(url);
 
-    public Image getImage()
-    {
-        final URL url = LiferayXMLSearchUI.getDefault().getBundle().getEntry( "/icons/resource-bundle.png" );
+		return imageDescriptor.createImage();
+	}
 
-        return ImageDescriptor.createFromURL( url ).createImage();
-    }
+	public String getLabel() {
+		StringBuffer sb = new StringBuffer();
 
-    protected void resolve( final IMarker marker )
-    {
-        final String message = marker.getAttribute( IMarker.MESSAGE, "" );
+		sb.append("Add missing key to ");
 
-        if( ( message == null ) || ( resourceBundle == null ) )
-        {
-            return;
-        }
+		IPath path = _resourceBundle.getProjectRelativePath();
 
-        InputStream is = null;
+		sb.append(path.toString());
 
-        try
-        {
-            is = resourceBundle.getContents();
+		return sb.toString();
+	}
 
-            final String languageKey = getResourceKey( marker );
+	protected void resolve(IMarker marker) {
+		String message = marker.getAttribute(IMarker.MESSAGE, "");
 
-            if( CoreUtil.isNullOrEmpty( languageKey ) )
-            {
-                return;
-            }
+		if ((message == null) || (_resourceBundle == null)) {
+			return;
+		}
 
-            final Properties properties = new Properties();
+		try {
+			String languageKey = getResourceKey(marker);
 
-            properties.load( is );
+			if (CoreUtil.isNullOrEmpty(languageKey)) {
+				return;
+			}
 
-            if( properties.get( languageKey ) != null )
-            {
-                return;
-            }
+			Properties properties = new Properties();
 
-            final String resourceValue = getDefaultResourceValue( languageKey );
+			try (InputStream is = _resourceBundle.getContents()) {
+				properties.load(is);
+			}
 
-            final String resourcePropertyLine = languageKey + "=" + resourceValue;
+			if (properties.get(languageKey) != null) {
+				return;
+			}
 
-            final String contents = CoreUtil.readStreamToString( resourceBundle.getContents() );
+			String resourceValue = getDefaultResourceValue(languageKey);
 
-            final StringBuffer contentSb = new StringBuffer();
+			String resourcePropertyLine = languageKey + "=" + resourceValue;
 
-            contentSb.append( contents );
+			String contents = CoreUtil.readStreamToString(_resourceBundle.getContents());
 
-            if( !contents.endsWith( "\n" ) )
-            {
-                contentSb.append( "\n" );
-            }
+			StringBuffer contentSb = new StringBuffer();
 
-            contentSb.append( resourcePropertyLine );
+			contentSb.append(contents);
 
-            resourceBundle.setContents(
-                new ByteArrayInputStream( contentSb.toString().trim().getBytes( "UTF-8" ) ), IResource.FORCE,
-                new NullProgressMonitor() );
+			if (!contents.endsWith("\n")) {
+				contentSb.append("\n");
+			}
 
-            openEditor( resourceBundle );
-        }
-        catch( Exception e )
-        {
-            LiferayXMLSearchUI.logError( e );
-        }
-        finally
-        {
-            if( is != null )
-            {
-                try
-                {
-                    is.close();
-                }
-                catch( IOException e )
-                {
-                }
-            }
-        }
-    }
+			contentSb.append(resourcePropertyLine);
+
+			String string = StringUtil.trim(contentSb);
+
+			byte[] bytes = string.getBytes("UTF-8");
+
+			int contentOffset = bytes.length;
+
+			try (ByteArrayInputStream inputStream = new ByteArrayInputStream(bytes)) {
+				_resourceBundle.setContents(inputStream, IResource.FORCE, new NullProgressMonitor());
+			}
+
+			byte[] lineBytes = resourcePropertyLine.getBytes();
+
+			int resourcePropertyLineOffset = lineBytes.length;
+
+			openEditor(_resourceBundle, contentOffset - resourcePropertyLineOffset, contentOffset - 1);
+		}
+		catch (Exception e) {
+			LiferayXMLSearchUI.logError(e);
+		}
+	}
+
+	private IFile _resourceBundle = null;
 
 }

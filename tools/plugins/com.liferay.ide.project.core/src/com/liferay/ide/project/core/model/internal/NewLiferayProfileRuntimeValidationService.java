@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,46 +10,48 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
+
 package com.liferay.ide.project.core.model.internal;
 
+import com.liferay.ide.core.util.SapphireContentAccessor;
+import com.liferay.ide.project.core.NewLiferayProjectProvider;
 import com.liferay.ide.project.core.model.NewLiferayPluginProjectOp;
 import com.liferay.ide.project.core.model.NewLiferayProfile;
 import com.liferay.ide.server.util.ServerUtil;
+
+import java.util.Objects;
 
 import org.eclipse.sapphire.modeling.Status;
 import org.eclipse.sapphire.services.ValidationService;
 import org.eclipse.wst.server.core.IRuntime;
 
-
 /**
  * @author Tao Tao
  */
-public class NewLiferayProfileRuntimeValidationService extends ValidationService
-{
+public class NewLiferayProfileRuntimeValidationService extends ValidationService implements SapphireContentAccessor {
 
-    @Override
-    protected Status compute()
-    {
-        Status retval = Status.createOkStatus();
+	@Override
+	protected Status compute() {
+		Status retval = Status.createOkStatus();
 
-        final NewLiferayPluginProjectOp op = context( NewLiferayPluginProjectOp.class );
+		NewLiferayPluginProjectOp op = context(NewLiferayPluginProjectOp.class);
 
-        if( "maven".equals( op.getProjectProvider().content( true ).getShortName() ) ) //$NON-NLS-1$
-        {
-            final NewLiferayProfile newLiferayProfile = context( NewLiferayProfile.class );
+		NewLiferayProjectProvider<NewLiferayPluginProjectOp> provider = get(op.getProjectProvider());
 
-            final String runtimeName = newLiferayProfile.getRuntimeName().content( true );
+		if (Objects.equals(provider.getShortName(), "maven")) {
+			NewLiferayProfile newLiferayProfile = context(NewLiferayProfile.class);
 
-            IRuntime runtime = ServerUtil.getRuntime( runtimeName );
+			String runtimeName = get(newLiferayProfile.getRuntimeName());
 
-            if( runtime == null )
-            {
-                retval = Status.createErrorStatus( "Liferay runtime must be configured." );
-            }
-        }
+			IRuntime runtime = ServerUtil.getRuntime(runtimeName);
 
-        return retval;
-    }
+			if (runtime == null) {
+				retval = Status.createErrorStatus("Liferay runtime must be configured.");
+			}
+		}
+
+		return retval;
+	}
+
 }

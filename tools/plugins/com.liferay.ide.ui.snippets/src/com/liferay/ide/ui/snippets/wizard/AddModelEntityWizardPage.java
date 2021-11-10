@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,8 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.ui.snippets.wizard;
 
@@ -20,39 +19,37 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.ui.IEditorPart;
 
 /**
- * @author Greg Amerson
+ * @author Gregory Amerson
  */
-public class AddModelEntityWizardPage extends AbstractModelWizardPage
-{
+public class AddModelEntityWizardPage extends AbstractModelWizardPage {
 
-    public AddModelEntityWizardPage( String pageName, IEditorPart editor )
-    {
-        super( pageName, editor );
-        setTitle( Msgs.addModelEntity );
-        setDescription( Msgs.insertCode );
-    }
+	public AddModelEntityWizardPage(String pageName, IEditorPart editor) {
+		super(pageName, editor);
 
-    public void createControl( Composite parent )
-    {
-        super.createControl( parent );
+		setTitle(Msgs.addModelEntity);
+		setDescription(Msgs.insertCode);
+	}
 
-        varNameLabel.setVisible( false );
-        varNameText.setVisible( false );
-    }
+	public void createControl(Composite parent) {
+		super.createControl(parent);
 
-    public String getVarName()
-    {
-        return getModel().toLowerCase();
-    }
+		varNameLabel.setVisible(false);
+		varNameText.setVisible(false);
+	}
 
-    private static class Msgs extends NLS
-    {
-        public static String addModelEntity;
-        public static String insertCode;
+	public String getVarName() {
+		return getModel().toLowerCase();
+	}
 
-        static
-        {
-            initializeMessages( AddModelEntityWizardPage.class.getName(), Msgs.class );
-        }
-    }
+	private static class Msgs extends NLS {
+
+		public static String addModelEntity;
+		public static String insertCode;
+
+		static {
+			initializeMessages(AddModelEntityWizardPage.class.getName(), Msgs.class);
+		}
+
+	}
+
 }

@@ -21,36 +21,50 @@
 
     <groupId>com.liferay.ide</groupId>
     <artifactId>parent</artifactId>
-    <version>3.0.0-SNAPSHOT</version>
+    <version>4.0.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>Liferay IDE Parent</name>
 
     <properties>
-        <tycho-packaging-format>yyyyMMddHHmm</tycho-packaging-format>
-        <tycho-version>0.20.0</tycho-version>
-        <tycho-extras-version>0.20.0</tycho-extras-version>
-        <orbit-site>http://download.eclipse.org/tools/orbit/downloads/drops/R20140525021250/repository/</orbit-site>
-        <osgi-bundles-site>http://files.liferay.org.es/staged/public-files/liferay-ide/dependencies/osgi-bundles-repository/</osgi-bundles-site>
-        <sapphire-site>http://download.eclipse.org/sapphire/8.2/repository/</sapphire-site>
+        <blade-latest-download-url>https://repository.liferay.com/nexus/content/repositories/liferay-public-snapshots/com/liferay/blade/com.liferay.blade.cli/4.0.10-SNAPSHOT/com.liferay.blade.cli-4.0.10-20211105.061322-6.jar</blade-latest-download-url>
+        <blade-latest-md5>634c8f05481b4100f0d42cdca7348fc9</blade-latest-md5>
+        <blade-392-download-url>https://repository.liferay.com/nexus/content/repositories/public/com/liferay/blade/com.liferay.blade.cli/3.9.2/com.liferay.blade.cli-3.9.2.jar</blade-392-download-url>
+        <blade-392-md5>08aedcb6bacc3166060d0032f9489dd1</blade-392-md5>
+        <upgrade-plan-content-zip-url>https://us-east-1.linodeobjects.com/devtools-s3.liferay.com/liferay-ide-files/docs/code-upgrade-docs-20210312.zip</upgrade-plan-content-zip-url>
+        <upgrade-plan-content-zip-md5>c4bce64c362ecffcce300f31e88b2e63</upgrade-plan-content-zip-md5>
+        <bndtools-site>https://bndtools.jfrog.io/bndtools/update-latest/libs-release-local/org/bndtools/org.bndtools.p2/5.2.0/org.bndtools.p2-5.2.0.jar!</bndtools-site>
+        <eclipse-site>https://download.eclipse.org/releases/2019-06/201906191000/</eclipse-site>
+        <eclipse-xml-search-site>https://us-east-1.linodeobjects.com/devtools-s3.liferay.com/eclipse/eclipse-wtp-xml-search/</eclipse-xml-search-site>
+        <gmaven.runtime>1.8</gmaven.runtime>
+        <gradle-site>https://download.eclipse.org/buildship/updates/e410/releases/3.x/3.1.2.v20190903-1732</gradle-site>
         <ivy-site>https://dist.apache.org/repos/dist/release/ant/ivyde/updatesite/ivy-2.4.0.final_20141213170938/</ivy-site>
         <ivyde-site>https://dist.apache.org/repos/dist/release/ant/ivyde/updatesite/ivyde-2.2.0.final-201311091524-RELEASE/</ivyde-site>
-        <m2e-site>http://download.eclipse.org/technology/m2e/releases/1.6/1.6.0.20150526-2032/</m2e-site>
-        <m2e-wtp-site>http://download.eclipse.org/m2e-wtp/releases/mars/1.2/1.2.0.20150602-1740/</m2e-wtp-site>
-        <m2e-archiver-site>http://repo1.maven.org/maven2/.m2e/connectors/m2eclipse-mavenarchiver/0.17.0/N/LATEST/</m2e-archiver-site>
-        <!-- <adt-site>http://files.liferay.org.es/staged/public-files/liferay-ide/dependencies/adt-23/</adt-site>-->
-        <!--eclipse-xml-search-site>http://oss.opensagres.fr/eclipse-wtp-xml-search/1.0.1-SNAPSHOT/</eclipse-xml-search-site-->
-        <eclipse-xml-search-site>http://106.187.96.36/gamerson/eclipse-wtp-xml-search-1.0.0.20150417/</eclipse-xml-search-site>
-        <tern-site>http://oss.opensagres.fr/tern.repository/0.10.0/</tern-site>
-        <webresources-site>http://oss.opensagres.fr/eclipse-wtp-webresources/0.9.0-SNAPSHOT/</webresources-site>
-        <bndtools-site>https://bndtools.ci.cloudbees.com/job/bndtools.master/lastSuccessfulBuild/artifact/build/generated/p2/</bndtools-site>
-        <gradle-site>http://download.eclipse.org/buildship/updates/e45/snapshots/1.0/</gradle-site>
-        <tycho-m2e-site>http://repo1.maven.org/maven2/.m2e/connectors/m2eclipse-tycho/0.8.0/N/LATEST/</tycho-m2e-site>
-        <blade-site>https://liferay-test-01.ci.cloudbees.com/job/blade.tools/lastSuccessfulBuild/artifact/build/generated/p2/</blade-site>
-        <gmaven.runtime>1.8</gmaven.runtime>
+        <liferay-ide-swtbot-testing-site>https://files.liferay.org.es/staged/public-files/liferay-ide/unstable/build/com.liferay.ide.testing-repository/target/repository/</liferay-ide-swtbot-testing-site>
+        <liferay-ide-tag>ga1</liferay-ide-tag>
+        <m2e-site>https://download.eclipse.org/technology/m2e/releases/1.13/1.13.0.20190716-1624/</m2e-site>
+        <m2e-wtp-site>https://download.eclipse.org/m2e-wtp/releases/1.4/1.4.3.20191209-1849/</m2e-wtp-site>
+        <m2e-archiver-site>https://repo1.maven.org/maven2/.m2e/connectors/m2eclipse-mavenarchiver/0.17.2/N/0.17.2.201606141937/</m2e-archiver-site>
+        <maven.build.timestamp.format>yyyyMMddHHmm</maven.build.timestamp.format>
+        <maven-deps-plugin-site>https://us-east-1.linodeobjects.com/devtools-s3.liferay.com/eclipse/m2e-maven-dependency-plugin/0.0.4/</maven-deps-plugin-site>
+        <orbit-site>https://download.eclipse.org/tools/orbit/downloads/drops/R20190602212107/repository/</orbit-site>
+        <osgi-bundles-site>https://us-east-1.linodeobjects.com/devtools-s3.liferay.com/eclipse/liferay-ide-deps/201904221700/</osgi-bundles-site>
+        <sapphire-site>https://download.eclipse.org/sapphire/9.1.1/repository/</sapphire-site>
+        <sign-apps>false</sign-apps>
+        <swtbot-site>https://download.eclipse.org/technology/swtbot/releases/2.8.0/</swtbot-site>
+        <tm-site>https://download.eclipse.org/tm/updates/4.5.0/repository/</tm-site>
+        <tycho-extras-version>2.4.0</tycho-extras-version>
+        <tycho-m2e-site>https://us-east-1.linodeobjects.com/devtools-s3.liferay.com/eclipse/m2eclipse-tycho/0.9.0.201811261502/</tycho-m2e-site>
+        <tycho-packaging-format>yyyyMMddHHmm'-ga1'</tycho-packaging-format>
+        <tycho-version>2.4.0</tycho-version>
     </properties>
 
     <repositories>
+        <repository>
+            <id>eclipse</id>
+            <layout>p2</layout>
+            <url>${eclipse-site}</url>
+        </repository>
         <repository>
             <id>orbit</id>
             <layout>p2</layout>
@@ -62,34 +76,14 @@
             <url>${osgi-bundles-site}</url>
         </repository>
         <repository>
-            <id>sapphire</id>
-            <layout>p2</layout>
-            <url>${sapphire-site}</url>
-        </repository>
-        <repository>
             <id>eclipse-xml-search</id>
             <layout>p2</layout>
             <url>${eclipse-xml-search-site}</url>
         </repository>
         <repository>
-            <id>tern</id>
-            <layout>p2</layout>
-            <url>${tern-site}</url>
-        </repository>
-        <repository>
-            <id>webresources</id>
-            <layout>p2</layout>
-            <url>${webresources-site}</url>
-        </repository>
-        <repository>
             <id>bndtools</id>
             <layout>p2</layout>
             <url>${bndtools-site}</url>
-        </repository>
-        <repository>
-            <id>blade</id>
-            <layout>p2</layout>
-            <url>${blade-site}</url>
         </repository>
         <repository>
             <id>gradle</id>
@@ -126,6 +120,26 @@
             <layout>p2</layout>
             <url>${tycho-m2e-site}</url>
         </repository>
+        <repository>
+            <id>tm</id>
+            <layout>p2</layout>
+            <url>${tm-site}</url>
+        </repository>
+        <repository>
+            <id>swtbot</id>
+            <layout>p2</layout>
+            <url>${swtbot-site}</url>
+        </repository>
+        <repository>
+            <id>sapphire</id>
+            <layout>p2</layout>
+            <url>${sapphire-site}</url>
+        </repository>
+        <repository>
+            <id>maven-deps-plugin</id>
+            <layout>p2</layout>
+            <url>${maven-deps-plugin-site}</url>
+        </repository>
     </repositories>
 
     <build>
@@ -148,7 +162,18 @@
 
             <plugin>
                 <groupId>org.eclipse.tycho</groupId>
+                <artifactId>tycho-p2-plugin</artifactId>
+            </plugin>
+
+            <plugin>
+                <groupId>org.eclipse.tycho</groupId>
                 <artifactId>tycho-versions-plugin</artifactId>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jarsigner-plugin</artifactId>
+                <version>3.0.0</version>
             </plugin>
         </plugins>
 
@@ -159,8 +184,8 @@
                     <artifactId>maven-compiler-plugin</artifactId>
                     <version>3.1</version>
                     <configuration>
-                        <source>1.7</source>
-                        <target>1.7</target>
+                        <source>1.8</source>
+                        <target>1.8</target>
                         <meminitial>256m</meminitial>
                         <maxmem>1024m</maxmem>
                         <compilerArgument>-proc:none</compilerArgument>
@@ -179,6 +204,15 @@
                     <version>${tycho-version}</version>
                     <configuration>
                         <encoding>UTF-8</encoding>
+                    </configuration>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.eclipse.tycho</groupId>
+                    <artifactId>tycho-p2-plugin</artifactId>
+                    <version>${tycho-version}</version>
+                    <configuration>
+                        <generateDownloadStatsProperty>true</generateDownloadStatsProperty>
                     </configuration>
                 </plugin>
 
@@ -206,19 +240,9 @@
                                 <arch>x86_64</arch>
                             </environment>
                             <environment>
-                                <os>win32</os>
-                                <ws>win32</ws>
-                                <arch>x86</arch>
-                            </environment>
-                            <environment>
                                 <os>macosx</os>
                                 <ws>cocoa</ws>
                                 <arch>x86_64</arch>
-                            </environment>
-                            <environment>
-                                <os>linux</os>
-                                <ws>gtk</ws>
-                                <arch>x86</arch>
                             </environment>
                             <environment>
                                 <os>linux</os>
@@ -245,16 +269,6 @@
                                 <os>macosx</os>
                                 <ws>cocoa</ws>
                                 <arch>x86_64</arch>
-                            </environment>
-                            <environment>
-                                <os>win32</os>
-                                <ws>win32</ws>
-                                <arch>x86</arch>
-                            </environment>
-                            <environment>
-                                <os>linux</os>
-                                <ws>gtk</ws>
-                                <arch>x86</arch>
                             </environment>
                             <environment>
                                 <os>linux</os>
@@ -311,35 +325,32 @@
     </build>
 
     <profiles>
-        <profile>
-            <id>luna</id>
-            <activation>
-                <property>
-                    <name>!skipLuna</name>
-                </property>
-            </activation>
-            <properties>
-                <eclipse-site>http://download.eclipse.org/releases/luna/201502271000/</eclipse-site>
-                <eclipse-project-update-site>http://download.eclipse.org/eclipse/updates/4.4</eclipse-project-update-site>
-                <wtp-site>http://download.eclipse.org/webtools/downloads/drops/R3.6.3/R-3.6.3-20150216091848/repository/</wtp-site>
-            </properties>
-            <repositories>
-                <repository>
-                    <id>eclipse-site</id>
-                    <layout>p2</layout>
-                    <url>${eclipse-site}</url>
-                </repository>
-                <repository>
-                    <id>eclipse-project</id>
-                    <layout>p2</layout>
-                    <url>${eclipse-project-update-site}</url>
-                </repository>
-                <repository>
-                    <id>wtp</id>
-                    <layout>p2</layout>
-                    <url>${wtp-site}</url>
-                </repository>
-            </repositories>
-        </profile>
-    </profiles>
+		<profile>
+			<id>jarsigner</id>
+			<build>
+				<pluginManagement>
+					<plugins>
+						<plugin>
+							<groupId>org.apache.maven.plugins</groupId>
+							<artifactId>maven-jarsigner-plugin</artifactId>
+							<configuration>
+								<alias>${jarsigner.alias}</alias>
+								<keystore>${jarsigner.keystore}</keystore>
+								<storepass>${jarsigner.storepass}</storepass>
+							</configuration>
+							<executions>
+								<execution>
+									<id>sign</id>
+									<goals>
+										<goal>sign</goal>
+									</goals>
+								</execution>
+							</executions>
+						</plugin>
+					</plugins>
+				</pluginManagement>
+			</build>
+		</profile>
+	</profiles>
+
 </project>

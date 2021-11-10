@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,8 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.sdk.core;
 
@@ -19,17 +18,22 @@ import com.liferay.ide.core.util.CoreUtil;
 import com.liferay.ide.core.util.FileUtil;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
+
 import java.net.URL;
+
+import java.nio.file.Files;
+
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
 import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.resources.ProjectScope;
-import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.IPath;
@@ -38,298 +42,341 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences;
+import org.eclipse.core.runtime.preferences.IPreferencesService;
 import org.eclipse.core.runtime.preferences.IScopeContext;
+
+import org.osgi.framework.Bundle;
 import org.osgi.framework.Version;
 import org.osgi.service.prefs.BackingStoreException;
 
 /**
- * @author Greg Amerson
+ * @author Gregory Amerson
  * @author Lovett Li
+ * @author Simon Jiang
  */
-public class SDKUtil
-{
+public class SDKUtil {
 
-    public static SDK createSDKFromLocation( IPath path )
-    {
-        try
-        {
-            if( isValidSDKLocation( path.toOSString() ) )
-            {
-                SDK sdk = new SDK( path );
+	public static int countPossibleWorkspaceSDKProjects() {
+		int sdkCount = 0;
 
-                sdk.setName( path.lastSegment() );
+		for (IProject project : CoreUtil.getAllProjects()) {
+			if (isValidSDKProject(project)) {
+				sdkCount++;
+			}
+		}
 
-                return sdk;
-            }
-        }
-        catch( Exception e )
-        {
-            // ignore errors
-        }
+		return sdkCount;
+	}
 
-        return null;
-    }
+	public static SDK createSDKFromLocation(IPath path) {
+		try {
+			if (isValidSDKLocation(path)) {
+				SDK sdk = new SDK(path);
 
-    public static SDK getSDK( IProject project )
-    {
-        SDK retval = null;
+				sdk.setName(path.lastSegment());
 
-        // try to determine SDK based on project location
-        IPath projectLocation = project.getRawLocation();
+				return sdk;
+			}
+		}
+		catch (Exception e) {
+		}
 
-        if( projectLocation == null )
-        {
-            projectLocation = project.getLocation();
-        }
+		return null;
+	}
 
-        if( projectLocation != null )
-        {
-            IPath sdkLocation = projectLocation.removeLastSegments( 2 );
+	public static SDK getSDK(IProject project) {
+		SDK retval = null;
 
-            retval = SDKManager.getInstance().getSDK( sdkLocation );
+		// try to determine SDK based on project location
 
-            if( retval == null )
-            {
-                retval = SDKUtil.createSDKFromLocation( sdkLocation );
+		IPath projectLocation = project.getRawLocation();
 
-                if( retval != null )
-                {
-                    final SDK newSDK = retval;
+		if (projectLocation == null) {
+			projectLocation = project.getLocation();
+		}
 
-                    SDKManager.getInstance().addSDK( newSDK );
-                }
-            }
-        }
+		SDKManager sdkManager = SDKManager.getInstance();
 
-        if( retval == null )
-        {
-            // this means the sdk could not be determined by location (user is using out-of-sdk style projects)
-            // so we should check to see if the sdk name is persisted to the project prefs
-            final IScopeContext[] context = new IScopeContext[] { new ProjectScope( project ) };
-            final String sdkName =
-                Platform.getPreferencesService().getString(
-                    SDKCorePlugin.PLUGIN_ID, SDKCorePlugin.PREF_KEY_SDK_NAME, null, context );
+		if (projectLocation != null) {
+			IPath sdkLocation = projectLocation.removeLastSegments(2);
 
-            retval = SDKManager.getInstance().getSDK( sdkName );
-        }
+			retval = sdkManager.getSDK(sdkLocation);
 
+			if (retval == null) {
+				retval = createSDKFromLocation(sdkLocation);
 
-        return retval;
-    }
+				if (retval != null) {
+					SDK newSDK = retval;
 
-    public static SDK getSDKFromProjectDir( File projectDir )
-    {
-        File sdkDir = projectDir.getParentFile().getParentFile();
+					sdkManager.addSDK(newSDK);
+				}
+			}
+		}
 
-        if( sdkDir.exists() && SDKUtil.isValidSDKLocation( sdkDir.getPath() ) )
-        {
-            Path sdkLocation = new Path( sdkDir.getPath() );
+		if (retval == null) {
 
-            SDK existingSDK = SDKManager.getInstance().getSDK( sdkLocation );
+			/**
+			 * this means the sdk could not be determined by location (user is using
+			 * out-of-sdk style projects) so we should check to see if the sdk name is
+			 * persisted to the project prefs
+			 */
+			IScopeContext[] context = {new ProjectScope(project)};
 
-            if( existingSDK != null )
-            {
-                return existingSDK;
-            }
-            else
-            {
-                return createSDKFromLocation( sdkLocation );
-            }
-        }
+			IPreferencesService preferencesService = Platform.getPreferencesService();
 
-        return null;
-    }
+			String sdkName = preferencesService.getString(
+				SDKCorePlugin.PLUGIN_ID, SDKCorePlugin.PREF_KEY_SDK_NAME, null, context);
 
-    public static IProject getWorkspaceSDKProject() throws CoreException
-    {
-        IProject retval = null;
-        final IProject[] projects = CoreUtil.getAllProjects();
+			retval = sdkManager.getSDK(sdkName);
+		}
 
-        for( IProject project : projects )
-        {
-            if( isValidSDKLocation( project.getLocation().toOSString() ) )
-            {
-                if( retval != null )
-                {
-                    throw new CoreException( SDKCorePlugin.createErrorStatus(
-                        new IllegalStateException( "Workspace can't have more than one SDK project open" ) ) );
-                }
+		return retval;
+	}
 
-                retval = project;
-            }
-        }
+	public static SDK getSDKFromProjectDir(File projectDir) {
+		File parentFile = projectDir.getParentFile();
 
-        return retval;
-    }
+		File sdkDir = parentFile.getParentFile();
 
-    public static boolean hasGradleTools( IPath path )
-    {
-        return path.append( "tools" ).append( "gradle" ).toFile().exists();
-    }
+		if (sdkDir.exists() && isValidSDKLocation(sdkDir.getPath())) {
+			Path sdkLocation = new Path(sdkDir.getPath());
 
-    public static boolean isIvyProject( IProject project )
-    {
-        try
-        {
-            return isSDKProject( project ) && project.hasNature( "org.apache.ivyde.eclipse.ivynature" ); //$NON-NLS-1$
-        }
-        catch( CoreException e )
-        {
-        }
+			SDKManager sdkManager = SDKManager.getInstance();
 
-        return false;
-    }
+			SDK existingSDK = sdkManager.getSDK(sdkLocation);
 
-    public static boolean isSDKProject( IProject project )
-    {
-        if( project == null || ( !project.exists() ) || ( !project.isAccessible() ) )
-        {
-            return false;
-        }
+			if (existingSDK != null) {
+				return existingSDK;
+			}
 
-        return getSDK( project ) != null;
-    }
+			return createSDKFromLocation(sdkLocation);
+		}
 
-    public static boolean isSDKSupported( String location )
-    {
-        boolean retval = false;
+		return null;
+	}
 
-        try
-        {
-            String version = SDKUtil.readSDKVersion( location );
+	public static SDK getWorkspaceSDK() throws CoreException {
+		SDK sdk = null;
+		IProject workspaceSDKProject = getWorkspaceSDKProject();
 
-            retval = CoreUtil.compareVersions( new Version( version ), ISDKConstants.LEAST_SUPPORTED_SDK_VERSION ) >= 0;
-        }
-        catch( Exception e )
-        {
-            // best effort we didn't find a valid location
-        }
+		if (workspaceSDKProject != null) {
+			sdk = createSDKFromLocation(workspaceSDKProject.getLocation());
+		}
 
-        return retval;
-    }
+		return sdk;
+	}
 
-    public static boolean isValidSDKLocation( String loc )
-    {
-        boolean retval = false;
+	public static IProject getWorkspaceSDKProject() throws CoreException {
+		IProject retval = null;
 
-        try
-        {
-            File sdkDir = new File( loc );
+		for (IProject project : CoreUtil.getAllProjects()) {
+			if (isValidSDKProject(project)) {
+				if (retval != null) {
+					throw new CoreException(
+						SDKCorePlugin.createErrorStatus(
+							new IllegalStateException("Workspace can not have more than one SDK project open")));
+				}
 
-            File buildProperties = new File( sdkDir, ISDKConstants.BUILD_PROPERTIES );
-            File portletsBuildXml = new File( sdkDir, ISDKConstants.PORTLET_PLUGIN_ANT_BUILD );
-            File hooksBuildXml = new File( sdkDir, ISDKConstants.HOOK_PLUGIN_ANT_BUILD );
-            File extBuildXml = new File( sdkDir, ISDKConstants.EXT_PLUGIN_ANT_BUILD );
+				retval = project;
+			}
+		}
 
-            retval =
-                buildProperties.exists() && portletsBuildXml.exists() && hooksBuildXml.exists() && extBuildXml.exists();
-        }
-        catch( Exception e )
-        {
-            // best effort we didn't find a valid location
-        }
+		return retval;
+	}
 
-        return retval;
-    }
+	public static IProject[] getWorkspaceSDKs() {
+		List<IProject> sdkProjects = new ArrayList<>();
 
-    public static boolean isValidSDKVersion( String sdkVersion, Version lowestValidVersion )
-    {
-        Version sdkVersionValue = null;
+		for (IProject project : CoreUtil.getAllProjects()) {
+			if (isValidSDKProject(project)) {
+				sdkProjects.add(project);
+			}
+		}
 
-        try
-        {
-            sdkVersionValue = new Version( sdkVersion );
-        }
-        catch( Exception ex )
-        {
-            // ignore means we don't have valid version
-        }
+		return sdkProjects.toArray(new IProject[0]);
+	}
 
-        if( sdkVersionValue != null && CoreUtil.compareVersions( sdkVersionValue, lowestValidVersion ) >= 0 )
-        {
-            return true;
-        }
+	public static boolean hasGradleTools(IPath path) {
+		return FileUtil.exists(path, "tools", "gradle");
+	}
 
-        return false;
-    }
+	public static boolean isIvyProject(IProject project) {
+		try {
+			if (isSDKProject(project) && project.hasNature("org.apache.ivyde.eclipse.ivynature")) {
+				return true;
+			}
 
-    public static void openAsProject( SDK sdk )
-    {
-        final IProject sdkProject = CoreUtil.getProject( sdk.getName() );
+			return false;
+		}
+		catch (CoreException ce) {
+		}
 
-        if( sdkProject == null || ( !sdkProject.exists() ) )
-        {
-            final IWorkspace workspace = ResourcesPlugin.getWorkspace();
+		return false;
+	}
 
-            final IProjectDescription description = workspace.newProjectDescription( sdk.getLocation().lastSegment() );
-            description.setLocationURI( sdk.getLocation().toFile().toURI() );
+	public static boolean isSDKProject(IProject project) {
+		if ((project == null) || !project.exists() || !project.isAccessible()) {
+			return false;
+		}
 
-            IProgressMonitor npm = new NullProgressMonitor();
+		if (getSDK(project) != null) {
+			return true;
+		}
 
-            try
-            {
-                sdkProject.create( description, npm );
+		return false;
+	}
 
-                IPath settingFolderPath = sdkProject.getLocation().append( ".settings" );
-                File settingFolder = settingFolderPath.toFile();
+	public static boolean isSDKSupported(String location) {
+		boolean retval = false;
 
-                if( !settingFolder.exists() )
-                {
-                    settingFolder.mkdir();
-                }
+		try {
+			String version = readSDKVersion(location);
 
-                if( !settingFolderPath.append( "org.eclipse.wst.validation.prefs" ).toFile().exists() )
-                {
-                    URL url =
-                        FileLocator.toFileURL( SDKCorePlugin.getDefault().getBundle().getEntry(
-                            "files/org.eclipse.wst.validation.prefs" ) );
+			retval =
+				CoreUtil.compareVersions(Version.parseVersion(version), ISDKConstants.LEAST_SUPPORTED_SDK_VERSION) >= 0;
+		}
+		catch (Exception e) {
 
-                    File file = new File( url.getFile() );
+			// best effort we didn't find a valid location
 
-                    FileUtil.copyFileToDir( file, settingFolder );
-                }
+		}
 
-                sdkProject.open( npm );
-            }
-            catch( Exception e )
-            {
-                SDKCorePlugin.logError( e );
-            }
-        }
-    }
+		return retval;
+	}
 
-    static String readSDKVersion( String path ) throws FileNotFoundException, IOException
-    {
-        Properties properties = new Properties();
-        properties.load( new FileInputStream( new Path( path ).append( "build.properties" ).toFile() ) ); //$NON-NLS-1$
+	public static boolean isValidSDKLocation(IPath location) {
+		if (location == null) {
+			return false;
+		}
 
-        return properties.getProperty( "lp.version" ); //$NON-NLS-1$
-    }
+		return isValidSDKLocation(location.toOSString());
+	}
 
-    public static void saveSDKNameSetting( IProject project, String sdkName)
-    {
-        try
-        {
-            final IEclipsePreferences prefs = new ProjectScope( project ).getNode( SDKCorePlugin.PLUGIN_ID );
-            prefs.put( SDKCorePlugin.PREF_KEY_SDK_NAME, sdkName );
-            prefs.flush();
-        }
-        catch( BackingStoreException e )
-        {
-            SDKCorePlugin.logError( "Unable to persist sdk name to project " + project, e );  //$NON-NLS-1$
-        }
-    }
+	public static boolean isValidSDKLocation(String locaction) {
+		boolean retval = false;
 
-    public static SDK getWorkspaceSDK() throws CoreException
-    {
-        SDK sdk = null;
-        IProject workspaceSDKProject = getWorkspaceSDKProject();
+		try {
+			File sdkDir = new File(locaction);
 
-        if (workspaceSDKProject != null)
-        {
-            sdk = SDKUtil.createSDKFromLocation( workspaceSDKProject.getLocation() );
-        }
+			File buildProperties = new File(sdkDir, ISDKConstants.BUILD_PROPERTIES);
+			File portletsBuildXml = new File(sdkDir, ISDKConstants.PORTLET_PLUGIN_ANT_BUILD);
+			File hooksBuildXml = new File(sdkDir, ISDKConstants.HOOK_PLUGIN_ANT_BUILD);
 
-        return sdk;
-    }
+			retval = buildProperties.exists() && portletsBuildXml.exists() && hooksBuildXml.exists();
+		}
+		catch (Exception e) {
+
+			// best effort we didn't find a valid location
+
+		}
+
+		return retval;
+	}
+
+	public static boolean isValidSDKProject(IProject project) {
+		if (project == null) {
+			return false;
+		}
+
+		return isValidSDKLocation(project.getLocation());
+	}
+
+	public static boolean isValidSDKVersion(String sdkVersion, Version lowestValidVersion) {
+		Version sdkVersionValue = null;
+
+		try {
+			sdkVersionValue = Version.parseVersion(sdkVersion);
+		}
+		catch (Exception ex) {
+
+			// ignore means we don't have valid version
+
+		}
+
+		if ((sdkVersionValue != null) && (CoreUtil.compareVersions(sdkVersionValue, lowestValidVersion) >= 0)) {
+			return true;
+		}
+
+		return false;
+	}
+
+	public static void openAsProject(SDK sdk) throws CoreException {
+		openAsProject(sdk, new NullProgressMonitor());
+	}
+
+	public static void openAsProject(SDK sdk, IProgressMonitor monitor) throws CoreException {
+		IProject sdkProject = CoreUtil.getProject(sdk.getName());
+
+		if (FileUtil.notExists(sdkProject)) {
+			IWorkspace workspace = CoreUtil.getWorkspace();
+
+			IProjectDescription description = workspace.newProjectDescription(
+				FileUtil.getLastSegment(sdk.getLocation()));
+
+			description.setLocationURI(FileUtil.toURI(sdk.getLocation()));
+
+			sdkProject.create(description, monitor);
+
+			IPath location = sdkProject.getLocation();
+
+			IPath settingFolderPath = location.append(".settings");
+
+			File settingFolder = settingFolderPath.toFile();
+
+			if (!settingFolder.exists()) {
+				settingFolder.mkdir();
+			}
+
+			if (FileUtil.notExists(settingFolderPath.append("org.eclipse.wst.validation.prefs"))) {
+				try {
+					SDKCorePlugin plugin = SDKCorePlugin.getDefault();
+
+					Bundle bundle = plugin.getBundle();
+
+					URL url = FileLocator.toFileURL(bundle.getEntry("files/org.eclipse.wst.validation.prefs"));
+
+					File file = new File(url.getFile());
+
+					FileUtil.copyFileToDir(file, settingFolder);
+				}
+				catch (IOException ioe) {
+				}
+			}
+
+			sdkProject.open(monitor);
+		}
+	}
+
+	public static String readSDKVersion(String path) throws FileNotFoundException, IOException {
+		Properties properties = new Properties();
+
+		Path sdkPath = new Path(path);
+
+		File propertiesFile = FileUtil.getFile(sdkPath.append("build.properties"));
+
+		try (InputStream in = Files.newInputStream(propertiesFile.toPath())) {
+			properties.load(in);
+		}
+		catch (Exception e) {
+		}
+
+		return properties.getProperty("lp.version");
+	}
+
+	public static void saveSDKNameSetting(IProject project, String sdkName) {
+		try {
+			IEclipsePreferences prefs = new ProjectScope(
+				project
+			).getNode(
+				SDKCorePlugin.PLUGIN_ID
+			);
+
+			prefs.put(SDKCorePlugin.PREF_KEY_SDK_NAME, sdkName);
+			prefs.flush();
+		}
+		catch (BackingStoreException bse) {
+			SDKCorePlugin.logError("Unable to persist sdk name to project " + project, bse);
+		}
+	}
+
 }

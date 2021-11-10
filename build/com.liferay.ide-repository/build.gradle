@@ -1,0 +1,16 @@
+buildscript {
+	dependencies {
+		classpath group: "nu.studer", name: "gradle-credentials-plugin", version: "1.0.7"
+	}
+
+	repositories {
+		jcenter()
+	}
+}
+
+apply plugin: "nu.studer.credentials"
+
+task deployToS3(type:Exec) {
+	args = ["target/repository", "eclipse", "liferay-ide", "snapshots"]
+	executable = "./deployToS3.sh"
+}

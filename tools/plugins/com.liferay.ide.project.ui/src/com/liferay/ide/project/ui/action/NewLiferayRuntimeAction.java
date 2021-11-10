@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,47 +10,31 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.project.ui.action;
-import com.liferay.ide.project.core.model.HasLiferayRuntime;
-import com.liferay.ide.project.core.model.NewLiferayPluginProjectOp;
 
 import org.eclipse.sapphire.modeling.Status;
 import org.eclipse.sapphire.ui.Presentation;
 import org.eclipse.sapphire.ui.SapphireActionHandler;
 import org.eclipse.sapphire.ui.forms.swt.SwtPresentation;
-import org.eclipse.wst.common.componentcore.internal.util.IModuleConstants;
 import org.eclipse.wst.server.ui.ServerUIUtil;
-
 
 /**
  * @author Gregory Amerson
  */
-@SuppressWarnings( "restriction" )
-public class NewLiferayRuntimeAction extends SapphireActionHandler
-{
+public class NewLiferayRuntimeAction extends SapphireActionHandler {
 
-    @Override
-    protected Object run( Presentation context )
-    {
-        NewLiferayPluginProjectOp op = context.part().getModelElement().nearest( NewLiferayPluginProjectOp.class );
+	public NewLiferayRuntimeAction() {
+	}
 
-        boolean isOK =
-            ServerUIUtil.showNewRuntimeWizard(
-                ( (SwtPresentation) context ).shell(), IModuleConstants.JST_WEB_MODULE, null, "com.liferay." );
+	@Override
+	protected Object run(Presentation context) {
+		SwtPresentation presentationContext = (SwtPresentation)context;
 
-        if( isOK )
-        {
-            op.property( HasLiferayRuntime.PROP_RUNTIME_NAME ).refresh();
-        }
+		ServerUIUtil.showNewRuntimeWizard(presentationContext.shell(), "jst.web", null, "com.liferay.");
 
-        return Status.createOkStatus();
-    }
+		return Status.createOkStatus();
+	}
 
-    public NewLiferayRuntimeAction()
-    {
-        super();
-    }
 }

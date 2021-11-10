@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,8 +10,8 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
+
 package com.liferay.ide.project.core.model.internal;
 
 import com.liferay.ide.sdk.core.ISDKListener;
@@ -24,77 +24,74 @@ import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.sapphire.DefaultValueService;
 
-
 /**
  * @author Gregory Amerson
  */
-public class PluginsSDKNameDefaultValueService extends DefaultValueService implements ISDKListener
-{
+public class PluginsSDKNameDefaultValueService extends DefaultValueService implements ISDKListener {
 
-   static final String NONE = "<None>";
+	@Override
+	public void dispose() {
+		SDKManager sdkManager = SDKManager.getInstance();
 
-    @Override
-    protected void initDefaultValueService()
-    {
-        super.initDefaultValueService();
+		sdkManager.removeSDKListener(this);
 
-        SDKManager.getInstance().addSDKListener( this );
-    }
+		super.dispose();
+	}
 
-    @Override
-    public void dispose()
-    {
-        SDKManager.getInstance().removeSDKListener( this );
+	public void sdksAdded(SDK[] sdk) {
+		_refreshSafe();
+	}
 
-        super.dispose();
-    }
+	public void sdksChanged(SDK[] sdk) {
+		_refreshSafe();
+	}
 
-    @Override
-    protected String compute()
-    {
-        String value = null;
+	public void sdksRemoved(SDK[] sdk) {
+		_refreshSafe();
+	}
 
-        final SDK defaultSDK = SDKManager.getInstance().getDefaultSDK();
+	@Override
+	protected String compute() {
+		String value = null;
 
-        if( defaultSDK != null )
-        {
-            value = defaultSDK.getName();
-        }
-        else
-        {
-            value = NONE;
-        }
+		SDKManager sdkManager = SDKManager.getInstance();
 
-        return value;
-    }
+		SDK defaultSDK = sdkManager.getDefaultSDK();
 
-    public void sdksAdded( SDK[] sdk )
-    {
-        refreshSafe();
-    }
+		if (defaultSDK != null) {
+			value = defaultSDK.getName();
+		}
+		else {
+			value = NONE;
+		}
 
-    public void sdksChanged( SDK[] sdk )
-    {
-        refreshSafe();
-    }
+		return value;
+	}
 
-    public void sdksRemoved( SDK[] sdk )
-    {
-        refreshSafe();
-    }
+	@Override
+	protected void initDefaultValueService() {
+		super.initDefaultValueService();
 
-    private void refreshSafe()
-    {
-        new Job("refreshing")
-        {
-            @Override
-            protected IStatus run( IProgressMonitor monitor )
-            {
-                refresh();
+		SDKManager sdkManager = SDKManager.getInstance();
 
-                return Status.OK_STATUS;
-            }
-        }.schedule();
-    }
+		sdkManager.addSDKListener(this);
+	}
+
+	protected static final String NONE = "<None>";
+
+	private void _refreshSafe() {
+		new Job(
+			"refreshing"
+		) {
+
+			@Override
+			protected IStatus run(IProgressMonitor monitor) {
+				refresh();
+
+				return Status.OK_STATUS;
+			}
+
+		}.schedule();
+	}
 
 }

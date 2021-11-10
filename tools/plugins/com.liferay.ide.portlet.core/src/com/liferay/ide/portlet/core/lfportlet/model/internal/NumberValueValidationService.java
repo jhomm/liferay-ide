@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,13 +10,15 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *******************************************************************************/
+ */
 
 package com.liferay.ide.portlet.core.lfportlet.model.internal;
 
 import com.liferay.ide.core.util.CoreUtil;
+import com.liferay.ide.core.util.SapphireContentAccessor;
 
 import org.apache.commons.lang.StringEscapeUtils;
+
 import org.eclipse.osgi.util.NLS;
 import org.eclipse.sapphire.Element;
 import org.eclipse.sapphire.ValueProperty;
@@ -27,81 +29,68 @@ import org.eclipse.sapphire.services.ValidationService;
  * @author Simon Jiang
  * @Author Lu Li
  */
-public class NumberValueValidationService extends ValidationService
-{
+public class NumberValueValidationService extends ValidationService implements SapphireContentAccessor {
 
-    private String min;
-    private String max;
-    private Integer value;
+	@Override
+	protected Status compute() {
+		Element modelElement = context(Element.class);
 
-    @Override
-    protected void initValidationService()
-    {
-        super.initValidationService();
+		if (modelElement.disposed()) {
+			return Status.createOkStatus();
+		}
 
-        this.min = this.param( "min" );
-        this.max = this.param( "max" );
-    }
+		String triggerValue = get(modelElement.property(context(ValueProperty.class)));
 
-    @Override
-    protected Status compute()
-    {
-        final Element modelElement = context( Element.class );
+		if (CoreUtil.isNullOrEmpty(triggerValue)) {
+			return Status.createOkStatus();
+		}
 
-        if( !modelElement.disposed() )
-        {
-            final String triggerValue =
-                (String) modelElement.property( context( ValueProperty.class ) ).content();
+		try {
+			_value = Integer.valueOf(triggerValue);
+		}
+		catch (NumberFormatException nfe) {
+			return Status.createErrorStatus(
+				Resources.bind(
+					StringEscapeUtils.unescapeJava(Resources.nonIntegerInvalid), new Object[] {triggerValue, ""}));
+		}
 
-            if( !CoreUtil.isNullOrEmpty( triggerValue ) )
-            {
-                try
-                {
-                    value = Integer.valueOf( triggerValue );
+		if (CoreUtil.isNotNullOrEmpty(_min) && (_value < Integer.valueOf(_min))) {
+			return Status.createErrorStatus(
+				Resources.bind(
+					StringEscapeUtils.unescapeJava(Resources.minNumberValueInvalid), new Object[] {_value, _min}));
+		}
 
-                }
-                catch( NumberFormatException e )
-                {
-                    return Status.createErrorStatus( Resources.bind(
-                        StringEscapeUtils.unescapeJava( Resources.nonIntegerInvalid ), new Object[] {
-                            triggerValue, "" } ) );
-                }
+		if (CoreUtil.isNotNullOrEmpty(_max) && (_value > Integer.valueOf(_max))) {
+			return Status.createErrorStatus(
+				Resources.bind(
+					StringEscapeUtils.unescapeJava(Resources.maxNumberValueInvalid), new Object[] {_value, _max}));
+		}
 
-                if( !CoreUtil.isNullOrEmpty( min ) )
-                {
-                    if( value < Integer.valueOf( min ) )
-                    {
-                        return Status.createErrorStatus( Resources.bind(
-                            StringEscapeUtils.unescapeJava( Resources.minNumberValueInvalid ), new Object[] {
-                                value, min } ) );
-                    }
-                }
+		return Status.createOkStatus();
+	}
 
-                if( !CoreUtil.isNullOrEmpty( max ) )
-                {
-                    if( value > Integer.valueOf( max ) )
-                    {
-                        return Status.createErrorStatus( Resources.bind(
-                            StringEscapeUtils.unescapeJava( Resources.maxNumberValueInvalid ), new Object[] {
-                                value, max } ) );
-                    }
-                }
-            }
-        }
+	@Override
+	protected void initValidationService() {
+		super.initValidationService();
 
-        return Status.createOkStatus();
-    }
+		_min = param("min");
+		_max = param("max");
+	}
 
-    private static final class Resources extends NLS
-    {
+	private String _max;
+	private String _min;
+	private Integer _value;
 
-        public static String minNumberValueInvalid;
-        public static String maxNumberValueInvalid;
-        public static String nonIntegerInvalid;
+	private static final class Resources extends NLS {
 
-        static
-        {
-            initializeMessages( NumberValueValidationService.class.getName(), Resources.class );
-        }
-    }
+		public static String maxNumberValueInvalid;
+		public static String minNumberValueInvalid;
+		public static String nonIntegerInvalid;
+
+		static {
+			initializeMessages(NumberValueValidationService.class.getName(), Resources.class);
+		}
+
+	}
+
 }

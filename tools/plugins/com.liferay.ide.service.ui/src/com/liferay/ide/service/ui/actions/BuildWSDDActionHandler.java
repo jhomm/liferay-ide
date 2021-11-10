@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,38 +10,40 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.service.ui.actions;
 
+import com.liferay.ide.core.util.FileUtil;
 import com.liferay.ide.service.core.job.BuildWSDDJob;
 import com.liferay.ide.service.ui.ServiceUIUtil;
 
 import org.eclipse.core.resources.IFile;
+import org.eclipse.sapphire.Element;
 import org.eclipse.sapphire.ui.Presentation;
 import org.eclipse.sapphire.ui.SapphireActionHandler;
+import org.eclipse.sapphire.ui.SapphirePart;
 
 /**
  * @author Gregory Amerson
  */
-public class BuildWSDDActionHandler extends SapphireActionHandler
-{
+public class BuildWSDDActionHandler extends SapphireActionHandler {
 
-    @Override
-    protected Object run( Presentation context )
-    {
-        IFile file = context.part().getModelElement().adapt( IFile.class );
+	@Override
+	protected Object run(Presentation context) {
+		SapphirePart sapphirePart = context.part();
 
-        if( file != null && file.exists() )
-        {
-            if( ServiceUIUtil.shouldCreateServiceBuilderJob( file ) )
-            {
-                new BuildWSDDJob( file.getProject() ).schedule();
-            }
-        }
+		Element modelElement = sapphirePart.getModelElement();
 
-        return null;
-    }
+		IFile file = modelElement.adapt(IFile.class);
+
+		if (FileUtil.exists(file) && ServiceUIUtil.shouldCreateServiceBuilderJob(file)) {
+			new BuildWSDDJob(
+				file.getProject()
+			).schedule();
+		}
+
+		return null;
+	}
 
 }

@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,10 +10,11 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.server.ui.handlers;
+
+import com.liferay.ide.server.core.ILiferayServer;
 
 import java.net.URL;
 
@@ -22,27 +23,27 @@ import org.eclipse.osgi.util.NLS;
 /**
  * @author Eric Min
  */
-public class OpenPortalHomeHandler extends OpenPortalURLHandler
-{
+public class OpenPortalHomeHandler extends OpenPortalURLHandler {
 
-    protected URL getPortalURL( Object selected )
-    {
-        return getLiferayServer( selected ).getPortalHomeUrl(); //$NON-NLS-1$
-    }
+	protected URL getPortalURL(Object selected) {
+		ILiferayServer liferayServer = getLiferayServer(selected);
 
-    @Override
-    protected String getPortalURLTitle()
-    {
-        return Msgs.liferayPortal;
-    }
+		return liferayServer.getPortalHomeUrl();
+	}
 
-    private static class Msgs extends NLS
-    {
-        public static String liferayPortal;
+	@Override
+	protected String getPortalURLTitle() {
+		return Msgs.liferayPortal;
+	}
 
-        static
-        {
-            initializeMessages( OpenPortalHomeHandler.class.getName(), Msgs.class );
-        }
-    }
+	private static class Msgs extends NLS {
+
+		public static String liferayPortal;
+
+		static {
+			initializeMessages(OpenPortalHomeHandler.class.getName(), Msgs.class);
+		}
+
+	}
+
 }

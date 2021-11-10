@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,24 +10,27 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- * Contributors:
- * 		Gregory Amerson - initial implementation and ongoing maintenance
- *******************************************************************************/
+ */
 
 package com.liferay.ide.ui.snippets;
 
 import com.liferay.ide.core.util.CoreUtil;
+import com.liferay.ide.core.util.ListUtil;
 import com.liferay.ide.core.util.StringPool;
+import com.liferay.ide.core.util.StringUtil;
 
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.eclipse.core.resources.IStorage;
 import org.eclipse.osgi.util.NLS;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.widgets.Table;
+import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IStorageEditorInput;
@@ -39,158 +42,172 @@ import org.eclipse.wst.common.snippets.internal.util.StringUtils;
 /**
  * @author Gregory Amerson
  */
-@SuppressWarnings( "restriction" )
-public class TaglibVariableInsertionDialog extends VariableInsertionDialog
-{
-    protected IEditorPart editor;
+@SuppressWarnings("restriction")
+public class TaglibVariableInsertionDialog extends VariableInsertionDialog {
 
-    public TaglibVariableInsertionDialog( Shell parentShell, IEditorPart editor, boolean clearModality )
-    {
-        super( parentShell, clearModality );
-        this.editor = editor;
-    }
+	public TaglibVariableInsertionDialog(Shell parentShell, IEditorPart editor, boolean clearModality) {
+		super(parentShell, clearModality);
 
-    @Override
-    protected Control createDialogArea( Composite parent )
-    {
-        Control control = super.createDialogArea( parent );
+		this.editor = editor;
+	}
 
-        if( control instanceof Composite )
-        {
-            Composite composite = (Composite) control;
-            replaceUIText( composite, Msgs.variableLowercase, Msgs.attributeLowercase );
-            replaceUIText( composite, Msgs.variableUppercase, Msgs.attributeUppercase );
-        }
+	@Override
+	protected Control createDialogArea(Composite parent) {
+		Control control = super.createDialogArea(parent);
 
-        fTableViewer.getTable().getColumns()[0].setText( Msgs.attributeName );
-        fTableViewer.getTable().redraw();
+		if (control instanceof Composite) {
+			Composite composite = (Composite)control;
 
-        return control;
-    }
+			replaceUIText(composite, Msgs.variableLowercase, Msgs.attributeLowercase);
+			replaceUIText(composite, Msgs.variableUppercase, Msgs.attributeUppercase);
+		}
 
-    @Override
-    protected void prepareText()
-    {
-        // check the editor, if it is freemarker then prepare freemarker, else use JSP
+		Table table = fTableViewer.getTable();
 
-        String text = prepareJSPText();
+		TableColumn column = table.getColumns()[0];
 
-        if( isFreemarkerEditor( editor ) )
-        {
-            Pattern p1 = Pattern.compile( "(.*)-([a-z])(.*)" ); //$NON-NLS-1$
-            Matcher m1 = p1.matcher( text );
-            while( m1.matches() )
-            {
-                text = m1.replaceFirst( m1.group( 1 ) + m1.group( 2 ).toUpperCase() + m1.group( 3 ) );
-                m1 = p1.matcher( text );
-            }
+		column.setText(Msgs.attributeName);
 
-            text = text.replaceAll( "<([a-zA-Z]+):", "<@$1\\." ); //$NON-NLS-1$ //$NON-NLS-2$
-            text = text.replaceAll( "</([a-zA-Z]+):", "</@$1\\." ); //$NON-NLS-1$ //$NON-NLS-2$
+		table.redraw();
 
-            setPreparedText( text );
-            return;
-        }
+		return control;
+	}
 
-        setPreparedText( text );
-    }
+	@Override
+	protected void prepareText() {
 
-    private String prepareJSPText()
-    {
-        // this could be horribly inefficient
-        String text = fItem.getContentString();
-        ISnippetVariable[] variables = fItem.getVariables();
-        for( int i = 0; i < variables.length; i++ )
-        {
-            String value = (String) fTableViewer.getColumnData()[1].get( ( (SnippetVariable) variables[i] ).getId() );
+		// check the editor, if it is freemarker then prepare freemarker, else
+		// use JSP
 
-            if( !CoreUtil.isNullOrEmpty( value ) )
-            {
-                value = StringPool.SPACE + variables[i].getName() + "=\"" + value + StringPool.DOUBLE_QUOTE; //$NON-NLS-1$
-            }
+		String text = _prepareJSPText();
 
-            text = StringUtils.replace( text, "${" + variables[i].getName() + "}", value ); //$NON-NLS-1$ //$NON-NLS-2$
-        }
+		if (_isFreemarkerEditor(editor)) {
+			Matcher m1 = _p1.matcher(text);
 
-        // remove all cursor markers
-        text = StringUtils.replace( text, "${cursor}", "" ); //$NON-NLS-1$ //$NON-NLS-2$
+			while (m1.matches()) {
+				text = m1.replaceFirst(m1.group(1) + StringUtil.toUpperCase(m1.group(2)) + m1.group(3));
 
-        // Update EOLs (bug 80231)
-        String systemEOL = System.getProperty( "line.separator" ); //$NON-NLS-1$
-        text = StringUtils.replace( text, "\r\n", "\n" ); //$NON-NLS-1$ //$NON-NLS-2$
-        text = StringUtils.replace( text, "\r", "\n" ); //$NON-NLS-1$ //$NON-NLS-2$
-        if( !"\n".equals( systemEOL ) && systemEOL != null ) { //$NON-NLS-1$
-            text = StringUtils.replace( text, "\n", systemEOL ); //$NON-NLS-1$
-        }
+				m1 = _p1.matcher(text);
+			}
 
-        return text;
-    }
+			text = text.replaceAll("<([a-zA-Z]+):", "<@$1\\.");
+			text = text.replaceAll("</([a-zA-Z]+):", "</@$1\\.");
 
-    private static boolean isFreemarkerEditor( IEditorPart editorPart )
-    {
-        try
-        {
-            if( ( (IStorageEditorInput) editorPart.getEditorInput() ).getStorage().getName().endsWith( ".ftl" ) ) //$NON-NLS-1$
-            {
-                return true;
-            }
-        }
-        catch( Exception e )
-        {
-            // ignore just return false
-        }
+			setPreparedText(text);
 
-        return false;
-    }
+			return;
+		}
 
-    protected void replaceUIText( Composite parent, String search, String replace )
-    {
-        if( parent == null )
-        {
-            return;
-        }
+		setPreparedText(text);
+	}
 
-        if( parent.getChildren() == null || parent.getChildren().length == 0 )
-        {
-            return;
-        }
+	protected void replaceUIText(Composite parent, String search, String replace) {
+		if (parent == null) {
+			return;
+		}
 
-        for( Control child : parent.getChildren() )
-        {
-            if( child instanceof Label )
-            {
-                Label label = (Label) child;
-                if( label.getText() != null )
-                {
-                    label.setText( label.getText().replaceAll( search, replace ) );
-                }
-            }
-            else if( child instanceof Text )
-            {
-                Text text = (Text) child;
-                if( text.getText() != null )
-                {
-                    text.setText( text.getText().replaceAll( search, replace ) );
-                }
-            }
-            else if( child instanceof Composite )
-            {
-                replaceUIText( (Composite) child, search, replace );
-            }
-        }
-    }
+		if (ListUtil.isEmpty(parent.getChildren())) {
+			return;
+		}
 
-    private static class Msgs extends NLS
-    {
-        public static String attributeLowercase;
-        public static String attributeName;
-        public static String attributeUppercase;
-        public static String variableLowercase;
-        public static String variableUppercase;
+		for (Control child : parent.getChildren()) {
+			if (child instanceof Label) {
+				Label label = (Label)child;
 
-        static
-        {
-            initializeMessages( TaglibVariableInsertionDialog.class.getName(), Msgs.class );
-        }
-    }
+				String labelContent = label.getText();
+
+				if (labelContent != null) {
+					label.setText(labelContent.replaceAll(search, replace));
+				}
+			}
+			else if (child instanceof Text) {
+				Text text = (Text)child;
+
+				String textContent = text.getText();
+
+				if (textContent != null) {
+					text.setText(textContent.replaceAll(search, replace));
+				}
+			}
+			else if (child instanceof Composite) {
+				replaceUIText((Composite)child, search, replace);
+			}
+		}
+	}
+
+	protected IEditorPart editor;
+
+	private static boolean _isFreemarkerEditor(IEditorPart editorPart) {
+		try {
+			IStorageEditorInput input = (IStorageEditorInput)editorPart.getEditorInput();
+
+			IStorage storage = input.getStorage();
+
+			if (StringUtil.endsWith(storage.getName(), ".ftl")) {
+				return true;
+			}
+		}
+		catch (Exception e) {
+
+			// ignore just return false
+
+		}
+
+		return false;
+	}
+
+	private String _prepareJSPText() {
+
+		// this could be horribly inefficient
+
+		String text = fItem.getContentString();
+		ISnippetVariable[] variables = fItem.getVariables();
+
+		for (ISnippetVariable variable : variables) {
+			Map columnData = fTableViewer.getColumnData()[1];
+
+			SnippetVariable snippetVariable = (SnippetVariable)variable;
+
+			String value = (String)columnData.get(snippetVariable.getId());
+
+			if (!CoreUtil.isNullOrEmpty(value)) {
+				value = StringPool.SPACE + variable.getName() + "=\"" + value + StringPool.DOUBLE_QUOTE;
+
+				text = StringUtils.replace(text, "${" + variable.getName() + "}", value);
+			}
+		}
+
+		// remove all cursor markers
+
+		text = StringUtils.replace(text, "${cursor}", "");
+
+		// Update EOLs (bug 80231)
+
+		String systemEOL = System.getProperty("line.separator");
+		text = StringUtils.replace(text, "\r\n", "\n");
+		text = StringUtils.replace(text, "\r", "\n");
+
+		if (!systemEOL.equals("\n") && (systemEOL != null)) {
+			text = StringUtils.replace(text, "\n", systemEOL);
+		}
+
+		return text;
+	}
+
+	private Pattern _p1 = Pattern.compile("(.*)-([a-z])(.*)");
+
+	private static class Msgs extends NLS {
+
+		public static String attributeLowercase;
+		public static String attributeName;
+		public static String attributeUppercase;
+		public static String variableLowercase;
+		public static String variableUppercase;
+
+		static {
+			initializeMessages(TaglibVariableInsertionDialog.class.getName(), Msgs.class);
+		}
+
+	}
+
 }

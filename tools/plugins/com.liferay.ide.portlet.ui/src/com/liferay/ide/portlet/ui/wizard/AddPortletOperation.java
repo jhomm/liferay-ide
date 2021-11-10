@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,18 +10,20 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.portlet.ui.wizard;
 
 import com.liferay.ide.core.IWebProject;
 import com.liferay.ide.core.LiferayCore;
 import com.liferay.ide.core.util.CoreUtil;
+import com.liferay.ide.core.util.ListUtil;
+import com.liferay.ide.core.util.StringUtil;
 import com.liferay.ide.portlet.core.PortletCore;
 import com.liferay.ide.portlet.core.operation.INewPortletClassDataModelProperties;
 import com.liferay.ide.portlet.core.operation.NewEntryClassOperation;
 import com.liferay.ide.portlet.core.operation.NewPortletClassOperation;
+import com.liferay.ide.portlet.ui.PortletUIPlugin;
 import com.liferay.ide.project.core.IPluginWizardFragmentProperties;
 import com.liferay.ide.project.core.ProjectCore;
 import com.liferay.ide.project.core.descriptor.AddNewPortletOperation;
@@ -29,6 +31,9 @@ import com.liferay.ide.project.core.descriptor.RemoveAllPortletsOperation;
 import com.liferay.ide.project.core.util.ProjectUtil;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+
 import java.util.List;
 
 import org.eclipse.core.commands.ExecutionException;
@@ -38,6 +43,7 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IAdaptable;
+import org.eclipse.core.runtime.ILog;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
@@ -59,325 +65,289 @@ import org.eclipse.wst.common.frameworks.datamodel.IDataModel;
  * @author Gregory Amerson
  * @author Kuo Zhang
  */
-@SuppressWarnings( "restriction" )
-public class AddPortletOperation extends AddJavaEEArtifactOperation
-    implements INewPortletClassDataModelProperties, IPluginWizardFragmentProperties
-{
-    protected IFolder webappRoot;
-    protected TemplateContextType portletContextType;
-    protected TemplateStore templateStore;
+@SuppressWarnings("restriction")
+public class AddPortletOperation
+	extends AddJavaEEArtifactOperation implements INewPortletClassDataModelProperties, IPluginWizardFragmentProperties {
 
-    public AddPortletOperation( IDataModel dataModel, TemplateStore store, TemplateContextType type )
-    {
-        super( dataModel );
+	public AddPortletOperation(IDataModel dataModel, TemplateStore store, TemplateContextType type) {
+		super(dataModel);
 
-        final IWebProject webproject = LiferayCore.create( IWebProject.class, getTargetProject() );
+		IWebProject webproject = LiferayCore.create(IWebProject.class, getTargetProject());
 
-        if( webproject != null )
-        {
-            this.webappRoot = webproject.getDefaultDocrootFolder();
-        }
+		if (webproject != null) {
+			webappRoot = webproject.getDefaultDocrootFolder();
+		}
 
-        this.templateStore = store;
-        this.portletContextType = type;
-    }
+		templateStore = store;
+		portletContextType = type;
+	}
 
-    @Override
-    public IStatus doExecute( IProgressMonitor monitor, IAdaptable info ) throws ExecutionException
-    {
-        IStatus status = Status.OK_STATUS;
+	@Override
+	public IStatus doExecute(IProgressMonitor monitor, IAdaptable info) throws ExecutionException {
+		IStatus status = Status.OK_STATUS;
 
-        if( getDataModel().getBooleanProperty( CREATE_NEW_PORTLET_CLASS ) )
-        {
-            status = super.doExecute( monitor, info );
-        }
+		if (getDataModel().getBooleanProperty(CREATE_NEW_PORTLET_CLASS)) {
+			status = super.doExecute(monitor, info);
+		}
 
-        if( !status.isOK() )
-        {
-            return status;
-        }
+		if (!status.isOK()) {
+			return status;
+		}
 
-        if( getDataModel().getBooleanProperty( CREATE_RESOURCE_BUNDLE_FILE ) )
-        {
-            try
-            {
-                createEmptyFileInDefaultSourceFolder( getDataModel().getStringProperty(
-                    CREATE_RESOURCE_BUNDLE_FILE_PATH ) );
-            }
-            catch( CoreException e )
-            {
-                status = PortletCore.createErrorStatus( e );
-            }
-        }
+		if (getDataModel().getBooleanProperty(CREATE_RESOURCE_BUNDLE_FILE)) {
+			try {
+				createEmptyFileInDefaultSourceFolder(
+					getDataModel().getStringProperty(CREATE_RESOURCE_BUNDLE_FILE_PATH));
+			}
+			catch (CoreException ce) {
+				status = PortletCore.createErrorStatus(ce);
+			}
+		}
 
-        if( getDataModel().getBooleanProperty( CREATE_ENTRY_CLASS ) &&
-            getDataModel().getBooleanProperty( ADD_TO_CONTROL_PANEL ) )
-        {
-            try
-            {
-                NewEntryClassOperation entryClassOperation = new NewEntryClassOperation( getDataModel() );
-                entryClassOperation.execute( monitor, info );
-            }
-            catch( ExecutionException e )
-            {
-                status = PortletCore.createErrorStatus( e );
-            }
-        }
+		if (getDataModel().getBooleanProperty(CREATE_ENTRY_CLASS) &&
+			getDataModel().getBooleanProperty(ADD_TO_CONTROL_PANEL)) {
 
-        if( getDataModel().getBooleanProperty( CREATE_JSPS ) )
-        {
-            status = createModeJSPFiles();
-        }
+			try {
+				NewEntryClassOperation entryClassOperation = new NewEntryClassOperation(getDataModel());
 
-        try
-        {
-            String cssFilePath = getDataModel().getStringProperty( CSS_FILE );
+				entryClassOperation.execute(monitor, info);
+			}
+			catch (ExecutionException ee) {
+				status = PortletCore.createErrorStatus(ee);
+			}
+		}
 
-            if( !CoreUtil.isNullOrEmpty( cssFilePath ) )
-            {
-                createEmptyFileInDocroot( cssFilePath );
-            }
+		if (getDataModel().getBooleanProperty(CREATE_JSPS)) {
+			status = createModeJSPFiles();
+		}
 
-            String javascriptFilePath = getDataModel().getStringProperty( JAVASCRIPT_FILE );
+		try {
+			String cssFilePath = getDataModel().getStringProperty(CSS_FILE);
 
-            if( !CoreUtil.isNullOrEmpty( javascriptFilePath ) )
-            {
-                createEmptyFileInDocroot( javascriptFilePath );
-            }
-        }
-        catch( Exception ex )
-        {
-            status = PortletCore.createErrorStatus( ex );
-        }
+			if (!CoreUtil.isNullOrEmpty(cssFilePath)) {
+				createEmptyFileInDocroot(cssFilePath);
+			}
 
-        return status;
-    }
+			String javascriptFilePath = getDataModel().getStringProperty(JAVASCRIPT_FILE);
 
-    @Override
-    public IStatus execute( final IProgressMonitor monitor, final IAdaptable info ) throws ExecutionException
-    {
-        IStatus status = doExecute( monitor, info );
+			if (!CoreUtil.isNullOrEmpty(javascriptFilePath)) {
+				createEmptyFileInDocroot(javascriptFilePath);
+			}
+		}
+		catch (Exception ex) {
+			status = PortletCore.createErrorStatus(ex);
+		}
 
-        if( !status.isOK() )
-        {
-            return status;
-        }
+		return status;
+	}
 
-        generateMetaData( getDataModel() );
+	@Override
+	public IStatus execute(IProgressMonitor monitor, IAdaptable info) throws ExecutionException {
+		IStatus status = doExecute(monitor, info);
 
-        return Status.OK_STATUS;
-    }
+		if (!status.isOK()) {
+			return status;
+		}
 
-    protected void createEmptyFileInDefaultSourceFolder( String filePath ) throws CoreException
-    {
-        List<IFolder> sourceFolders = CoreUtil.getSourceFolders( JavaCore.create( getTargetProject() ) );
+		generateMetaData(getDataModel());
 
-        if( sourceFolders != null && sourceFolders.size() > 0 )
-        {
-            IFile projectFile = sourceFolders.get(0).getFile( filePath );
+		return Status.OK_STATUS;
+	}
 
-            if( !projectFile.exists() )
-            {
-                IFolder parent = (IFolder) projectFile.getParent();
+	protected IStatus addNewPortlet(IProject project, IDataModel model) {
+		return ProjectCore.operate(project, AddNewPortletOperation.class, model);
+	}
 
-                CoreUtil.prepareFolder( parent );
+	protected void createEmptyFileInDefaultSourceFolder(String filePath) throws CoreException {
+		List<IFolder> sourceFolders = CoreUtil.getSourceFolders(JavaCore.create(getTargetProject()));
 
-                projectFile.create( new ByteArrayInputStream( new byte[0] ), IResource.FORCE, null );
-            }
-        }
-    }
+		if (ListUtil.isNotEmpty(sourceFolders)) {
+			IFolder sourceFolder = sourceFolders.get(0);
 
-    protected void createEmptyFileInDocroot( String filePath ) throws CoreException
-    {
-        final IFile projectFile = getProjectFile( filePath );
+			IFile projectFile = sourceFolder.getFile(filePath);
 
-        if( ! projectFile.exists() )
-        {
-            CoreUtil.createEmptyFile( projectFile );
-        }
-    }
+			if (!projectFile.exists()) {
+				IFolder parent = (IFolder)projectFile.getParent();
 
-    @SuppressWarnings( "unchecked" )
-    protected IStatus createModeJSPFiles()
-    {
-        IDataModel dm = getDataModel();
+				CoreUtil.prepareFolder(parent);
 
-        TemplateContext context = new DocumentTemplateContext( portletContextType, new Document(), 0, 0 );
-        context.setVariable( "portlet_display_name", getDataModel().getStringProperty( DISPLAY_NAME ) ); //$NON-NLS-1$
+				try (InputStream input = new ByteArrayInputStream(new byte[0])) {
+					projectFile.create(input, IResource.FORCE, null);
+				}
+				catch (IOException ioe) {
+					throw new CoreException(PortletUIPlugin.createErrorStatus(ioe));
+				}
+			}
+		}
+	}
 
-        List<ParamValue> initParams = (List<ParamValue>) getDataModel().getProperty( INIT_PARAMS );
+	protected void createEmptyFileInDocroot(String filePath) throws CoreException {
+		IFile projectFile = getProjectFile(filePath);
 
-        String initParamSuffix = null;
+		if (!projectFile.exists()) {
+			CoreUtil.createEmptyFile(projectFile);
+		}
+	}
 
-        if( initNames61[0].equals( initParams.get( 0 ).getName() ) )
-        {
-            initParamSuffix = "template"; //$NON-NLS-1$
-        }
-        else
-        {
-            initParamSuffix = "jsp"; //$NON-NLS-1$
-        }
+	@SuppressWarnings("unchecked")
+	protected IStatus createModeJSPFiles() {
+		IDataModel dm = getDataModel();
 
-        if( dm.getBooleanProperty( ABOUT_MODE ) )
-        {
-            createResourceForMode( "about-" + initParamSuffix, ABOUT_MODE_TEMPLATE, context ); //$NON-NLS-1$
-        }
+		TemplateContext context = new DocumentTemplateContext(portletContextType, new Document(), 0, 0);
 
-        if( dm.getBooleanProperty( CONFIG_MODE ) )
-        {
-            createResourceForMode( "config-" + initParamSuffix, CONFIG_MODE_TEMPLATE, context ); //$NON-NLS-1$
-        }
+		context.setVariable("portlet_display_name", getDataModel().getStringProperty(DISPLAY_NAME));
 
-        if( dm.getBooleanProperty( EDIT_MODE ) )
-        {
-            createResourceForMode( "edit-" + initParamSuffix, EDIT_MODE_TEMPLATE, context ); //$NON-NLS-1$
-        }
+		List<ParamValue> initParams = (List<ParamValue>)getDataModel().getProperty(INIT_PARAMS);
 
-        if( dm.getBooleanProperty( EDITDEFAULTS_MODE ) )
-        {
-            createResourceForMode( "edit-defaults-" + initParamSuffix, EDITDEFAULTS_MODE_TEMPLATE, context ); //$NON-NLS-1$
-        }
+		String initParamSuffix = null;
 
-        if( dm.getBooleanProperty( EDITGUEST_MODE ) )
-        {
-            createResourceForMode( "edit-guest-" + initParamSuffix, EDITGUEST_MODE_TEMPLATE, context ); //$NON-NLS-1$
-        }
+		ParamValue paramValue = initParams.get(0);
 
-        if( dm.getBooleanProperty( HELP_MODE ) )
-        {
-            createResourceForMode( "help-" + initParamSuffix, HELP_MODE_TEMPLATE, context ); //$NON-NLS-1$
-        }
+		if (INIT_NAME_61[0].equals(paramValue.getName())) {
+			initParamSuffix = "template";
+		}
+		else {
+			initParamSuffix = "jsp";
+		}
 
-        if( dm.getBooleanProperty( PREVIEW_MODE ) )
-        {
-            createResourceForMode( "preview-" + initParamSuffix, PREVIEW_MODE_TEMPLATE, context ); //$NON-NLS-1$
-        }
+		if (dm.getBooleanProperty(ABOUT_MODE)) {
+			createResourceForMode("about-" + initParamSuffix, ABOUT_MODE_TEMPLATE, context);
+		}
 
-        if( dm.getBooleanProperty( PRINT_MODE ) )
-        {
-            createResourceForMode( "print-" + initParamSuffix, PRINT_MODE_TEMPLATE, context ); //$NON-NLS-1$
-        }
+		if (dm.getBooleanProperty(CONFIG_MODE)) {
+			createResourceForMode("config-" + initParamSuffix, CONFIG_MODE_TEMPLATE, context);
+		}
 
-        if( dm.getBooleanProperty( VIEW_MODE ) )
-        {
-            createResourceForMode( "view-" + initParamSuffix, VIEW_MODE_TEMPLATE, context ); //$NON-NLS-1$
-        }
+		if (dm.getBooleanProperty(EDIT_MODE)) {
+			createResourceForMode("edit-" + initParamSuffix, EDIT_MODE_TEMPLATE, context);
+		}
 
-        return Status.OK_STATUS;
-    }
+		if (dm.getBooleanProperty(EDITDEFAULTS_MODE)) {
+			createResourceForMode("edit-defaults-" + initParamSuffix, EDITDEFAULTS_MODE_TEMPLATE, context);
+		}
 
-    @SuppressWarnings( "unchecked" )
-    protected void createResourceForMode( String initParamName, String templateId, TemplateContext context )
-    {
-        Template template = templateStore.findTemplateById( templateId );
+		if (dm.getBooleanProperty(EDITGUEST_MODE)) {
+			createResourceForMode("edit-guest-" + initParamSuffix, EDITGUEST_MODE_TEMPLATE, context);
+		}
 
-        String templateString = null;
-        try
-        {
-            TemplateBuffer buffer = context.evaluate( template );
+		if (dm.getBooleanProperty(HELP_MODE)) {
+			createResourceForMode("help-" + initParamSuffix, HELP_MODE_TEMPLATE, context);
+		}
 
-            templateString = buffer.getString();
-        }
-        catch( Exception ex )
-        {
-            PortletCore.logError( ex );
+		if (dm.getBooleanProperty(PREVIEW_MODE)) {
+			createResourceForMode("preview-" + initParamSuffix, PREVIEW_MODE_TEMPLATE, context);
+		}
 
-            return;
-        }
+		if (dm.getBooleanProperty(PRINT_MODE)) {
+			createResourceForMode("print-" + initParamSuffix, PRINT_MODE_TEMPLATE, context);
+		}
 
-        // need to get the path in the web app for the new jsp mode file
-        IFile viewJspFile = null;
+		if (dm.getBooleanProperty(VIEW_MODE)) {
+			createResourceForMode("view-" + initParamSuffix, VIEW_MODE_TEMPLATE, context);
+		}
 
-        List<ParamValue> initParams = (List<ParamValue>) getDataModel().getProperty( INIT_PARAMS );
+		return Status.OK_STATUS;
+	}
 
-        for( ParamValue paramValue : initParams )
-        {
-            if( paramValue.getName().equals( initParamName ) )
-            {
-                viewJspFile = getProjectFile( paramValue.getValue() );
+	@SuppressWarnings("unchecked")
+	protected void createResourceForMode(String initParamName, String templateId, TemplateContext context) {
+		Template template = templateStore.findTemplateById(templateId);
 
-                break;
-            }
-        }
+		String templateString = null;
 
-        if( viewJspFile != null )
-        {
-            try
-            {
-                if( viewJspFile.exists() )
-                {
-                    viewJspFile.setContents(
-                        new ByteArrayInputStream( templateString.getBytes( "UTF-8" ) ), IResource.FORCE, null ); //$NON-NLS-1$
-                }
-                else
-                {
-                    // make sure that full path to jspfile is available
-                    CoreUtil.prepareFolder( (IFolder) viewJspFile.getParent() );
-                    viewJspFile.create(
-                        new ByteArrayInputStream( templateString.getBytes( "UTF-8" ) ), IResource.FORCE, null ); //$NON-NLS-1$
-                }
-            }
-            catch( Exception ex )
-            {
-                PortletCore.logError( ex );
-            }
-        }
-    }
+		try {
+			TemplateBuffer buffer = context.evaluate(template);
 
-    protected IStatus generateMetaData( IDataModel aModel )
-    {
-        if( shouldGenerateMetaData( aModel ) )
-        {
-            final IProject project = getTargetProject();
+			templateString = buffer.getString();
+		}
+		catch (Exception ex) {
+			PortletCore.logError(ex);
 
-            if( aModel.getBooleanProperty( REMOVE_EXISTING_ARTIFACTS ) )
-            {
-                removeAllPortlets( project );
-            }
+			return;
+		}
 
-            IStatus status = addNewPortlet( project, this.model );
+		// need to get the path in the web app for the new jsp mode file
 
-            if( !status.isOK() )
-            {
-                PortletCore.getDefault().getLog().log( status );
-                return status;
-            }
-        }
+		IFile viewJspFile = null;
 
-        return Status.OK_STATUS;
-    }
+		List<ParamValue> initParams = (List<ParamValue>)getDataModel().getProperty(INIT_PARAMS);
 
-    @Override
-    protected NewJavaEEArtifactClassOperation getNewClassOperation()
-    {
-        return new NewPortletClassOperation( getDataModel() );
-    }
+		for (ParamValue paramValue : initParams) {
+			if (StringUtil.equals(paramValue.getName(), initParamName)) {
+				viewJspFile = getProjectFile(paramValue.getValue());
 
-    protected IFile getProjectFile( String filePath )
-    {
-        IFile retval = null;
+				break;
+			}
+		}
 
-        if( this.webappRoot != null )
-        {
-            retval = this.webappRoot.getFile( new Path( filePath ) );
-        }
+		if (viewJspFile != null) {
+			try (InputStream input = new ByteArrayInputStream(templateString.getBytes("UTF-8"))) {
+				if (viewJspFile.exists()) {
+					viewJspFile.setContents(input, IResource.FORCE, null);
+				}
+				else {
 
-        return retval;
-    }
+					// make sure that full path to jspfile is available
 
-    protected boolean shouldGenerateMetaData( IDataModel aModel )
-    {
-        return ProjectUtil.isPortletProject( getTargetProject() );
-    }
+					CoreUtil.prepareFolder((IFolder)viewJspFile.getParent());
+					viewJspFile.create(input, IResource.FORCE, null);
+				}
+			}
+			catch (Exception ex) {
+				PortletCore.logError(ex);
+			}
+		}
+	}
 
-    protected IStatus removeAllPortlets( IProject project )
-    {
-        return ProjectCore.operate( project, RemoveAllPortletsOperation.class );
-    }
+	protected IStatus generateMetaData(IDataModel aModel) {
+		if (shouldGenerateMetaData(aModel)) {
+			IProject project = getTargetProject();
 
-    protected IStatus addNewPortlet( IProject project, IDataModel model )
-    {
-        return ProjectCore.operate( project, AddNewPortletOperation.class, model );
-    }
+			if (aModel.getBooleanProperty(REMOVE_EXISTING_ARTIFACTS)) {
+				removeAllPortlets(project);
+			}
+
+			IStatus status = addNewPortlet(project, model);
+
+			if (!status.isOK()) {
+				PortletCore plugin = PortletCore.getDefault();
+
+				ILog log = plugin.getLog();
+
+				log.log(status);
+
+				return status;
+			}
+		}
+
+		return Status.OK_STATUS;
+	}
+
+	@Override
+	protected NewJavaEEArtifactClassOperation getNewClassOperation() {
+		return new NewPortletClassOperation(getDataModel());
+	}
+
+	protected IFile getProjectFile(String filePath) {
+		IFile retval = null;
+
+		if (webappRoot != null) {
+			retval = this.webappRoot.getFile(new Path(filePath));
+		}
+
+		return retval;
+	}
+
+	protected IStatus removeAllPortlets(IProject project) {
+		return ProjectCore.operate(project, RemoveAllPortletsOperation.class);
+	}
+
+	protected boolean shouldGenerateMetaData(IDataModel aModel) {
+		return ProjectUtil.isPortletProject(getTargetProject());
+	}
+
+	protected TemplateContextType portletContextType;
+	protected TemplateStore templateStore;
+	protected IFolder webappRoot;
 
 }

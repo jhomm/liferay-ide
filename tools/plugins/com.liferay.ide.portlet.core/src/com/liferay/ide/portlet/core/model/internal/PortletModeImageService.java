@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,14 +10,11 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- * Contributors:
- *      Kamesh Sampath - initial implementation
- *      Gregory Amerson - initial implementation review and ongoing maintenance
- *******************************************************************************/
+ */
 
 package com.liferay.ide.portlet.core.model.internal;
 
+import com.liferay.ide.core.util.SapphireContentAccessor;
 import com.liferay.ide.portlet.core.model.CustomPortletMode;
 import com.liferay.ide.portlet.core.model.PortletMode;
 
@@ -27,92 +24,98 @@ import org.eclipse.sapphire.ImageData;
 import org.eclipse.sapphire.ImageService;
 import org.eclipse.sapphire.Listener;
 import org.eclipse.sapphire.PropertyContentEvent;
+import org.eclipse.sapphire.Result;
 
 /**
  * @author Kamesh Sampath
  * @author Gregory Amerson
  */
-public class PortletModeImageService extends ImageService
-{
+public class PortletModeImageService extends ImageService implements SapphireContentAccessor {
 
-    private static final ImageData IMG_DEFAULT = ImageData.readFromClassLoader(
-        PortletModeImageService.class, "images/portlet.png" ).required(); //$NON-NLS-1$
+	@Override
+	public void dispose() {
+		super.dispose();
 
-    private static final ImageData IMG_VIEW = ImageData.readFromClassLoader(
-        PortletModeImageService.class, "images/view.png" ).required(); //$NON-NLS-1$
+		Element element = context(Element.class);
 
-    private static final ImageData IMG_EDIT = ImageData.readFromClassLoader(
-        PortletModeImageService.class, "images/edit.png" ).required(); //$NON-NLS-1$
+		element.detach(_listener, PortletMode.PROP_PORTLET_MODE.name());
+	}
 
-    private static final ImageData IMG_HELP = ImageData.readFromClassLoader(
-        PortletModeImageService.class, "images/help.png" ).required(); //$NON-NLS-1$
+	@Override
+	protected ImageData compute() {
+		String portletMode = null;
+		Element element = context(Element.class);
+		ImageData imageData = null;
 
-    private Listener listener;
+		if (element instanceof CustomPortletMode) {
+			CustomPortletMode mode = (CustomPortletMode)element;
 
-    @Override
-    protected void initImageService()
-    {
-        this.listener = new FilteredListener<PropertyContentEvent>()
-        {
-            @Override
-            protected void handleTypedEvent( final PropertyContentEvent event )
-            {
-                refresh();
-            }
-        };
+			portletMode = get(mode.getPortletMode());
+		}
+		else if (element instanceof PortletMode) {
+			PortletMode mode = (PortletMode)element;
 
-        context( Element.class ).attach( this.listener, PortletMode.PROP_PORTLET_MODE.name() );
-    }
+			portletMode = get(mode.getPortletMode());
+		}
 
-    @Override
-    protected ImageData compute()
-    {
-        String portletMode = null;
-        Element element = context( Element.class );
-        ImageData imageData = null;
+		if (portletMode != null) {
+			if ("VIEW".equalsIgnoreCase(portletMode)) {
+				imageData = _imgView;
+			}
+			else if ("EDIT".equalsIgnoreCase(portletMode)) {
+				imageData = _imgEdit;
+			}
+			else if ("HELP".equalsIgnoreCase(portletMode)) {
+				imageData = _imgHelp;
+			}
+		}
 
-        if( element instanceof CustomPortletMode )
-        {
-            CustomPortletMode iCustomPortletMode = (CustomPortletMode) element;
-            portletMode = String.valueOf( iCustomPortletMode.getPortletMode().content() );
-        }
-        else if( element instanceof PortletMode )
-        {
-            PortletMode iPortletMode = (PortletMode) element;
-            portletMode = iPortletMode.getPortletMode().content();
-        }
+		if (imageData == null) {
+			imageData = _imgDefault;
+		}
 
-        if( portletMode != null )
-        {
-            if( "VIEW".equalsIgnoreCase( portletMode ) ) //$NON-NLS-1$
-            {
-                imageData = IMG_VIEW;
-            }
-            else if( "EDIT".equalsIgnoreCase( portletMode ) ) //$NON-NLS-1$
-            {
-                imageData = IMG_EDIT;
-            }
-            else if( "HELP".equalsIgnoreCase( portletMode ) ) //$NON-NLS-1$
-            {
-                imageData = IMG_HELP;
-            }
+		return imageData;
+	}
 
-        }
+	@Override
+	protected void initImageService() {
+		_listener = new FilteredListener<PropertyContentEvent>() {
 
-        if( imageData == null )
-        {
-            imageData = IMG_DEFAULT;
-        }
+			@Override
+			protected void handleTypedEvent(PropertyContentEvent event) {
+				refresh();
+			}
 
-        return imageData;
-    }
+		};
 
-    @Override
-    public void dispose()
-    {
-        super.dispose();
+		Element element = context(Element.class);
 
-        context( Element.class ).detach( this.listener, PortletMode.PROP_PORTLET_MODE.name() );
-    }
+		element.attach(_listener, PortletMode.PROP_PORTLET_MODE.name());
+	}
+
+	private static ImageData _imgDefault;
+	private static ImageData _imgEdit;
+	private static ImageData _imgHelp;
+	private static ImageData _imgView;
+
+	static {
+		Result<ImageData> result = ImageData.readFromClassLoader(PortletModeImageService.class, "images/portlet.png");
+
+		_imgDefault = result.required();
+
+		result = ImageData.readFromClassLoader(PortletModeImageService.class, "images/edit.png");
+
+		_imgEdit = result.required();
+
+		result = ImageData.readFromClassLoader(PortletModeImageService.class, "images/help.png");
+
+		_imgHelp = result.required();
+
+		result = ImageData.readFromClassLoader(PortletModeImageService.class, "images/view.png");
+
+		_imgView = result.required();
+	}
+
+	private Listener _listener;
 
 }

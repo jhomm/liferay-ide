@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: %bundle.name
 Bundle-SymbolicName: com.liferay.ide.portal.ui;singleton:=true
-Bundle-Version: 3.0.0.qualifier
+Bundle-Version: 4.0.0.qualifier
 Bundle-Activator: com.liferay.ide.portal.ui.PortalUI
 Bundle-Vendor: %bundle.vendor
 Require-Bundle: org.eclipse.ui,
@@ -22,7 +22,7 @@ Require-Bundle: org.eclipse.ui,
  org.eclipse.debug.ui,
  org.eclipse.ui.ide,
  org.eclipse.core.expressions
-Bundle-RequiredExecutionEnvironment: JavaSE-1.7
+Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-ActivationPolicy: lazy
 Export-Package: com.liferay.ide.portal.ui,
  com.liferay.ide.portal.ui.debug,

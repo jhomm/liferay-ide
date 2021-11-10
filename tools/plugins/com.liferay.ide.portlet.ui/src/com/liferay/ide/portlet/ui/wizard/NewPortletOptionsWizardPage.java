@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,8 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.portlet.ui.wizard;
 
@@ -21,6 +20,7 @@ import com.liferay.ide.project.ui.wizard.LiferayDataModelWizardPage;
 import com.liferay.ide.ui.util.SWTUtil;
 
 import org.eclipse.core.resources.IProject;
+import org.eclipse.core.runtime.Adapters;
 import org.eclipse.osgi.util.NLS;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -37,260 +37,299 @@ import org.eclipse.wst.common.frameworks.datamodel.IDataModel;
 import org.eclipse.wst.common.frameworks.datamodel.IDataModelListener;
 
 /**
- * @author Greg Amerson
+ * @author Gregory Amerson
  * @author Terry Jia
  */
-@SuppressWarnings( "restriction" )
-public class NewPortletOptionsWizardPage extends LiferayDataModelWizardPage
-    implements INewPortletClassDataModelProperties
-{
-    protected Button aboutButton;
-    protected Text bundleFile;
-    protected Button configButton;
-    protected Button createJspsButton;
-    protected Button createResourceBundleFileButton;
-    protected Text displayName;
-    protected Button editButton;
-    protected Button editDefaultsButton;
-    protected Button editGuestButton;
-    protected boolean fragment;
-    protected Button helpButton;
-    protected Text jspFolder;
-    protected Label jspLabel;
-    protected Text portletName;
-    protected Button previewButton;
-    protected Button printButton;
-    protected Text resourceBundleFilePath;
-    protected Text title;
-    protected Button viewButton;
+@SuppressWarnings("restriction")
+public class NewPortletOptionsWizardPage
+	extends LiferayDataModelWizardPage implements INewPortletClassDataModelProperties {
 
-    public NewPortletOptionsWizardPage(
-        IDataModel dataModel, String pageName, String desc, String title, boolean fragment )
-    {
-        super( dataModel, pageName, title, null );
-        this.fragment = fragment;
-        setDescription( desc );
-    }
+	public NewPortletOptionsWizardPage(
+		IDataModel dataModel, String pageName, String desc, String title, boolean fragment) {
 
-    protected void createJSPsField( Composite parent )
-    {
-        createJspsButton = new Button( parent, SWT.CHECK );
-        createJspsButton.setText( "Create JSP &files" ); //$NON-NLS-1$
-        createJspsButton.setLayoutData( new GridData( SWT.FILL, SWT.DEFAULT, true, false, 2, 1 ) );
-        synchHelper.synchCheckbox( createJspsButton, INewPortletClassDataModelProperties.CREATE_JSPS, null );
+		super(dataModel, pageName, title, null);
 
-        jspLabel = SWTUtil.createLabel( parent, Msgs.jspFolderLabel, 1 );
+		this.fragment = fragment;
+		setDescription(desc);
+	}
 
-        jspFolder = SWTUtil.createText( parent, 1 );
-        ( (GridData) jspFolder.getLayoutData() ).widthHint = 150;
-        synchHelper.synchText( jspFolder, INewPortletClassDataModelProperties.CREATE_JSPS_FOLDER, null );
+	protected void createJSPsField(Composite parent) {
+		createJspsButton = new Button(parent, SWT.CHECK);
 
-        createJspsButton.addSelectionListener( new SelectionAdapter()
-        {
-            @Override
-            public void widgetSelected( SelectionEvent e )
-            {
-                jspLabel.setEnabled( createJspsButton.getSelection() );
-                jspFolder.setEnabled( createJspsButton.getSelection() );
-            }
-        } );
-    }
+		createJspsButton.setText("Create JSP &files");
+		createJspsButton.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true, false, 2, 1));
 
-    protected void createLiferayPortletModesGroup( Composite composite )
-    {
-        Group group = SWTUtil.createGroup( composite, Msgs.liferayPortletModes, 6 );
+		synchHelper.synchCheckbox(createJspsButton, INewPortletClassDataModelProperties.CREATE_JSPS, null);
 
-        GridData gd = new GridData( GridData.FILL_HORIZONTAL );
-        gd.horizontalSpan = 3;
+		jspLabel = SWTUtil.createLabel(parent, Msgs.jspFolderLabel, 1);
 
-        group.setLayoutData( gd );
+		jspFolder = SWTUtil.createText(parent, 1);
 
-        aboutButton = new Button( group, SWT.CHECK );
-        aboutButton.setText( "A&bout" ); //$NON-NLS-1$
-        synchHelper.synchCheckbox( aboutButton, INewPortletClassDataModelProperties.ABOUT_MODE, null );
+		GridData layoutData = Adapters.adapt(resourceBundleFilePath.getLayoutData(), GridData.class);
 
-        configButton = new Button( group, SWT.CHECK );
-        configButton.setText( "Co&nfig" ); //$NON-NLS-1$
-        synchHelper.synchCheckbox( configButton, INewPortletClassDataModelProperties.CONFIG_MODE, null );
+		layoutData.widthHint = 150;
 
-        editDefaultsButton = new Button( group, SWT.CHECK );
-        editDefaultsButton.setText( "E&dit Defaults" ); //$NON-NLS-1$
-        synchHelper.synchCheckbox( editDefaultsButton, INewPortletClassDataModelProperties.EDITDEFAULTS_MODE, null );
+		synchHelper.synchText(jspFolder, INewPortletClassDataModelProperties.CREATE_JSPS_FOLDER, null);
 
-        editGuestButton = new Button( group, SWT.CHECK );
-        editGuestButton.setText( "Ed&it Guest" ); //$NON-NLS-1$
-        synchHelper.synchCheckbox( editGuestButton, INewPortletClassDataModelProperties.EDITGUEST_MODE, null );
+		SelectionAdapter adapter = new SelectionAdapter() {
 
-        previewButton = new Button( group, SWT.CHECK );
-        previewButton.setText( "Pre&view" ); //$NON-NLS-1$
-        synchHelper.synchCheckbox( previewButton, INewPortletClassDataModelProperties.PREVIEW_MODE, null );
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				jspLabel.setEnabled(createJspsButton.getSelection());
+				jspFolder.setEnabled(createJspsButton.getSelection());
+			}
 
-        printButton = new Button( group, SWT.CHECK );
-        printButton.setText( "P&rint" ); //$NON-NLS-1$
-        synchHelper.synchCheckbox( printButton, INewPortletClassDataModelProperties.PRINT_MODE, null );
-    }
+		};
 
-    protected void createPortletInfoGroup( Composite composite )
-    {
-        Group group = SWTUtil.createGroup( composite, Msgs.portletInfo, 2 );
+		createJspsButton.addSelectionListener(adapter);
+	}
 
-        GridData gd = new GridData( GridData.FILL_HORIZONTAL );
-        gd.horizontalSpan = 3;
+	protected void createLiferayPortletModesGroup(Composite composite) {
+		Group group = SWTUtil.createGroup(composite, Msgs.liferayPortletModes, 6);
 
-        group.setLayoutData( gd );
+		GridData gd = new GridData(GridData.FILL_HORIZONTAL);
 
-        SWTUtil.createLabel( group, Msgs.nameLabel, 1 );
+		gd.horizontalSpan = 3;
 
-        this.portletName = SWTUtil.createText( group, 1 );
-        this.synchHelper.synchText( portletName, PORTLET_NAME, null );
+		group.setLayoutData(gd);
 
-        SWTUtil.createLabel( group, Msgs.displayNameLabel, 1 );
+		aboutButton = new Button(group, SWT.CHECK);
 
-        this.displayName = SWTUtil.createText( group, 1 );
-        this.synchHelper.synchText( displayName, DISPLAY_NAME, null );
+		aboutButton.setText("A&bout");
 
-        SWTUtil.createLabel( group, Msgs.titleLabel, 1 );
+		synchHelper.synchCheckbox(aboutButton, INewPortletClassDataModelProperties.ABOUT_MODE, null);
 
-        this.title = SWTUtil.createText( group, 1 );
-        this.synchHelper.synchText( title, TITLE, null );
+		configButton = new Button(group, SWT.CHECK);
 
-        this.synchHelper.getDataModel().addListener( new IDataModelListener()
-        {
-            public void propertyChanged( DataModelEvent event )
-            {
-                if( CLASS_NAME.equals( event.getPropertyName() ) || PORTLET_NAME.equals( event.getPropertyName() ) )
-                {
-                    synchHelper.synchAllUIWithModel();
-                }
-            }
-        } );
-    }
+		configButton.setText("Co&nfig");
 
-    protected void createPortletModesGroup( Composite composite )
-    {
-        Group group = SWTUtil.createGroup( composite, Msgs.portletModes, 3 );
+		synchHelper.synchCheckbox(configButton, INewPortletClassDataModelProperties.CONFIG_MODE, null);
 
-        GridLayout gl = (GridLayout) group.getLayout();
-        gl.makeColumnsEqualWidth = true;
+		editDefaultsButton = new Button(group, SWT.CHECK);
 
-        group.setLayout( gl );
+		editDefaultsButton.setText("E&dit Defaults");
 
-        GridData gd = new GridData( GridData.FILL_HORIZONTAL );
-        gd.horizontalSpan = 3;
+		synchHelper.synchCheckbox(editDefaultsButton, INewPortletClassDataModelProperties.EDITDEFAULTS_MODE, null);
 
-        group.setLayoutData( gd );
+		editGuestButton = new Button(group, SWT.CHECK);
 
-        viewButton = new Button( group, SWT.CHECK );
-        viewButton.setText( "Vie&w" ); //$NON-NLS-1$
-        synchHelper.synchCheckbox( viewButton, INewPortletClassDataModelProperties.VIEW_MODE, null );
+		editGuestButton.setText("Ed&it Guest");
 
-        editButton = new Button( group, SWT.CHECK );
-        editButton.setText( "Edi&t" ); //$NON-NLS-1$
-        synchHelper.synchCheckbox( editButton, INewPortletClassDataModelProperties.EDIT_MODE, null );
+		synchHelper.synchCheckbox(editGuestButton, INewPortletClassDataModelProperties.EDITGUEST_MODE, null);
 
-        helpButton = new Button( group, SWT.CHECK );
-        helpButton.setText( "Hel&p" ); //$NON-NLS-1$
-        synchHelper.synchCheckbox( helpButton, INewPortletClassDataModelProperties.HELP_MODE, null );
+		previewButton = new Button(group, SWT.CHECK);
 
-    }
+		previewButton.setText("Pre&view");
 
-    protected void createResourceBundleField( Composite parent )
-    {
-        createResourceBundleFileButton = new Button( parent, SWT.CHECK );
-        createResourceBundleFileButton.setText( Msgs.createResourceBundleFile );
-        createResourceBundleFileButton.setLayoutData( new GridData( SWT.FILL, SWT.DEFAULT, true, false, 2, 1 ) );
-        synchHelper.synchCheckbox(
-            createResourceBundleFileButton, INewPortletClassDataModelProperties.CREATE_RESOURCE_BUNDLE_FILE, null );
+		synchHelper.synchCheckbox(previewButton, INewPortletClassDataModelProperties.PREVIEW_MODE, null);
 
-        final Label resourceBundleFileLabel = SWTUtil.createLabel( parent, Msgs.resourceBundleFilePathLabel, 1 );
+		printButton = new Button(group, SWT.CHECK);
 
-        resourceBundleFilePath = SWTUtil.createText( parent, 1 );
-        ( (GridData) resourceBundleFilePath.getLayoutData() ).widthHint = 150;
-        synchHelper.synchText(
-            resourceBundleFilePath, INewPortletClassDataModelProperties.CREATE_RESOURCE_BUNDLE_FILE_PATH, null );
+		printButton.setText("P&rint");
 
-        createResourceBundleFileButton.addSelectionListener( new SelectionAdapter()
-        {
-            @Override
-            public void widgetSelected( SelectionEvent e )
-            {
-                resourceBundleFileLabel.setEnabled( createResourceBundleFileButton.getSelection() );
+		synchHelper.synchCheckbox(printButton, INewPortletClassDataModelProperties.PRINT_MODE, null);
+	}
 
-                resourceBundleFilePath.setEnabled( createResourceBundleFileButton.getSelection() );
-            }
-        } );
-    }
+	protected void createPortletInfoGroup(Composite composite) {
+		Group group = SWTUtil.createGroup(composite, Msgs.portletInfo, 2);
 
-    protected void createResourcesGroup( Composite composite )
-    {
-        Group group = SWTUtil.createGroup( composite, Msgs.resources, 2 );
+		GridData gd = new GridData(GridData.FILL_HORIZONTAL);
 
-        GridData gd = new GridData( GridData.FILL_HORIZONTAL );
-        gd.horizontalSpan = 3;
+		gd.horizontalSpan = 3;
 
-        group.setLayoutData( gd );
+		group.setLayoutData(gd);
 
-        createJSPsField( group );
-        createResourceBundleField( group );
-        createViewTemplateGroup( group );
-    }
+		SWTUtil.createLabel(group, Msgs.nameLabel, 1);
 
-    @Override
-    protected Composite createTopLevelComposite( Composite parent )
-    {
-        Composite composite = SWTUtil.createTopComposite( parent, 3 );
+		portletName = SWTUtil.createText(group, 1);
 
-        createPortletInfoGroup( composite );
+		this.synchHelper.synchText(portletName, PORTLET_NAME, null);
 
-        createPortletModesGroup( composite );
+		SWTUtil.createLabel(group, Msgs.displayNameLabel, 1);
 
-        createLiferayPortletModesGroup( composite );
+		displayName = SWTUtil.createText(group, 1);
 
-        createResourcesGroup( composite );
+		this.synchHelper.synchText(displayName, DISPLAY_NAME, null);
 
-        return composite;
-    }
+		SWTUtil.createLabel(group, Msgs.titleLabel, 1);
 
-    protected void createViewTemplateGroup( Composite composite )
-    {
-        // don't create view template section
-    }
+		title = SWTUtil.createText(group, 1);
 
-    @Override
-    protected String[] getValidationPropertyNames()
-    {
-        return new String[] { PORTLET_NAME, DISPLAY_NAME, VIEW_MODE, EDIT_MODE, HELP_MODE, ABOUT_MODE, CONFIG_MODE,
-            EDITDEFAULTS_MODE, EDITGUEST_MODE, PREVIEW_MODE, PRINT_MODE, CREATE_RESOURCE_BUNDLE_FILE,
-            CREATE_RESOURCE_BUNDLE_FILE_PATH, CREATE_JSPS, CREATE_JSPS_FOLDER };
-    }
+		this.synchHelper.synchText(title, TITLE, null);
 
-    protected boolean isProjectValid( IProject project )
-    {
-        return ProjectUtil.isPortletProject( project );
-    }
+		IDataModelListener listener = new IDataModelListener() {
 
-    @Override
-    protected boolean showValidationErrorsOnEnter()
-    {
-        return true;
-    }
+			public void propertyChanged(DataModelEvent event) {
+				if (CLASS_NAME.equals(event.getPropertyName()) || PORTLET_NAME.equals(event.getPropertyName())) {
+					synchHelper.synchAllUIWithModel();
+				}
+			}
 
-    private static class Msgs extends NLS
-    {
-        public static String createResourceBundleFile;
-        public static String displayNameLabel;
-        public static String jspFolderLabel;
-        public static String liferayPortletModes;
-        public static String nameLabel;
-        public static String portletInfo;
-        public static String portletModes;
-        public static String resourceBundleFilePathLabel;
-        public static String resources;
-        public static String titleLabel;
+		};
 
-        static
-        {
-            initializeMessages( NewPortletOptionsWizardPage.class.getName(), Msgs.class );
-        }
-    }
+		IDataModel dataModel = synchHelper.getDataModel();
+
+		dataModel.addListener(listener);
+	}
+
+	protected void createPortletModesGroup(Composite composite) {
+		Group group = SWTUtil.createGroup(composite, Msgs.portletModes, 3);
+
+		GridLayout gl = (GridLayout)group.getLayout();
+
+		gl.makeColumnsEqualWidth = true;
+
+		group.setLayout(gl);
+
+		GridData gd = new GridData(GridData.FILL_HORIZONTAL);
+
+		gd.horizontalSpan = 3;
+
+		group.setLayoutData(gd);
+
+		viewButton = new Button(group, SWT.CHECK);
+
+		viewButton.setText("Vie&w");
+
+		synchHelper.synchCheckbox(viewButton, INewPortletClassDataModelProperties.VIEW_MODE, null);
+
+		editButton = new Button(group, SWT.CHECK);
+
+		editButton.setText("Edi&t");
+
+		synchHelper.synchCheckbox(editButton, INewPortletClassDataModelProperties.EDIT_MODE, null);
+
+		helpButton = new Button(group, SWT.CHECK);
+
+		helpButton.setText("Hel&p");
+
+		synchHelper.synchCheckbox(helpButton, INewPortletClassDataModelProperties.HELP_MODE, null);
+	}
+
+	protected void createResourceBundleField(Composite parent) {
+		createResourceBundleFileButton = new Button(parent, SWT.CHECK);
+
+		createResourceBundleFileButton.setText(Msgs.createResourceBundleFile);
+		createResourceBundleFileButton.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true, false, 2, 1));
+
+		synchHelper.synchCheckbox(
+			createResourceBundleFileButton, INewPortletClassDataModelProperties.CREATE_RESOURCE_BUNDLE_FILE, null);
+
+		Label resourceBundleFileLabel = SWTUtil.createLabel(parent, Msgs.resourceBundleFilePathLabel, 1);
+
+		resourceBundleFilePath = SWTUtil.createText(parent, 1);
+
+		GridData layoutData = Adapters.adapt(resourceBundleFilePath.getLayoutData(), GridData.class);
+
+		layoutData.widthHint = 150;
+
+		synchHelper.synchText(
+			resourceBundleFilePath, INewPortletClassDataModelProperties.CREATE_RESOURCE_BUNDLE_FILE_PATH, null);
+
+		SelectionAdapter adapter = new SelectionAdapter() {
+
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				resourceBundleFileLabel.setEnabled(createResourceBundleFileButton.getSelection());
+
+				resourceBundleFilePath.setEnabled(createResourceBundleFileButton.getSelection());
+			}
+
+		};
+
+		createResourceBundleFileButton.addSelectionListener(adapter);
+	}
+
+	protected void createResourcesGroup(Composite composite) {
+		Group group = SWTUtil.createGroup(composite, Msgs.resources, 2);
+
+		GridData gd = new GridData(GridData.FILL_HORIZONTAL);
+
+		gd.horizontalSpan = 3;
+
+		group.setLayoutData(gd);
+
+		createJSPsField(group);
+		createResourceBundleField(group);
+		createViewTemplateGroup(group);
+	}
+
+	@Override
+	protected Composite createTopLevelComposite(Composite parent) {
+		Composite composite = SWTUtil.createTopComposite(parent, 3);
+
+		createPortletInfoGroup(composite);
+
+		createPortletModesGroup(composite);
+
+		createLiferayPortletModesGroup(composite);
+
+		createResourcesGroup(composite);
+
+		return composite;
+	}
+
+	protected void createViewTemplateGroup(Composite composite) {
+
+		// don't create view template section
+
+	}
+
+	@Override
+	protected String[] getValidationPropertyNames() {
+		return new String[] {
+			PORTLET_NAME, DISPLAY_NAME, VIEW_MODE, EDIT_MODE, HELP_MODE, ABOUT_MODE, CONFIG_MODE, EDITDEFAULTS_MODE,
+			EDITGUEST_MODE, PREVIEW_MODE, PRINT_MODE, CREATE_RESOURCE_BUNDLE_FILE, CREATE_RESOURCE_BUNDLE_FILE_PATH,
+			CREATE_JSPS, CREATE_JSPS_FOLDER
+		};
+	}
+
+	protected boolean isProjectValid(IProject project) {
+		return ProjectUtil.isPortletProject(project);
+	}
+
+	@Override
+	protected boolean showValidationErrorsOnEnter() {
+		return true;
+	}
+
+	protected Button aboutButton;
+	protected Text bundleFile;
+	protected Button configButton;
+	protected Button createJspsButton;
+	protected Button createResourceBundleFileButton;
+	protected Text displayName;
+	protected Button editButton;
+	protected Button editDefaultsButton;
+	protected Button editGuestButton;
+	protected boolean fragment;
+	protected Button helpButton;
+	protected Text jspFolder;
+	protected Label jspLabel;
+	protected Text portletName;
+	protected Button previewButton;
+	protected Button printButton;
+	protected Text resourceBundleFilePath;
+	protected Text title;
+	protected Button viewButton;
+
+	private static class Msgs extends NLS {
+
+		public static String createResourceBundleFile;
+		public static String displayNameLabel;
+		public static String jspFolderLabel;
+		public static String liferayPortletModes;
+		public static String nameLabel;
+		public static String portletInfo;
+		public static String portletModes;
+		public static String resourceBundleFilePathLabel;
+		public static String resources;
+		public static String titleLabel;
+
+		static {
+			initializeMessages(NewPortletOptionsWizardPage.class.getName(), Msgs.class);
+		}
+
+	}
+
 }

@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,8 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.service.core.model;
 
@@ -22,6 +21,7 @@ import org.eclipse.sapphire.Element;
 import org.eclipse.sapphire.ElementType;
 import org.eclipse.sapphire.PossibleValues;
 import org.eclipse.sapphire.Since;
+import org.eclipse.sapphire.Type;
 import org.eclipse.sapphire.Value;
 import org.eclipse.sapphire.ValueProperty;
 import org.eclipse.sapphire.modeling.annotations.DefaultValue;
@@ -29,201 +29,201 @@ import org.eclipse.sapphire.modeling.annotations.Documentation;
 import org.eclipse.sapphire.modeling.annotations.Label;
 import org.eclipse.sapphire.modeling.annotations.Required;
 import org.eclipse.sapphire.modeling.annotations.Service;
-import org.eclipse.sapphire.modeling.annotations.Type;
 import org.eclipse.sapphire.modeling.xml.annotations.XmlBinding;
 
 /**
  * @author Gregory Amerson
  * @author Cindy Li
  */
-@Service( impl = ColumnImageService.class )
-public interface Column extends Element
-{
+@Service(impl = ColumnImageService.class)
+public interface Column extends Element {
 
-    ElementType TYPE = new ElementType( Column.class );
+	public ElementType TYPE = new ElementType(Column.class);
 
-    // *** Name ***
+	public Value<Boolean> getAccessor();
 
-    @XmlBinding( path = "@name" )
-    @Label( standard = "&name" )
-    @Required
-    ValueProperty PROP_NAME = new ValueProperty( TYPE, "Name" ); //$NON-NLS-1$
+	// *** Name ***
 
-    Value<String> getName();
+	public Value<String> getDbName();
 
-    void setName( String value );
+	public Value<String> getEntity();
 
-    // *** Db Name ***
+	public Value<String> getIdParam();
 
-    @XmlBinding( path = "@db-name" )
-    @Label( standard = "&db name" )
-    ValueProperty PROP_DB_NAME = new ValueProperty( TYPE, "DbName" ); //$NON-NLS-1$
+	// *** Db Name ***
 
-    Value<String> getDbName();
+	public Value<String> getIdType();
 
-    void setDbName( String value );
+	public Value<String> getMappingKey();
 
-    // *** Type ***
+	public Value<String> getMappingTable();
 
-    @Label( standard = "type" )
-    @XmlBinding( path = "@type" )
-    @Required
-    @Service( impl = TypePossibleValuesService.class )
-    ValueProperty PROP_TYPE = new ValueProperty( TYPE, "Type" ); //$NON-NLS-1$
+	// *** Type ***
 
-    Value<String> getType();
+	public Value<String> getName();
 
-    void setType( String value );
+	public Value<String> getType();
 
-    // *** Primary ***
+	public Value<Boolean> isConvertNull();
 
-    @Type( base = Boolean.class )
-    @Label( standard = "&primary" )
-    @XmlBinding( path = "@primary" )
-    @DefaultValue( text = "false" )
-    ValueProperty PROP_PRIMARY = new ValueProperty( TYPE, "Primary" ); //$NON-NLS-1$
+	// *** Primary ***
 
-    Value<Boolean> isPrimary();
+	public Value<Boolean> isFilterPrimary();
 
-    void setPrimary( String value );
+	public Value<Boolean> isJsonEnabled();
 
-    void setPrimary( Boolean value );
+	public Value<Boolean> isLazy();
 
-    // *** Filter Primary ***
+	public Value<Boolean> isLocalized();
 
-    @Type( base = Boolean.class )
-    @Label( standard = "&filter primary" )
-    @XmlBinding( path = "@filter-primary" )
-    @DefaultValue( text = "false" )
-    ValueProperty PROP_FILTER_PRIMARY = new ValueProperty( TYPE, "FilterPrimary" ); //$NON-NLS-1$
+	// *** Filter Primary ***
 
-    Value<Boolean> isFilterPrimary();
+	public Value<Boolean> isPrimary();
 
-    void setFilterPrimary( String value );
+	public void setAccessor(Boolean value);
 
-    void setFilterPrimary( Boolean value );
+	public void setAccessor(String value);
 
-    // *** Entity ***
+	public void setConvertNull(Boolean value);
 
-    @XmlBinding( path = "@entity" )
-    @Label( standard = "&entity" )
-    ValueProperty PROP_ENTITY = new ValueProperty( TYPE, "Entity" ); //$NON-NLS-1$
+	// *** Entity ***
 
-    Value<String> getEntity();
+	public void setConvertNull(String value);
 
-    void setEntity( String value );
+	public void setDbName(String value);
 
-    // *** Mapping Key ***
+	public void setEntity(String value);
 
-    @XmlBinding( path = "@mapping-key" )
-    @Label( standard = "&mapping key" )
-    ValueProperty PROP_MAPPING_KEY = new ValueProperty( TYPE, "MappingKey" ); //$NON-NLS-1$
+	// *** Mapping Key ***
 
-    Value<String> getMappingKey();
+	public void setFilterPrimary(Boolean value);
 
-    void setMappingKey( String value );
+	public void setFilterPrimary(String value);
 
-    // *** Mapping Table ***
+	public void setIdParam(String value);
 
-    @XmlBinding( path = "@mapping-table" )
-    @Label( standard = "&mapping table" )
-    ValueProperty PROP_MAPPING_TABLE = new ValueProperty( TYPE, "MappingTable" ); //$NON-NLS-1$
+	// *** Mapping Table ***
 
-    Value<String> getMappingTable();
+	public void setIdType(String value);
 
-    void setMappingTable( String value );
+	public void setJsonEnabled(Boolean value);
 
-    // ** Id Type ***
-    @Label( standard = "id type" )
-    @XmlBinding( path = "@id-type" )
-    @PossibleValues
-    (
-        values = { "class", "increment", "identity", "sequence" },
-        invalidValueMessage = "{0} is not a valid ID type."
-    )
-    ValueProperty PROP_ID_TYPE = new ValueProperty( TYPE, "IdType" ); //$NON-NLS-1$
+	public void setJsonEnabled(String value);
 
-    Value<String> getIdType();
+	// ** Id Type ***
 
-    void setIdType( String value );
+	public void setLazy(Boolean value);
 
-    // *** Id Param ***
+	public void setLazy(String value);
 
-    @XmlBinding( path = "@id-param" )
-    @Label( standard = "&id param" )
-    ValueProperty PROP_ID_PARAM = new ValueProperty( TYPE, "IdParam" ); //$NON-NLS-1$
+	public void setLocalized(Boolean value);
 
-    Value<String> getIdParam();
+	// *** Id Param ***
 
-    void setIdParam( String value );
+	public void setLocalized(String value);
 
-    // *** Convert Null ***
+	public void setMappingKey(String value);
 
-    @Type( base = Boolean.class )
-    @Label( standard = "&convert null" )
-    @XmlBinding( path = "@convert-null" )
-    @DefaultValue( text = "true" )
-    ValueProperty PROP_CONVERT_NULL = new ValueProperty( TYPE, "ConvertNull" ); //$NON-NLS-1$
+	public void setMappingTable(String value);
 
-    Value<Boolean> isConvertNull();
+	// *** Convert Null ***
 
-    void setConvertNull( String value );
+	public void setName(String value);
 
-    void setConvertNull( Boolean value );
+	public void setPrimary(Boolean value);
 
-    @Type( base = Boolean.class )
-    @Label( standard = "&lazy" )
-    @XmlBinding( path = "@lazy" )
-    @DefaultValue( text = "true" )
-    ValueProperty PROP_LAZY = new ValueProperty( TYPE, "Lazy" ); //$NON-NLS-1$
+	public void setPrimary(String value);
 
-    Value<Boolean> isLazy();
+	public void setType(String value);
 
-    void setLazy( String value );
+	@DefaultValue(text = "false")
+	@Documentation(
+		content = "This [b]accessor[/b] value specifies whether or not to generate an accessor for this column.This accessor will provide a fast and type-safe way to access column value."
+	)
+	@Label(standard = "&accessor")
+	@Since("6.1")
+	@Type(base = Boolean.class)
+	@XmlBinding(path = "@accessor")
+	public ValueProperty PROP_ACCESSOR = new ValueProperty(TYPE, "Accessor");
+
+	@DefaultValue(text = "true")
+	@Label(standard = "&convert null")
+	@Type(base = Boolean.class)
+	@XmlBinding(path = "@convert-null")
+	public ValueProperty PROP_CONVERT_NULL = new ValueProperty(TYPE, "ConvertNull");
+
+	@Label(standard = "&db name")
+	@XmlBinding(path = "@db-name")
+	public ValueProperty PROP_DB_NAME = new ValueProperty(TYPE, "DbName");
+
+	@Label(standard = "&entity")
+	@XmlBinding(path = "@entity")
+	public ValueProperty PROP_ENTITY = new ValueProperty(TYPE, "Entity");
+
+	// *** Localized ***
+
+	@DefaultValue(text = "false")
+	@Label(standard = "&filter primary")
+	@Type(base = Boolean.class)
+	@XmlBinding(path = "@filter-primary")
+	public ValueProperty PROP_FILTER_PRIMARY = new ValueProperty(TYPE, "FilterPrimary");
+
+	@Label(standard = "&id param")
+	@XmlBinding(path = "@id-param")
+	public ValueProperty PROP_ID_PARAM = new ValueProperty(TYPE, "IdParam");
+
+	@Label(standard = "id type")
+	@PossibleValues(
+		invalidValueMessage = "{0} is not a valid ID type.", values = {"class", "increment", "identity", "sequence"}
+	)
+	@XmlBinding(path = "@id-type")
+	public ValueProperty PROP_ID_TYPE = new ValueProperty(TYPE, "IdType");
+
+	@DefaultValue(text = "true")
+	@Label(standard = "&JSON enabled")
+	@Type(base = Boolean.class)
+	@XmlBinding(path = "@json-enabled")
+	public ValueProperty PROP_JSON_ENABLED = new ValueProperty(TYPE, "JsonEnabled");
+
+	// *** Json Enabled
+
+	@DefaultValue(text = "true")
+	@Label(standard = "&lazy")
+	@Type(base = Boolean.class)
+	@XmlBinding(path = "@lazy")
+	public ValueProperty PROP_LAZY = new ValueProperty(TYPE, "Lazy");
+
+	@DefaultValue(text = "false")
+	@Label(standard = "&localized")
+	@Type(base = Boolean.class)
+	@XmlBinding(path = "@localized")
+	public ValueProperty PROP_LOCALIZED = new ValueProperty(TYPE, "Localized");
+
+	@Label(standard = "&mapping key")
+	@XmlBinding(path = "@mapping-key")
+	public ValueProperty PROP_MAPPING_KEY = new ValueProperty(TYPE, "MappingKey");
+
+	@Label(standard = "&mapping table")
+	@XmlBinding(path = "@mapping-table")
+	public ValueProperty PROP_MAPPING_TABLE = new ValueProperty(TYPE, "MappingTable");
+
+	// *** Accessor ***
+
+	@Label(standard = "&name")
+	@Required
+	@XmlBinding(path = "@name")
+	public ValueProperty PROP_NAME = new ValueProperty(TYPE, "Name");
+
+	@DefaultValue(text = "false")
+	@Label(standard = "&primary")
+	@Type(base = Boolean.class)
+	@XmlBinding(path = "@primary")
+	public ValueProperty PROP_PRIMARY = new ValueProperty(TYPE, "Primary");
+
+	@Label(standard = "type")
+	@Required
+	@Service(impl = TypePossibleValuesService.class)
+	@XmlBinding(path = "@type")
+	public ValueProperty PROP_TYPE = new ValueProperty(TYPE, "Type");
 
-    void setLazy( Boolean value );
-
-    // *** Localized ***
-
-    @Type( base = Boolean.class )
-    @Label( standard = "&localized" )
-    @XmlBinding( path = "@localized" )
-    @DefaultValue( text = "false" )
-    ValueProperty PROP_LOCALIZED = new ValueProperty( TYPE, "Localized" ); //$NON-NLS-1$
-
-    Value<Boolean> isLocalized();
-
-    void setLocalized( String value );
-
-    void setLocalized( Boolean value );
-
-    // *** Json Enabled
-
-    @Type( base = Boolean.class )
-    @Label( standard = "&JSON enabled" )
-    @XmlBinding( path = "@json-enabled" )
-    @DefaultValue( text = "true" )
-    ValueProperty PROP_JSON_ENABLED = new ValueProperty( TYPE, "JsonEnabled" ); //$NON-NLS-1$
-
-    Value<Boolean> isJsonEnabled();
-
-    void setJsonEnabled( String value );
-
-    void setJsonEnabled( Boolean value );
-
-    // *** Accessor ***
-
-    @Type( base = Boolean.class )
-    @XmlBinding( path = "@accessor" )
-    @Label( standard = "&accessor" )
-    @DefaultValue( text = "false" )
-    @Documentation( content = "This [b]accessor[/b] value specifies whether or not to generate an accessor for this column. This accessor will provide a fast and type-safe way to access column value." )
-    @Since( "6.1" )
-    ValueProperty PROP_ACCESSOR = new ValueProperty( TYPE, "Accessor" ); //$NON-NLS-1$
-
-    Value<Boolean> getAccessor();
-
-    void setAccessor( String value );
-
-    void setAccessor( Boolean value );
 }

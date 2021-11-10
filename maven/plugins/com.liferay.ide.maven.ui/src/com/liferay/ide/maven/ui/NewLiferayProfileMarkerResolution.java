@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,94 +10,90 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.maven.ui;
 
 import com.liferay.ide.maven.core.LiferayMavenCore;
-import com.liferay.ide.maven.core.MavenUtil;
+import com.liferay.ide.maven.core.MavenProfileCreator;
 import com.liferay.ide.project.core.model.NewLiferayPluginProjectOp;
 import com.liferay.ide.project.core.model.NewLiferayProfile;
-import com.liferay.ide.project.ui.action.NewLiferayProfileActionHandler;
 import com.liferay.ide.project.ui.wizard.NewLiferayPluginProjectWizard;
 import com.liferay.ide.ui.util.UIUtil;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.m2e.core.internal.IMavenConstants;
+import org.eclipse.sapphire.ElementList;
 import org.eclipse.sapphire.ui.def.DefinitionLoader;
-import org.eclipse.sapphire.ui.def.DefinitionLoader.Reference;
 import org.eclipse.sapphire.ui.forms.DialogDef;
 import org.eclipse.sapphire.ui.forms.swt.SapphireDialog;
 import org.eclipse.wst.sse.core.StructuredModelManager;
+import org.eclipse.wst.sse.core.internal.provisional.IModelManager;
 import org.eclipse.wst.xml.core.internal.provisional.document.IDOMModel;
 
 /**
  * @author Gregory Amerson
  * @author Simon Jiang
  */
-@SuppressWarnings( "restriction" )
-public class NewLiferayProfileMarkerResolution extends AbstractProjectMarkerResolution
-{
+@SuppressWarnings("restriction")
+public class NewLiferayProfileMarkerResolution extends AbstractProjectMarkerResolution implements MavenProfileCreator {
 
-    public NewLiferayProfileMarkerResolution()
-    {
-        super();
-    }
+	public NewLiferayProfileMarkerResolution() {
+	}
 
-    public String getLabel()
-    {
-        return "Create a new maven profile based on a Liferay runtime and attach it to the project.";
-    }
+	public String getLabel() {
+		return "Create a new maven profile based on a Liferay runtime and attach it to the project.";
+	}
 
-    @Override
-    protected int promptUser( IProject project, NewLiferayPluginProjectOp op )
-    {
-        final NewLiferayProfile newLiferayProfile = op.getNewLiferayProfiles().insert();
+	@Override
+	protected int promptUser(IProject project, NewLiferayPluginProjectOp op) {
+		ElementList<NewLiferayProfile> profiles = op.getNewLiferayProfiles();
 
-        final Reference<DialogDef> dialogRef = DefinitionLoader.sdef(
-            NewLiferayPluginProjectWizard.class ).dialog( "NewLiferayProfile" );
-        final SapphireDialog dialog = new SapphireDialog( UIUtil.getActiveShell(), newLiferayProfile, dialogRef );
+		NewLiferayProfile newLiferayProfile = profiles.insert();
 
-        dialog.setBlockOnOpen( true );
-        final int result = dialog.open();
+		DefinitionLoader definitionLoader = DefinitionLoader.sdef(NewLiferayPluginProjectWizard.class);
 
-        if( result == SapphireDialog.OK )
-        {
-            IDOMModel domModel = null;
+		DefinitionLoader.Reference<DialogDef> dialogRef = definitionLoader.dialog("NewLiferayProfile");
 
-            try
-            {
-                final IFile pomFile = project.getFile( IMavenConstants.POM_FILE_NAME );
+		SapphireDialog dialog = new SapphireDialog(UIUtil.getActiveShell(), newLiferayProfile, dialogRef);
 
-                domModel = (IDOMModel) StructuredModelManager.getModelManager().getModelForEdit( pomFile );
+		dialog.setBlockOnOpen(true);
 
-                MavenUtil.createNewLiferayProfileNode( domModel.getDocument(), newLiferayProfile );
+		int result = dialog.open();
 
-                domModel.save();
+		if (result == SapphireDialog.OK) {
+			IDOMModel domModel = null;
 
-            }
-            catch( Exception e )
-            {
-                LiferayMavenCore.logError( "Unable to save new Liferay profiles to project pom.", e );
-            }
-            finally
-            {
-                if( domModel != null )
-                {
-                    domModel.releaseFromEdit();
-                }
-            }
+			try {
+				IFile pomFile = project.getFile(IMavenConstants.POM_FILE_NAME);
 
-            NewLiferayProfileActionHandler.addToActiveProfiles( op, newLiferayProfile );
-        }
-        else
-        {
-            op.getNewLiferayProfiles().remove( newLiferayProfile );
-        }
+				IModelManager modelManager = StructuredModelManager.getModelManager();
 
-        return result;
-    }
+				domModel = (IDOMModel)modelManager.getModelForEdit(pomFile);
+
+				createNewLiferayProfileNode(domModel.getDocument(), newLiferayProfile);
+
+				domModel.save();
+			}
+			catch (Exception e) {
+				LiferayMavenCore.logError("Unable to save new Liferay profiles to project pom.", e);
+			}
+			finally {
+				if (domModel != null) {
+					domModel.releaseFromEdit();
+				}
+			}
+
+			addToActiveProfiles(op, newLiferayProfile);
+		}
+		else {
+			ElementList<NewLiferayProfile> elementList = op.getNewLiferayProfiles();
+
+			elementList.remove(newLiferayProfile);
+		}
+
+		return result;
+	}
 
 }

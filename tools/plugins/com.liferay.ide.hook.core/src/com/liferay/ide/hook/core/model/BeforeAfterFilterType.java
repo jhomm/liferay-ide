@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,10 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- * Contributors:
- *    Gregory Amerson - initial implementation
- *******************************************************************************/
+ */
 
 package com.liferay.ide.hook.core.model;
 
@@ -23,26 +20,23 @@ import org.eclipse.sapphire.modeling.annotations.Label;
 /**
  * @author Gregory Amerson
  */
-public enum BeforeAfterFilterType
-{
+public enum BeforeAfterFilterType {
 
-    @Label( standard = "Before Filter" )
-    @EnumSerialization( caseSensitive = true, primary = "before-filter" )
-    BEFORE_FILTER("before-filter"), //$NON-NLS-1$
+	@EnumSerialization(caseSensitive = true, primary = "after-filter")
+	@Label(standard = "After Filter")
+	AFTER_FILTER("after-filter"),
+	@EnumSerialization(caseSensitive = true, primary = "before-filter")
+	@Label(standard = "Before Filter")
+	BEFORE_FILTER("before-filter");
 
-    @Label( standard = "After Filter" )
-    @EnumSerialization( caseSensitive = true, primary = "after-filter" )
-    AFTER_FILTER("after-filter"); //$NON-NLS-1$
+	public String getText() {
+		return _text;
+	}
 
-    private String text;
+	private BeforeAfterFilterType(String primary) {
+		_text = primary;
+	}
 
-    private BeforeAfterFilterType( String primary )
-    {
-        text = primary;
-    }
+	private String _text;
 
-    public String getText()
-    {
-        return text;
-    }
 }

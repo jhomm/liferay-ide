@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,114 +10,118 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
+
 package com.liferay.ide.portlet.ui.util;
 
 import com.liferay.ide.core.properties.PropertiesFileLookup;
-import com.liferay.ide.core.properties.PropertiesFileLookup.KeyInfo;
 import com.liferay.ide.core.util.CoreUtil;
 import com.liferay.ide.core.util.PropertiesUtil;
+import com.liferay.ide.core.util.StringUtil;
+
+import java.io.InputStream;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
-import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.wst.xml.core.internal.provisional.document.IDOMNode;
 import org.eclipse.wst.xml.search.core.util.DOMUtils;
-import org.w3c.dom.Node;
 
+import org.w3c.dom.NamedNodeMap;
+import org.w3c.dom.Node;
 
 /**
  * @author Gregory Amerson
  */
-@SuppressWarnings( "restriction" )
-public class NodeUtils
-{
-    public static MessageKey[] findMessageKeys( IDocument document, String key, boolean loadValues  )
-    {
-        MessageKey[] retval = null;
+@SuppressWarnings("restriction")
+public class NodeUtils {
 
-        final IFile file = DOMUtils.getFile( document );
+	public static MessageKey[] findMessageKeys(IDocument document, String key, boolean loadValues) {
+		MessageKey[] retval = null;
 
-        if( file != null && file.exists() )
-        {
-            final IJavaProject project = JavaCore.create( file.getProject() );
+		IFile file = DOMUtils.getFile(document);
 
-            if( project != null && project.exists() )
-            {
-                final List<MessageKey> keys = new ArrayList<MessageKey>();
+		if ((file != null) && file.exists()) {
+			IJavaProject project = JavaCore.create(file.getProject());
 
-                for( final IFolder src : CoreUtil.getSourceFolders( project ) )
-                {
-                    final IFile[] props = PropertiesUtil.visitPropertiesFiles( src, ".*" );
+			if ((project != null) && project.exists()) {
+				List<MessageKey> keys = new ArrayList<>();
 
-                    for( final IFile prop : props )
-                    {
-                        try
-                        {
-                            final KeyInfo info =
-                                new PropertiesFileLookup( prop.getContents(), key, loadValues ).getKeyInfo( key );
+				for (IFolder src : CoreUtil.getSourceFolders(project)) {
+					if (src.exists()) {
+						IFile[] props = PropertiesUtil.visitPropertiesFiles(src, ".*");
 
-                            if( info != null && info.offset >= 0 )
-                            {
-                                keys.add( new MessageKey( prop, key, info.offset, info.length, info.value ) );
-                            }
-                        }
-                        catch( CoreException e )
-                        {
-                        }
-                    }
-                }
+						for (IFile prop : props) {
+							try (InputStream inputStream = prop.getContents()) {
+								PropertiesFileLookup.KeyInfo info = new PropertiesFileLookup(
+									inputStream, key, loadValues
+								).getKeyInfo(
+									key
+								);
 
-                retval = keys.toArray( new MessageKey[0] );
-            }
-        }
+								if ((info != null) && (info.offset >= 0)) {
+									keys.add(new MessageKey(prop, key, info.offset, info.length, info.value));
+								}
+							}
+							catch (Exception ce) {
+							}
+						}
+					}
+				}
 
-        return retval;
-    }
+				retval = keys.toArray(new MessageKey[0]);
+			}
+		}
 
-    public static Node getMessageKey( IDOMNode currentNode )
-    {
-        Node retval = null;
+		return retval;
+	}
 
-        final boolean messageNode = currentNode != null &&
-                        currentNode.getNodeName() != null &&
-                        currentNode.getNodeType() == Node.ELEMENT_NODE &&
-                        ( currentNode.getNodeName().endsWith( "message" ) ||
-                          currentNode.getNodeName().endsWith( "error" ) ||
-                          isAuiLabel( currentNode ));
+	public static Node getMessageKey(IDOMNode currentNode) {
+		Node retval = null;
 
-        if( messageNode )
-        {
-            final Node key = currentNode.getAttributes().getNamedItem( "key" );
+		boolean messageNode = false;
 
-            if( key != null && ( ! CoreUtil.isNullOrEmpty( key.getNodeValue() ) ) )
-            {
-                retval = key;
-            }
-            else
-            {
-                final Node label = currentNode.getAttributes().getNamedItem( "label" );
+		if ((currentNode != null) && (currentNode.getNodeName() != null) &&
+			(currentNode.getNodeType() == Node.ELEMENT_NODE) &&
+			(StringUtil.endsWith(currentNode.getNodeName(), "message") ||
+			 StringUtil.endsWith(currentNode.getNodeName(), "error") || _isAuiLabel(currentNode))) {
 
-                if( label != null && ( ! CoreUtil.isNullOrEmpty( label.getNodeValue() ) ) )
-                {
-                    retval = label;
-                }
-            }
-        }
+			messageNode = true;
+		}
 
-        return retval;
-    }
+		if (messageNode) {
+			NamedNodeMap map = currentNode.getAttributes();
 
-    private static boolean isAuiLabel( IDOMNode currentNode )
-    {
-        return currentNode.getNodeName().startsWith( "aui:" ) &&
-            currentNode.getAttributes().getNamedItem( "label" ) != null;
-    }
+			Node key = map.getNamedItem("key");
+
+			if ((key != null) && !CoreUtil.isNullOrEmpty(key.getNodeValue())) {
+				retval = key;
+			}
+			else {
+				Node label = map.getNamedItem("label");
+
+				if ((label != null) && !CoreUtil.isNullOrEmpty(label.getNodeValue())) {
+					retval = label;
+				}
+			}
+		}
+
+		return retval;
+	}
+
+	private static boolean _isAuiLabel(IDOMNode currentNode) {
+		NamedNodeMap map = currentNode.getAttributes();
+
+		if (StringUtil.startsWith(currentNode.getNodeName(), "aui:") && (map.getNamedItem("label") != null)) {
+			return true;
+		}
+
+		return false;
+	}
+
 }

@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,13 +10,16 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
+
 package com.liferay.ide.project.core.util;
 
 import com.liferay.ide.core.LiferayCore;
+import com.liferay.ide.core.util.FileUtil;
+import com.liferay.ide.core.util.StringUtil;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.eclipse.core.resources.IContainer;
@@ -29,39 +32,38 @@ import org.eclipse.core.runtime.CoreException;
 /**
  * @author Simon Jiang
  */
-public class SearchFilesVisitor implements IResourceProxyVisitor
-{
+public class SearchFilesVisitor implements IResourceProxyVisitor {
 
-    String searchFileName = null;
-    List<IFile> resources = new ArrayList<IFile>();
+	public List<IFile> searchFiles(IResource container, String searchFileName) {
+		this.searchFileName = searchFileName;
 
-    public boolean visit( IResourceProxy resourceProxy )
-    {
-        if( resourceProxy.getType() == IResource.FILE && resourceProxy.getName().equals( searchFileName ) )
-        {
-            IResource resource = resourceProxy.requestResource();
+		if (FileUtil.notExists(container)) {
+			return Collections.emptyList();
+		}
 
-            if( resource.exists() )
-            {
-                resources.add( (IFile) resource );
-            }
-        }
+		try {
+			container.accept(this, IContainer.EXCLUDE_DERIVED);
+		}
+		catch (CoreException ce) {
+			LiferayCore.logError(ce);
+		}
 
-        return true;
-    }
+		return resources;
+	}
 
-    public List<IFile> searchFiles( IResource container, String searchFileName )
-    {
-        this.searchFileName = searchFileName;
-        try
-        {
-            container.accept( this, IContainer.EXCLUDE_DERIVED );
-        }
-        catch( CoreException e )
-        {
-            LiferayCore.logError( e );
-        }
+	public boolean visit(IResourceProxy resourceProxy) {
+		if ((resourceProxy.getType() == IResource.FILE) && StringUtil.equals(resourceProxy.getName(), searchFileName)) {
+			IResource resource = resourceProxy.requestResource();
 
-        return resources;
-    }
+			if (resource.exists()) {
+				resources.add((IFile)resource);
+			}
+		}
+
+		return true;
+	}
+
+	protected List<IFile> resources = new ArrayList<>();
+	protected String searchFileName = null;
+
 }

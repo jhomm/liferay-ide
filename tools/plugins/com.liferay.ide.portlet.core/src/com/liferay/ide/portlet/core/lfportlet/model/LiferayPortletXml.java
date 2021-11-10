@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,7 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- ******************************************************************************/
+ */
 
 package com.liferay.ide.portlet.core.lfportlet.model;
 
@@ -20,8 +20,8 @@ import org.eclipse.sapphire.Element;
 import org.eclipse.sapphire.ElementList;
 import org.eclipse.sapphire.ElementType;
 import org.eclipse.sapphire.ListProperty;
+import org.eclipse.sapphire.Type;
 import org.eclipse.sapphire.modeling.annotations.Image;
-import org.eclipse.sapphire.modeling.annotations.Type;
 import org.eclipse.sapphire.modeling.xml.annotations.CustomXmlRootBinding;
 import org.eclipse.sapphire.modeling.xml.annotations.XmlBinding;
 import org.eclipse.sapphire.modeling.xml.annotations.XmlListBinding;
@@ -29,38 +29,31 @@ import org.eclipse.sapphire.modeling.xml.annotations.XmlListBinding;
 /**
  * @author Simon Jiang
  */
-@CustomXmlRootBinding( value = LiferayPortletRootElementController.class )
-@Image( path = "images/eview16/portlet_app_hi.gif" )
-@XmlBinding( path = "liferay-portlet-app" )
-public interface LiferayPortletXml extends Element
-{
+@CustomXmlRootBinding(LiferayPortletRootElementController.class)
+@Image(path = "images/eview16/portlet_app_hi.gif")
+@XmlBinding(path = "liferay-portlet-app")
+public interface LiferayPortletXml extends Element {
 
-    ElementType TYPE = new ElementType( LiferayPortletXml.class );
+	public ElementType TYPE = new ElementType(LiferayPortletXml.class);
 
-    // *** Liferay Portlet *** /
+	public ElementList<CustomUserAttribute> getCustomUserAttributes();
 
-    @Type( base = LiferayPortlet.class )
-    @XmlListBinding( mappings = @XmlListBinding.Mapping( element = "portlet", type = LiferayPortlet.class ) )
-    ListProperty PROP_PORTLETS = new ListProperty( TYPE, "Portlets" );
+	public ElementList<LiferayPortlet> getPortlets();
 
-    ElementList<LiferayPortlet> getPortlets();
+	public ElementList<SecurityRoleRef> getRoleMappers();
 
+	@Type(base = CustomUserAttribute.class)
+	@XmlListBinding(
+		mappings = @XmlListBinding.Mapping(element = "custom-user-attribute", type = CustomUserAttribute.class)
+	)
+	public ListProperty PROP_CUSTOM_USER_ATTRIBUTES = new ListProperty(TYPE, "CustomUserAttributes");
 
-    // *** Role Mapper ***
+	@Type(base = LiferayPortlet.class)
+	@XmlListBinding(mappings = @XmlListBinding.Mapping(element = "portlet", type = LiferayPortlet.class))
+	public ListProperty PROP_PORTLETS = new ListProperty(TYPE, "Portlets");
 
-    @Type( base = SecurityRoleRef.class )
-    @XmlListBinding( mappings = @XmlListBinding.Mapping( element = "role-mapper", type = SecurityRoleRef.class ) )
-    ListProperty PROP_ROLE_MAPPERS= new ListProperty( TYPE, "RoleMappers" );
-
-    ElementList<SecurityRoleRef> getRoleMappers();
-
-
-    // *** Customer User Attribute ***
-
-    @Type( base = CustomUserAttribute.class )
-    @XmlListBinding( mappings = @XmlListBinding.Mapping( element = "custom-user-attribute", type = CustomUserAttribute.class ) )
-    ListProperty PROP_CUSTOM_USER_ATTRIBUTES = new ListProperty( TYPE, "CustomUserAttributes" );
-
-    ElementList<CustomUserAttribute> getCustomUserAttributes();
+	@Type(base = SecurityRoleRef.class)
+	@XmlListBinding(mappings = @XmlListBinding.Mapping(element = "role-mapper", type = SecurityRoleRef.class))
+	public ListProperty PROP_ROLE_MAPPERS = new ListProperty(TYPE, "RoleMappers");
 
 }

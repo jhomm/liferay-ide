@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,51 +10,64 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.server.core.portal;
 
 import com.liferay.ide.core.ILiferayPortal;
 
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.jdt.launching.IVMInstall;
 
 /**
  * @author Gregory Amerson
  * @author Simon Jiang
+ * @author Charles Wu
  */
-public interface PortalBundle extends ILiferayPortal
-{
+public interface PortalBundle extends ILiferayPortal {
 
-    IPath getAutoDeployPath();
+	public IPath getAppServerDeployDir();
 
-    IPath getAppServerDeployDir();
+	public IPath getAppServerDir();
 
-    IPath getAppServerLibGlobalDir();
+	public IPath getAppServerLibGlobalDir();
 
-    int getJmxRemotePort();
+	public IPath getAutoDeployPath();
 
-    IPath getLiferayHome();
+	public IPath[] getBundleDependencyJars();
 
-    IPath getAppServerDir();
+	public String getDisplayName();
 
-    String getMainClass();
+	public String getHttpPort();
 
-    IPath getModulesPath();
+	public int getJmxRemotePort();
 
-    IPath[] getRuntimeClasspath();
+	public IPath getLiferayHome();
 
-    String[] getRuntimeStartVMArgs();
+	public IPath getLogPath();
 
-    String[] getRuntimeStopVMArgs();
+	public String getMainClass();
 
-    String[] getRuntimeStartProgArgs();
+	public IPath getModulesPath();
 
-    String[] getRuntimeStopProgArgs();
+	public IPath getOSGiBundlesDir();
 
-    String getType();
+	public IPath[] getRuntimeClasspath();
 
-    IPath[] getBundleDependencyJars();
+	public String[] getRuntimeStartProgArgs();
 
-    IPath[] getUserLibs();
+	public String[] getRuntimeStartVMArgs(IVMInstall vmInstall);
+
+	public String[] getRuntimeStopProgArgs();
+
+	public String[] getRuntimeStopVMArgs(IVMInstall vmInstall);
+
+	public String getServerReleaseInfo();
+
+	public String getType();
+
+	public IPath[] getUserLibs();
+
+	public void setHttpPort(String port);
+
 }

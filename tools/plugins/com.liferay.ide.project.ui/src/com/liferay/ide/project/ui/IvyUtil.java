@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,8 +10,8 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
+
 package com.liferay.ide.project.ui;
 
 import static org.eclipse.jst.j2ee.classpathdep.ClasspathDependencyUtil.getDefaultRuntimePath;
@@ -21,6 +21,7 @@ import com.liferay.ide.core.ILiferayConstants;
 import com.liferay.ide.core.IWebProject;
 import com.liferay.ide.core.LiferayCore;
 import com.liferay.ide.core.util.CoreUtil;
+import com.liferay.ide.core.util.FileUtil;
 import com.liferay.ide.sdk.core.ISDKConstants;
 import com.liferay.ide.sdk.core.SDK;
 import com.liferay.ide.sdk.core.SDKUtil;
@@ -36,6 +37,7 @@ import org.apache.ivyde.eclipse.cp.IvyClasspathContainer;
 import org.apache.ivyde.eclipse.cp.IvyClasspathContainerConfiguration;
 import org.apache.ivyde.eclipse.cp.IvyClasspathContainerHelper;
 import org.apache.ivyde.eclipse.cp.SettingsSetup;
+
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
@@ -51,135 +53,146 @@ import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.wst.common.componentcore.ComponentCore;
 import org.eclipse.wst.common.componentcore.resources.IVirtualComponent;
-import org.osgi.framework.Version;
 
+import org.osgi.framework.Version;
 
 /**
  * @author Gregory Amerson
  */
-public class IvyUtil
-{
+public class IvyUtil {
 
-    public static IvyClasspathContainer addIvyLibrary( IProject project, IProgressMonitor monitor )
-    {
-        final String projectName = project.getName();
-        final IJavaProject javaProject = JavaCore.create( project );
+	public static IvyClasspathContainer addIvyLibrary(IProject project, IProgressMonitor monitor) {
+		final String projectName = project.getName();
 
-        final IvyClasspathContainerConfiguration conf =
-            new IvyClasspathContainerConfiguration( javaProject, ISDKConstants.IVY_XML_FILE, true );
-        final ClasspathSetup classpathSetup = new ClasspathSetup();
+		final IJavaProject javaProject = JavaCore.create(project);
 
-        conf.setAdvancedProjectSpecific( false );
-        conf.setClasspathSetup( classpathSetup );
-        conf.setClassthProjectSpecific( false );
-        conf.setConfs( Collections.singletonList( "*" ) ); //$NON-NLS-1$
-        conf.setMappingProjectSpecific( false );
-        conf.setSettingsProjectSpecific( true );
+		final IvyClasspathContainerConfiguration conf = new IvyClasspathContainerConfiguration(
+			javaProject, ISDKConstants.IVY_XML_FILE, true);
 
-        SDK sdk = SDKUtil.getSDK( project );
-        final SettingsSetup settingsSetup = new SettingsSetup();
+		final ClasspathSetup classpathSetup = new ClasspathSetup();
 
-        if( sdk.getLocation().append( ISDKConstants.IVY_SETTINGS_XML_FILE ).toFile().exists() )
-        {
-            StringBuilder builder = new StringBuilder();
-            builder.append( "${" ); //$NON-NLS-1$
-            builder.append( ISDKConstants.VAR_NAME_LIFERAY_SDK_DIR );
-            builder.append( ":" ); //$NON-NLS-1$
-            builder.append( projectName );
-            builder.append( "}/" ); //$NON-NLS-1$
-            builder.append( ISDKConstants.IVY_SETTINGS_XML_FILE );
-            settingsSetup.setIvySettingsPath( builder.toString() );
-        }
+		conf.setAdvancedProjectSpecific(false);
+		conf.setClasspathSetup(classpathSetup);
+		conf.setClassthProjectSpecific(false);
+		conf.setConfs(Collections.singletonList("*"));
+		conf.setMappingProjectSpecific(false);
+		conf.setSettingsProjectSpecific(true);
 
-        StringBuilder builder = new StringBuilder();
-        builder.append( "${" ); //$NON-NLS-1$
-        builder.append( ISDKConstants.VAR_NAME_LIFERAY_SDK_DIR );
-        builder.append( ":" ); //$NON-NLS-1$
-        builder.append( projectName );
-        builder.append( "}/.ivy" ); //$NON-NLS-1$
+		SDK sdk = SDKUtil.getSDK(project);
+		final SettingsSetup settingsSetup = new SettingsSetup();
 
-        settingsSetup.setIvyUserDir( builder.toString() );
-        conf.setIvySettingsSetup( settingsSetup );
+		IPath sdkLocation = sdk.getLocation();
 
-        final IPath path = conf.getPath();
-        final IClasspathAttribute[] atts = conf.getAttributes();
+		IPath ivyFilePath = sdkLocation.append(ISDKConstants.IVY_SETTINGS_XML_FILE);
 
-        final IClasspathEntry ivyEntry = JavaCore.newContainerEntry(path, null, atts, false);
+		if (FileUtil.exists(ivyFilePath)) {
+			StringBuilder builder = new StringBuilder();
 
-        final IVirtualComponent virtualComponent = ComponentCore.createComponent( project );
+			builder.append("${");
+			builder.append(ISDKConstants.VAR_NAME_LIFERAY_SDK_DIR);
+			builder.append(":");
+			builder.append(projectName);
+			builder.append("}/");
+			builder.append(ISDKConstants.IVY_SETTINGS_XML_FILE);
 
-        try
-        {
-            IClasspathEntry[] entries = javaProject.getRawClasspath();
-            List<IClasspathEntry> newEntries = new ArrayList<IClasspathEntry>( Arrays.asList( entries ) );
+			settingsSetup.setIvySettingsPath(builder.toString());
+		}
 
-            IPath runtimePath = getDefaultRuntimePath( virtualComponent, ivyEntry);
+		StringBuilder builder = new StringBuilder();
 
-            // add the deployment assembly config to deploy ivy container to /WEB-INF/lib
-            final IClasspathEntry cpeTagged = modifyDependencyPath( ivyEntry, runtimePath );
+		builder.append("${");
+		builder.append(ISDKConstants.VAR_NAME_LIFERAY_SDK_DIR);
+		builder.append(":");
+		builder.append(projectName);
+		builder.append("}/.ivy");
 
-            newEntries.add( cpeTagged );
-            entries = (IClasspathEntry[]) newEntries.toArray( new IClasspathEntry[newEntries.size()] );
-            javaProject.setRawClasspath( entries, javaProject.getOutputLocation(), monitor );
+		settingsSetup.setIvyUserDir(builder.toString());
 
-            IvyClasspathContainer ivycp = IvyClasspathContainerHelper.getContainer( path, javaProject );
+		conf.setIvySettingsSetup(settingsSetup);
 
-            return ivycp;
-        }
-        catch( JavaModelException e )
-        {
-            ProjectUI.logError( "Unable to add Ivy library container", e ); //$NON-NLS-1$
-        }
+		final IPath path = conf.getPath();
+		final IClasspathAttribute[] atts = conf.getAttributes();
 
-        return null;
-    }
+		final IClasspathEntry ivyEntry = JavaCore.newContainerEntry(path, null, atts, false);
 
-    public static void addIvyNature( IProject project, IProgressMonitor monitor ) throws CoreException
-    {
-        CoreUtil.addNaturesToProject( project, new String[] { "org.apache.ivyde.eclipse.ivynature" }, monitor ); //$NON-NLS-1$
-    }
+		final IVirtualComponent virtualComponent = ComponentCore.createComponent(project);
 
-    public static IStatus configureIvyProject( final IProject project, IProgressMonitor monitor ) throws CoreException
-    {
-        SDK sdk = SDKUtil.getSDK( project );
+		try {
+			IClasspathEntry[] entries = javaProject.getRawClasspath();
 
-        // check for 6.1.2 and greater but not 6.1.10 which is older EE release
-        // and match 6.2.0 and greater
-        final Version version = new Version( sdk.getVersion() );
+			List<IClasspathEntry> newEntries = new ArrayList<>(Arrays.asList(entries));
 
-        if( ( CoreUtil.compareVersions( version, ILiferayConstants.V611 ) >= 0 &&
-                        CoreUtil.compareVersions( version, ILiferayConstants.V6110 ) < 0 ) ||
-                        CoreUtil.compareVersions( version, ILiferayConstants.V620 ) >= 0 )
-        {
-            IFile ivyXmlFile = project.getFile( ISDKConstants.IVY_XML_FILE );
+			IPath runtimePath = getDefaultRuntimePath(virtualComponent, ivyEntry);
 
-            if( ivyXmlFile.exists() )
-            {
-                // IDE-1044
-                addIvyNature( project, monitor );
+			// add the deployment assembly config to deploy ivy container to /WEB-INF/lib
 
-                IvyClasspathContainer ivycp = addIvyLibrary( project, monitor );
+			final IClasspathEntry cpeTagged = modifyDependencyPath(ivyEntry, runtimePath);
 
-                if( ivycp != null )
-                {
-                    IStatus status = ivycp.launchResolve( false, monitor );
+			newEntries.add(cpeTagged);
 
-                    if( status.isOK() )
-                    {
-                        final IWebProject webproject = LiferayCore.create( IWebProject.class, project );
-                        final IFolder webinfFolder = webproject.getDefaultDocrootFolder().getFolder( "WEB-INF" );
+			entries = (IClasspathEntry[])newEntries.toArray(new IClasspathEntry[0]);
 
-                        ComponentUtil.validateFolder( webinfFolder, monitor );
-                    }
-                    else
-                    {
-                        return status;
-                    }
-                }
-            }
-        }
+			javaProject.setRawClasspath(entries, javaProject.getOutputLocation(), monitor);
 
-        return Status.OK_STATUS;
-    }
+			return IvyClasspathContainerHelper.getContainer(path, javaProject);
+		}
+		catch (JavaModelException jme) {
+			ProjectUI.logError("Unable to add Ivy library container", jme);
+		}
+
+		return null;
+	}
+
+	public static void addIvyNature(IProject project, IProgressMonitor monitor) throws CoreException {
+		CoreUtil.addNaturesToProject(project, new String[] {"org.apache.ivyde.eclipse.ivynature"}, monitor);
+	}
+
+	public static IStatus configureIvyProject(final IProject project, IProgressMonitor monitor) throws CoreException {
+		SDK sdk = SDKUtil.getSDK(project);
+
+		// check for 6.1.2 and greater but not 6.1.10 which is older EE release
+		// and match 6.2.0 and greater
+
+		final Version version = Version.parseVersion(sdk.getVersion());
+
+		if (((CoreUtil.compareVersions(version, ILiferayConstants.V611) >= 0) &&
+			 (CoreUtil.compareVersions(version, ILiferayConstants.V6110) < 0)) ||
+			(CoreUtil.compareVersions(version, ILiferayConstants.V620) >= 0)) {
+
+			IFile ivyXmlFile = project.getFile(ISDKConstants.IVY_XML_FILE);
+
+			if (ivyXmlFile.exists()) {
+
+				// IDE-1044
+
+				addIvyNature(project, monitor);
+
+				IvyClasspathContainer ivycp = addIvyLibrary(project, monitor);
+
+				if (ivycp != null) {
+					IStatus status = ivycp.launchResolve(false, monitor);
+
+					if (status.isOK()) {
+						IWebProject webproject = LiferayCore.create(IWebProject.class, project);
+
+						if (webproject != null) {
+							IFolder docrootFolder = webproject.getDefaultDocrootFolder();
+
+							IFolder webinfFolder = docrootFolder.getFolder("WEB-INF");
+
+							if (webinfFolder != null) {
+								ComponentUtil.validateFolder(webinfFolder, monitor);
+							}
+						}
+					}
+					else {
+						return status;
+					}
+				}
+			}
+		}
+
+		return Status.OK_STATUS;
+	}
 
 }

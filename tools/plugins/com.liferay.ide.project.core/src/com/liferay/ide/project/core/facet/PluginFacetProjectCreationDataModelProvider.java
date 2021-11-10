@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,11 +10,11 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.project.core.facet;
 
+import com.liferay.ide.core.util.FileUtil;
 import com.liferay.ide.core.util.StringPool;
 import com.liferay.ide.project.core.IPortletFramework;
 import com.liferay.ide.project.core.ProjectCore;
@@ -37,347 +37,294 @@ import org.eclipse.wst.common.project.facet.core.IProjectFacetVersion;
 import org.eclipse.wst.common.project.facet.core.runtime.internal.BridgedRuntime;
 
 /**
- * @author Greg Amerson
+ * @author Gregory Amerson
  * @author Cindy Li
  * @author Terry Jia
  */
-@SuppressWarnings( { "unchecked", "restriction", "rawtypes" } )
-public class PluginFacetProjectCreationDataModelProvider extends WebFacetProjectCreationDataModelProvider
-    implements IPluginProjectDataModelProperties
-{
+@SuppressWarnings({"unchecked", "restriction", "rawtypes"})
+public class PluginFacetProjectCreationDataModelProvider
+	extends WebFacetProjectCreationDataModelProvider implements IPluginProjectDataModelProperties {
 
-    @Override
-    public Object getDefaultProperty( String propertyName )
-    {
-        if( LIFERAY_SDK_NAME.equals( propertyName ) )
-        {
-            SDK sdk = SDKManager.getInstance().getDefaultSDK();
+	@Override
+	public Object getDefaultProperty(String propertyName) {
+		if (LIFERAY_SDK_NAME.equals(propertyName)) {
+			SDKManager sdkManager = SDKManager.getInstance();
 
-            if( sdk != null )
-            {
-                return sdk.getName();
-            }
-            else
-            {
-                return IPluginFacetConstants.LIFERAY_SDK_NAME_DEFAULT_VALUE;
-            }
-        }
-        else if( LIFERAY_USE_SDK_LOCATION.equals( propertyName ) )
-        {
-            return true;
-        }
-        else if( USE_DEFAULT_LOCATION.equals( propertyName ) )
-        {
-            return false;
-        }
-        else if( LIFERAY_USE_CUSTOM_LOCATION.equals( propertyName ) )
-        {
-            return false;
-        }
-        else if( LIFERAY_USE_WORKSPACE_LOCATION.equals( propertyName ) )
-        {
-            return false;
-        }
-        else if( PLUGIN_TYPE_PORTLET.equals( propertyName ) )
-        {
-            return true;
-        }
-        else if( PORTLET_NAME.equals( propertyName ) )
-        {
-            return getProperty( PROJECT_NAME );
-        }
-        else if( DISPLAY_NAME.equals( propertyName ) )
-        {
-            return ProjectUtil.convertToDisplayName( getStringProperty( PROJECT_NAME ) );
-        }
-        else if( HOOK_NAME.equals( propertyName ) )
-        {
-            return getProperty( PROJECT_NAME );
-        }
-        else if( EXT_NAME.equals( propertyName ) )
-        {
-            return getProperty( PROJECT_NAME );
-        }
-        else if( THEME_NAME.equals( propertyName ) )
-        {
-            return getProperty( PROJECT_NAME );
-        }
-        else if( LAYOUTTPL_NAME.equals( propertyName ) )
-        {
-            return getProperty( PROJECT_NAME );
-        }
-        else if( CREATE_PROJECT_OPERATION.equals( propertyName ) )
-        {
-            return true;
-        }
-        else if( PORTLET_FRAMEWORK_ID.equals( propertyName ) )
-        {
-            return ProjectCore.getPortletFrameworks()[0].getId();
-        }
-        else if( THEME_PARENT.equals( propertyName ) )
-        {
-            return "_styled"; //$NON-NLS-1$
-        }
-        else if( THEME_TEMPLATE_FRAMEWORK.equals( propertyName ) )
-        {
-            return "Velocity"; //$NON-NLS-1$
-        }
+			SDK sdk = sdkManager.getDefaultSDK();
 
-        return super.getDefaultProperty( propertyName );
-    }
+			if (sdk != null) {
+				return sdk.getName();
+			}
 
-    protected IFacetedProjectWorkingCopy getFacetedProjectWorkingCopy()
-    {
-        return (IFacetedProjectWorkingCopy) this.model.getProperty( FACETED_PROJECT_WORKING_COPY );
-    }
+			return IPluginFacetConstants.LIFERAY_SDK_NAME_DEFAULT_VALUE;
+		}
+		else if (LIFERAY_USE_SDK_LOCATION.equals(propertyName)) {
+			return true;
+		}
+		else if (USE_DEFAULT_LOCATION.equals(propertyName)) {
+			return false;
+		}
+		else if (LIFERAY_USE_CUSTOM_LOCATION.equals(propertyName)) {
+			return false;
+		}
+		else if (LIFERAY_USE_WORKSPACE_LOCATION.equals(propertyName)) {
+			return false;
+		}
+		else if (PLUGIN_TYPE_PORTLET.equals(propertyName)) {
+			return true;
+		}
+		else if (PORTLET_NAME.equals(propertyName)) {
+			return getProperty(PROJECT_NAME);
+		}
+		else if (DISPLAY_NAME.equals(propertyName)) {
+			return ProjectUtil.convertToDisplayName(getStringProperty(PROJECT_NAME));
+		}
+		else if (HOOK_NAME.equals(propertyName)) {
+			return getProperty(PROJECT_NAME);
+		}
+		else if (EXT_NAME.equals(propertyName)) {
+			return getProperty(PROJECT_NAME);
+		}
+		else if (THEME_NAME.equals(propertyName)) {
+			return getProperty(PROJECT_NAME);
+		}
+		else if (LAYOUTTPL_NAME.equals(propertyName)) {
+			return getProperty(PROJECT_NAME);
+		}
+		else if (CREATE_PROJECT_OPERATION.equals(propertyName)) {
+			return true;
+		}
+		else if (PORTLET_FRAMEWORK_ID.equals(propertyName)) {
+			return ProjectCore.getPortletFrameworks()[0].getId();
+		}
+		else if (THEME_PARENT.equals(propertyName)) {
+			return "_styled";
+		}
+		else if (THEME_TEMPLATE_FRAMEWORK.equals(propertyName)) {
+			return "Velocity";
+		}
 
-    protected IDataModel getModel()
-    {
-        return this.model;
-    }
+		return super.getDefaultProperty(propertyName);
+	}
 
-    protected IDataModel getNestedModel()
-    {
-        return getDataModel().getNestedModel( NESTED_PROJECT_DM );
-    }
+	@Override
+	public DataModelPropertyDescriptor getPropertyDescriptor(String propertyName) {
+		if (LIFERAY_SDK_NAME.equals(propertyName)) {
+			Object val = getProperty(propertyName);
 
-    protected String getDefaultSDKProjectBaseLocation()
-    {
-        IPath sdkLoc = getSDKLocation();
+			if (IPluginFacetConstants.LIFERAY_SDK_NAME_DEFAULT_VALUE.equals(val) || StringPool.EMPTY.equals(val)) {
+				return new DataModelPropertyDescriptor(
+					getProperty(propertyName), IPluginFacetConstants.LIFERAY_SDK_NAME_DEFAULT_VALUE_DESCRIPTION);
+			}
 
-        if( sdkLoc == null )
-        {
-            return null;
-        }
+			return new DataModelPropertyDescriptor(val, val.toString());
+		}
 
-        if( getBooleanProperty( PLUGIN_TYPE_PORTLET ) )
-        {
-            return sdkLoc.append( ISDKConstants.PORTLET_PLUGIN_PROJECT_FOLDER ).toOSString();
-        }
-        else if( getBooleanProperty( PLUGIN_TYPE_HOOK ) )
-        {
-            return sdkLoc.append( ISDKConstants.HOOK_PLUGIN_PROJECT_FOLDER ).toOSString();
-        }
-        else if( getBooleanProperty( PLUGIN_TYPE_EXT ) )
-        {
-            return sdkLoc.append( ISDKConstants.EXT_PLUGIN_PROJECT_FOLDER ).toOSString();
-        }
-        else if( getBooleanProperty( PLUGIN_TYPE_THEME ) )
-        {
-            return sdkLoc.append( ISDKConstants.THEME_PLUGIN_PROJECT_FOLDER ).toOSString();
-        }
-        else if( getBooleanProperty( PLUGIN_TYPE_LAYOUTTPL ) )
-        {
-            return sdkLoc.append( ISDKConstants.LAYOUTTPL_PLUGIN_PROJECT_FOLDER ).toOSString();
-        }
-        else if( getBooleanProperty( PLUGIN_TYPE_WEB ) )
-        {
-            return sdkLoc.append( ISDKConstants.WEB_PLUGIN_PROJECT_FOLDER ).toOSString();
-        }
+		return super.getPropertyDescriptor(propertyName);
+	}
 
-        return null;
-    }
+	@Override
+	public Set getPropertyNames() {
+		Set propNames = super.getPropertyNames();
 
-    protected String getProjectSuffix()
-    {
-        if( getBooleanProperty( PLUGIN_TYPE_PORTLET ) )
-        {
-            return ISDKConstants.PORTLET_PLUGIN_PROJECT_SUFFIX;
-        }
-        else if( getBooleanProperty( PLUGIN_TYPE_HOOK ) )
-        {
-            return ISDKConstants.HOOK_PLUGIN_PROJECT_SUFFIX;
-        }
-        else if( getBooleanProperty( PLUGIN_TYPE_EXT ) )
-        {
-            return ISDKConstants.EXT_PLUGIN_PROJECT_SUFFIX;
-        }
-        else if( getBooleanProperty( PLUGIN_TYPE_THEME ) )
-        {
-            return ISDKConstants.THEME_PLUGIN_PROJECT_SUFFIX;
-        }
-        else if( getBooleanProperty( PLUGIN_TYPE_LAYOUTTPL ) )
-        {
-            return ISDKConstants.LAYOUTTPL_PLUGIN_PROJECT_SUFFIX;
-        }
-        else if( getBooleanProperty( PLUGIN_TYPE_WEB ) )
-        {
-            return ISDKConstants.WEB_PLUGIN_PROJECT_SUFFIX;
-        }
+		propNames.add(LIFERAY_SDK_NAME);
+		propNames.add(LIFERAY_USE_SDK_LOCATION);
+		propNames.add(LIFERAY_USE_CUSTOM_LOCATION);
+		propNames.add(PLUGIN_TYPE_PORTLET);
+		propNames.add(PLUGIN_TYPE_HOOK);
+		propNames.add(PLUGIN_TYPE_EXT);
+		propNames.add(PLUGIN_TYPE_THEME);
+		propNames.add(PLUGIN_TYPE_LAYOUTTPL);
+		propNames.add(PLUGIN_TYPE_WEB);
+		propNames.add(DISPLAY_NAME);
+		propNames.add(PORTLET_NAME);
+		propNames.add(HOOK_NAME);
+		propNames.add(EXT_NAME);
+		propNames.add(THEME_NAME);
+		propNames.add(LAYOUTTPL_NAME);
+		propNames.add(CREATE_PROJECT_OPERATION);
+		propNames.add(PLUGIN_FRAGMENT_ENABLED);
+		propNames.add(PLUGIN_FRAGMENT_DM);
+		propNames.add(PORTLET_FRAMEWORK_ID);
+		propNames.add(THEME_PARENT);
+		propNames.add(THEME_TEMPLATE_FRAMEWORK);
+		propNames.add(PROJECT_TEMP_PATH);
+		propNames.add(LIFERAY_USE_WORKSPACE_LOCATION);
 
-        return null;
-    }
+		return propNames;
+	}
 
-    @Override
-    public DataModelPropertyDescriptor getPropertyDescriptor( String propertyName )
-    {
-        if( LIFERAY_SDK_NAME.equals( propertyName ) )
-        {
-            Object val = getProperty( propertyName );
+	@Override
+	public void init() {
+		super.init();
 
-            if( IPluginFacetConstants.LIFERAY_SDK_NAME_DEFAULT_VALUE.equals( val ) || StringPool.EMPTY.equals( val ) )
-            {
-                return new DataModelPropertyDescriptor(
-                    getProperty( propertyName ), IPluginFacetConstants.LIFERAY_SDK_NAME_DEFAULT_VALUE_DESCRIPTION );
-            }
-            else
-            {
-                return new DataModelPropertyDescriptor( val, val.toString() );
-            }
-        }
+		getDataModel().setProperty(LIFERAY_USE_SDK_LOCATION, true);
 
-        return super.getPropertyDescriptor( propertyName );
-    }
+		DataModelPropertyDescriptor[] validDescriptors = getDataModel().getValidPropertyDescriptors(FACET_RUNTIME);
 
-    @Override
-    public Set getPropertyNames()
-    {
-        Set propNames = super.getPropertyNames();
+		for (DataModelPropertyDescriptor desc : validDescriptors) {
+			Object runtime = desc.getPropertyValue();
 
-        propNames.add( LIFERAY_SDK_NAME );
-        propNames.add( LIFERAY_USE_SDK_LOCATION );
-        propNames.add( LIFERAY_USE_CUSTOM_LOCATION );
-        propNames.add( PLUGIN_TYPE_PORTLET );
-        propNames.add( PLUGIN_TYPE_HOOK );
-        propNames.add( PLUGIN_TYPE_EXT );
-        propNames.add( PLUGIN_TYPE_THEME );
-        propNames.add( PLUGIN_TYPE_LAYOUTTPL );
-        propNames.add( PLUGIN_TYPE_WEB );
-        propNames.add( DISPLAY_NAME );
-        propNames.add( PORTLET_NAME );
-        propNames.add( HOOK_NAME );
-        propNames.add( EXT_NAME );
-        propNames.add( THEME_NAME );
-        propNames.add( LAYOUTTPL_NAME );
-        propNames.add( CREATE_PROJECT_OPERATION );
-        propNames.add( PLUGIN_FRAGMENT_ENABLED );
-        propNames.add( PLUGIN_FRAGMENT_DM );
-        propNames.add( PORTLET_FRAMEWORK_ID );
-        propNames.add( THEME_PARENT );
-        propNames.add( THEME_TEMPLATE_FRAMEWORK );
-        propNames.add( PROJECT_TEMP_PATH );
-        propNames.add( LIFERAY_USE_WORKSPACE_LOCATION );
+			if ((runtime instanceof BridgedRuntime) && ServerUtil.isLiferayRuntime((BridgedRuntime)runtime)) {
+				getDataModel().setProperty(FACET_RUNTIME, runtime);
 
-        return propNames;
-    }
+				break;
+			}
+		}
 
-    protected IPath getSDKLocation()
-    {
-        SDK sdk = SDKManager.getInstance().getSDK( (String) getProperty( LIFERAY_SDK_NAME ) );
-        return sdk != null ? sdk.getLocation() : null;
-    }
+		ProjectCore.getPortletFrameworks();
+	}
 
-    @Override
-    public void init()
-    {
-        super.init();
+	@Override
+	public boolean propertySet(final String propertyName, final Object propertyValue) {
+		String portletFrameworkId = getStringProperty(PORTLET_FRAMEWORK_ID);
 
-        getDataModel().setProperty( LIFERAY_USE_SDK_LOCATION, true );
+		IPortletFramework portletFramework = ProjectCore.getPortletFramework(portletFrameworkId);
 
-        DataModelPropertyDescriptor[] validDescriptors = getDataModel().getValidPropertyDescriptors( FACET_RUNTIME );
+		if (FACET_PROJECT_NAME.equals(propertyName) || LIFERAY_SDK_NAME.equals(propertyName) ||
+			LIFERAY_USE_WORKSPACE_LOCATION.equals(propertyName) || LIFERAY_USE_CUSTOM_LOCATION.equals(propertyName)) {
 
-        for( DataModelPropertyDescriptor desc : validDescriptors )
-        {
-            Object runtime = desc.getPropertyValue();
+			updateProjectLocation();
+		}
+		else if (DISPLAY_NAME.equals(propertyName)) {
+			String displayName = ProjectUtil.removePluginSuffix(propertyValue.toString());
 
-            if( runtime instanceof BridgedRuntime && ServerUtil.isLiferayRuntime( (BridgedRuntime) runtime ) )
-            {
-                getDataModel().setProperty( FACET_RUNTIME, runtime );
-                break;
-            }
-        }
+			return super.propertySet(DISPLAY_NAME, displayName);
+		}
+		else if (PORTLET_FRAMEWORK_ID.equals(propertyName) && (portletFramework != null)) {
+			setupPortletFramework(portletFramework);
+		}
 
-        ProjectCore.getPortletFrameworks();
-    }
+		return super.propertySet(propertyName, propertyValue);
+	}
 
-    @Override
-    public boolean propertySet( final String propertyName, final Object propertyValue )
-    {
-        String portletFrameworkId = getStringProperty( PORTLET_FRAMEWORK_ID );
+	protected String getDefaultSDKProjectBaseLocation() {
+		IPath sdkLoc = getSDKLocation();
 
-        IPortletFramework portletFramework = ProjectCore.getPortletFramework( portletFrameworkId );
+		if (sdkLoc == null) {
+			return null;
+		}
 
-        if( FACET_PROJECT_NAME.equals( propertyName ) || LIFERAY_SDK_NAME.equals( propertyName ) ||
-            LIFERAY_USE_WORKSPACE_LOCATION.equals( propertyName ) || LIFERAY_USE_CUSTOM_LOCATION.equals( propertyName ) )
-        {
-            updateProjectLocation();
-        }
-        else if( DISPLAY_NAME.equals( propertyName ) )
-        {
-            String displayName = ProjectUtil.removePluginSuffix( propertyValue.toString() );
+		if (getBooleanProperty(PLUGIN_TYPE_PORTLET)) {
+			return FileUtil.toOSString(sdkLoc.append(ISDKConstants.PORTLET_PLUGIN_PROJECT_FOLDER));
+		}
+		else if (getBooleanProperty(PLUGIN_TYPE_HOOK)) {
+			return FileUtil.toOSString(sdkLoc.append(ISDKConstants.HOOK_PLUGIN_PROJECT_FOLDER));
+		}
+		else if (getBooleanProperty(PLUGIN_TYPE_EXT)) {
+			return FileUtil.toOSString(sdkLoc.append(ISDKConstants.EXT_PLUGIN_PROJECT_FOLDER));
+		}
+		else if (getBooleanProperty(PLUGIN_TYPE_THEME)) {
+			return FileUtil.toOSString(sdkLoc.append(ISDKConstants.THEME_PLUGIN_PROJECT_FOLDER));
+		}
+		else if (getBooleanProperty(PLUGIN_TYPE_LAYOUTTPL)) {
+			return FileUtil.toOSString(sdkLoc.append(ISDKConstants.LAYOUTTPL_PLUGIN_PROJECT_FOLDER));
+		}
+		else if (getBooleanProperty(PLUGIN_TYPE_WEB)) {
+			return FileUtil.toOSString(sdkLoc.append(ISDKConstants.WEB_PLUGIN_PROJECT_FOLDER));
+		}
 
-            return super.propertySet( DISPLAY_NAME, displayName );
-        }
-        else if( PORTLET_FRAMEWORK_ID.equals( propertyName ) && portletFramework != null )
-        {
-            setupPortletFramework( portletFramework );
-        }
+		return null;
+	}
 
-        return super.propertySet( propertyName, propertyValue );
-    }
+	protected IFacetedProjectWorkingCopy getFacetedProjectWorkingCopy() {
+		return (IFacetedProjectWorkingCopy)model.getProperty(FACETED_PROJECT_WORKING_COPY);
+	}
 
-    protected void removeFacet( IFacetedProjectWorkingCopy facetedProject, IProjectFacet facet )
-    {
-        if( facetedProject == null || facet == null )
-        {
-            return;
-        }
+	protected IDataModel getModel() {
+		return model;
+	}
 
-        Set<IProjectFacetVersion> newFacetSet = new HashSet<IProjectFacetVersion>();
-        Set<IProjectFacetVersion> facets = facetedProject.getProjectFacets();
+	protected IDataModel getNestedModel() {
+		return getDataModel().getNestedModel(NESTED_PROJECT_DM);
+	}
 
-        for( IProjectFacetVersion fv : facets )
-        {
-            if( !( fv.getProjectFacet().equals( facet ) ) )
-            {
-                newFacetSet.add( fv );
-            }
-        }
+	protected String getProjectSuffix() {
+		if (getBooleanProperty(PLUGIN_TYPE_PORTLET)) {
+			return ISDKConstants.PORTLET_PLUGIN_PROJECT_SUFFIX;
+		}
+		else if (getBooleanProperty(PLUGIN_TYPE_HOOK)) {
+			return ISDKConstants.HOOK_PLUGIN_PROJECT_SUFFIX;
+		}
+		else if (getBooleanProperty(PLUGIN_TYPE_EXT)) {
+			return ISDKConstants.EXT_PLUGIN_PROJECT_SUFFIX;
+		}
+		else if (getBooleanProperty(PLUGIN_TYPE_THEME)) {
+			return ISDKConstants.THEME_PLUGIN_PROJECT_SUFFIX;
+		}
+		else if (getBooleanProperty(PLUGIN_TYPE_LAYOUTTPL)) {
+			return ISDKConstants.LAYOUTTPL_PLUGIN_PROJECT_SUFFIX;
+		}
+		else if (getBooleanProperty(PLUGIN_TYPE_WEB)) {
+			return ISDKConstants.WEB_PLUGIN_PROJECT_SUFFIX;
+		}
 
-        facetedProject.setProjectFacets( newFacetSet );
-    }
+		return null;
+	}
 
-    protected void setupPortletFramework( IPortletFramework portletFramework )
-    {
-        IPortletFramework[] portletFrameworks = ProjectCore.getPortletFrameworks();
+	protected IPath getSDKLocation() {
+		SDKManager manager = SDKManager.getInstance();
 
-        for( IPortletFramework framework : portletFrameworks )
-        {
-            if( !framework.equals( portletFramework ) )
-            {
-                IProjectFacet[] facets = framework.getFacets();
+		SDK sdk = manager.getSDK((String)getProperty(LIFERAY_SDK_NAME));
 
-                for( IProjectFacet facet : facets )
-                {
-                    removeFacet( getFacetedProjectWorkingCopy(), facet );
-                }
-            }
-        }
+		if (sdk != null) {
+			return sdk.getLocation();
+		}
 
-        portletFramework.configureNewProject( getDataModel(), getFacetedProjectWorkingCopy() );
-    }
+		return null;
+	}
 
-    protected void updateProjectLocation()
-    {
-        boolean useSdkLocation = getBooleanProperty( LIFERAY_USE_SDK_LOCATION );
-        boolean useCustomLocation = getBooleanProperty( LIFERAY_USE_CUSTOM_LOCATION );
+	protected void removeFacet(IFacetedProjectWorkingCopy facetedProject, IProjectFacet facet) {
+		if ((facetedProject == null) || (facet == null)) {
+			return;
+		}
 
-        final String projectBaseLocation = getDefaultSDKProjectBaseLocation();
+		Set<IProjectFacetVersion> newFacetSet = new HashSet<>();
 
-        if( useSdkLocation )
-        {
-            getNestedModel().setProperty( USE_DEFAULT_LOCATION, false );
-            getNestedModel().setProperty( USER_DEFINED_BASE_LOCATION, projectBaseLocation );
-        }
-        else if( useCustomLocation )
-        {
-            getNestedModel().setProperty( USE_DEFAULT_LOCATION, false );
-            getNestedModel().setProperty( USER_DEFINED_BASE_LOCATION, projectBaseLocation );
-        }
-        else
-        {
-            getNestedModel().setProperty( USE_DEFAULT_LOCATION, true );
-        }
-    }
+		Set<IProjectFacetVersion> facets = facetedProject.getProjectFacets();
+
+		for (IProjectFacetVersion fv : facets) {
+			if (!facet.equals(fv.getProjectFacet())) {
+				newFacetSet.add(fv);
+			}
+		}
+
+		facetedProject.setProjectFacets(newFacetSet);
+	}
+
+	protected void setupPortletFramework(IPortletFramework portletFramework) {
+		IPortletFramework[] portletFrameworks = ProjectCore.getPortletFrameworks();
+
+		for (IPortletFramework framework : portletFrameworks) {
+			if (!framework.equals(portletFramework)) {
+				IProjectFacet[] facets = framework.getFacets();
+
+				for (IProjectFacet facet : facets) {
+					removeFacet(getFacetedProjectWorkingCopy(), facet);
+				}
+			}
+		}
+
+		portletFramework.configureNewProject(getDataModel(), getFacetedProjectWorkingCopy());
+	}
+
+	protected void updateProjectLocation() {
+		boolean useSdkLocation = getBooleanProperty(LIFERAY_USE_SDK_LOCATION);
+		boolean useCustomLocation = getBooleanProperty(LIFERAY_USE_CUSTOM_LOCATION);
+
+		final String projectBaseLocation = getDefaultSDKProjectBaseLocation();
+
+		if (useSdkLocation) {
+			getNestedModel().setProperty(USE_DEFAULT_LOCATION, false);
+			getNestedModel().setProperty(USER_DEFINED_BASE_LOCATION, projectBaseLocation);
+		}
+		else if (useCustomLocation) {
+			getNestedModel().setProperty(USE_DEFAULT_LOCATION, false);
+			getNestedModel().setProperty(USER_DEFINED_BASE_LOCATION, projectBaseLocation);
+		}
+		else {
+			getNestedModel().setProperty(USE_DEFAULT_LOCATION, true);
+		}
+	}
 
 }

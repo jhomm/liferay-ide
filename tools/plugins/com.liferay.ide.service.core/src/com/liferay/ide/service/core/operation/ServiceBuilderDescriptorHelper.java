@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,19 +10,20 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.service.core.operation;
 
 import com.liferay.ide.core.ILiferayConstants;
 import com.liferay.ide.core.util.CoreUtil;
+import com.liferay.ide.core.util.FileUtil;
 import com.liferay.ide.core.util.NodeUtil;
 import com.liferay.ide.project.core.descriptor.LiferayDescriptorHelper;
 import com.liferay.ide.project.core.descriptor.RemoveSampleElementsOperation;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -32,6 +33,7 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.wst.xml.core.internal.provisional.document.IDOMDocument;
 import org.eclipse.wst.xml.core.internal.provisional.format.FormatProcessorXML;
+
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -40,414 +42,448 @@ import org.w3c.dom.NodeList;
 /**
  * @author Kuo Zhang
  */
-@SuppressWarnings( "restriction" )
-public class ServiceBuilderDescriptorHelper extends LiferayDescriptorHelper
-{
-    private static final String DESCRIPTOR_FILE = ILiferayConstants.SERVICE_XML_FILE; 
-
-    private final String NEW_LINE = System.getProperty( "line.separator" );
-
-    public ServiceBuilderDescriptorHelper()
-    {
-        super();
-    }
-
-    public ServiceBuilderDescriptorHelper( IProject project )
-    {
-        super( project );
-    }
-
-    public IStatus addDefaultColumns( final String elementName )
-    {
-        final IFile descriptorFile = getDescriptorFile();
-
-        DOMModelEditOperation editOperation = new DOMModelEditOperation( descriptorFile )
-        {
-            @Override
-            protected IStatus doExecute( IDOMDocument document )
-            {
-                return doAddDefaultColumns( document, elementName );
-            }
-        };
-
-        return editOperation.execute();
-    }
-
-    public IStatus addDefaultEntity()
-    {
-        IStatus status = Status.OK_STATUS;
-
-        final IFile descriptorFile = getDescriptorFile();
-
-        if( descriptorFile != null )
-        {
-            DOMModelEditOperation editOperation = new DOMModelEditOperation( descriptorFile )
-            {
-                @Override
-                protected IStatus doExecute( IDOMDocument document )
-                {
-                    return doAddDefaultEntity( document );
-                }
-            };
-
-            status = editOperation.execute();
-        }
-
-        return status;
-    }
-
-    @Override
-    protected void addDescriptorOperations()
-    {
-        addDescriptorOperation
-        (
-            new RemoveSampleElementsOperation()
-            {
-                @Override
-                public IStatus removeSampleElements()
-                {
-                    return removeAllEntities();
-                }
-            }
-        );
-    }
-
-    public IStatus addEntity( final String entityName )
-    {
-        final IFile descriptorFile = getDescriptorFile();
-
-        if( descriptorFile == null || ! descriptorFile.exists() )
-        {
-            return Status.OK_STATUS;
-        }
-
-        DOMModelEditOperation editOperation = new DOMModelEditOperation( descriptorFile )
-        {
-            @Override
-            protected IStatus doExecute( IDOMDocument document )
-            {
-                return doAddEntity( document, entityName );
-            }
-        };
-
-        return editOperation.execute();
-    }
-
-    private void appendComment( Element element, String comment )
-    {
-        final Document document = element.getOwnerDocument();
-
-        element.appendChild( document.createTextNode( NEW_LINE + NEW_LINE ) );
-        element.appendChild( document.createComment( comment ) );
-        element.appendChild( document.createTextNode( NEW_LINE + NEW_LINE ) );
-    }
-
-    protected IStatus doAddDefaultColumns( IDOMDocument document, String entityName )
-    {
-        Element entityElement = null;
-
-        NodeList nodes = document.getDocumentElement().getChildNodes();
+@SuppressWarnings("restriction")
+public class ServiceBuilderDescriptorHelper extends LiferayDescriptorHelper {
 
-        if( nodes != null && nodes.getLength() > 0 )
-        {
-            for( int i = 0; i < nodes.getLength(); i++ )
-            {
-                Node node = nodes.item( i );
-
-                if( node.getNodeName().equals( "entity" )  && node instanceof Element )
-                {
-                   if( entityName.equals( ( (Element) node ).getAttribute( "name" ) ) )
-                   {
-                       entityElement = (Element)node;
-                   }
-                }
-            }
-        }
+	public ServiceBuilderDescriptorHelper() {
+	}
 
-        if( entityElement == null )
-        {
-            return Status.CANCEL_STATUS;
-        }
+	public ServiceBuilderDescriptorHelper(IFile serviceXMLFile) {
+		_serviceXMLFile = serviceXMLFile;
+	}
 
-        // <!-- PK fields -->
-        appendComment( entityElement, " PK fields " );
+	public ServiceBuilderDescriptorHelper(IProject project) {
+		super(project);
+	}
 
-        Element columnElem = NodeUtil.appendChildElement( entityElement, "column" );
-        columnElem.setAttribute( "name", generateEntityId( entityName ) );
-        columnElem.setAttribute( "type", "long" );
-        columnElem.setAttribute( "primary", "true" );
+	public IStatus addDefaultColumns(String elementName) {
+		DOMModelEditOperation editOperation = new DOMModelEditOperation(getDescriptorFile()) {
 
-        // <!-- Group instance -->
-        appendComment( entityElement, " Group instance " );
-        columnElem = NodeUtil.appendChildElement( entityElement, "column" );
-        columnElem.setAttribute( "name", "groupId" );
-        columnElem.setAttribute( "type", "long" );
+			@Override
+			protected IStatus doExecute(IDOMDocument document) {
+				return doAddDefaultColumns(document, elementName);
+			}
 
-        //<!-- Aduit fields -->
-        appendComment( entityElement, " Audit fields " );
-
-        columnElem = NodeUtil.appendChildElement( entityElement, "column" );
-        columnElem.setAttribute( "name", "companyId" );
-        columnElem.setAttribute( "type", "long" );
+		};
 
-        columnElem = NodeUtil.appendChildElement( entityElement, "column" );
-        columnElem.setAttribute( "name", "userId" );
-        columnElem.setAttribute( "type", "long" );
+		return editOperation.execute();
+	}
 
-        columnElem = NodeUtil.appendChildElement( entityElement, "column" );
-        columnElem.setAttribute( "name", "userName" );
-        columnElem.setAttribute( "type", "String" );
+	public IStatus addDefaultEntity() {
+		IStatus status = Status.OK_STATUS;
 
-        columnElem = NodeUtil.appendChildElement( entityElement, "column" );
-        columnElem.setAttribute( "name", "createDate" );
-        columnElem.setAttribute( "type", "Date" );
+		IFile descriptorFile = getDescriptorFile();
 
-        columnElem = NodeUtil.appendChildElement( entityElement, "column" );
-        columnElem.setAttribute( "name", "modifiedDate" );
-        columnElem.setAttribute( "type", "Date" );
-
-        entityElement.appendChild( document.createTextNode( NEW_LINE ) );
-
-        new FormatProcessorXML().formatNode( entityElement );
-
-        return Status.OK_STATUS;
-    }
+		if (descriptorFile != null) {
+			DOMModelEditOperation editOperation = new DOMModelEditOperation(descriptorFile) {
 
-    protected IStatus doAddDefaultEntity( IDOMDocument document )
-    {
-        final String entityName = generateSampleEntityName( document );
+				@Override
+				protected IStatus doExecute(IDOMDocument document) {
+					return doAddDefaultEntity(document);
+				}
 
-        Element rootElement = document.getDocumentElement();
+			};
 
-        // new <entity> element
-        Element entityElement = document.createElement( "entity" );
-        entityElement.setAttribute( "name", entityName );
-        entityElement.setAttribute( "local-service", "true" );
-        entityElement.setAttribute( "remote-service", "true" );
+			status = editOperation.execute();
+		}
 
-        // <!-- PK fields -->
-        appendComment( entityElement, " PK fields " );
+		return status;
+	}
 
-        Element columnElem = NodeUtil.appendChildElement( entityElement, "column" );
+	public IStatus addEntity(String entityName) {
+		IFile descriptorFile = getDescriptorFile();
 
-        columnElem.setAttribute( "name", generateEntityId( entityName ) );
-        columnElem.setAttribute( "type", "long" );
-        columnElem.setAttribute( "primary", "true" );
+		if (FileUtil.notExists(descriptorFile)) {
+			return Status.OK_STATUS;
+		}
 
-        // <!-- Group instance -->
-        appendComment( entityElement, " Group instance " );
-        columnElem = NodeUtil.appendChildElement( entityElement, "column" );
-        columnElem.setAttribute( "name", "groupId" );
-        columnElem.setAttribute( "type", "long" );
+		DOMModelEditOperation editOperation = new DOMModelEditOperation(descriptorFile) {
 
-        //<!-- Aduit fields -->
-        appendComment( entityElement, " Audit fields " );
+			@Override
+			protected IStatus doExecute(IDOMDocument document) {
+				return doAddEntity(document, entityName);
+			}
 
-        columnElem = NodeUtil.appendChildElement( entityElement, "column" );
-        columnElem.setAttribute( "name", "companyId" );
-        columnElem.setAttribute( "type", "long" );
+		};
 
-        columnElem = NodeUtil.appendChildElement( entityElement, "column" );
-        columnElem.setAttribute( "name", "userId" );
-        columnElem.setAttribute( "type", "long" );
+		return editOperation.execute();
+	}
 
-        columnElem = NodeUtil.appendChildElement( entityElement, "column" );
-        columnElem.setAttribute( "name", "userName" );
-        columnElem.setAttribute( "type", "String" );
+	@Override
+	public IFile getDescriptorFile() {
+		if ((_serviceXMLFile != null) && _serviceXMLFile.exists()) {
+			return _serviceXMLFile;
+		}
 
-        columnElem = NodeUtil.appendChildElement( entityElement, "column" );
-        columnElem.setAttribute( "name", "createDate" );
-        columnElem.setAttribute( "type", "Date" );
+		IFile serviceXmlFile = super.getDescriptorFile(ILiferayConstants.SERVICE_XML_FILE);
 
-        columnElem = NodeUtil.appendChildElement( entityElement, "column" );
-        columnElem.setAttribute( "name", "modifiedDate" );
-        columnElem.setAttribute( "type", "Date" );
+		if ((serviceXmlFile != null) && serviceXmlFile.exists()) {
+			return serviceXmlFile;
+		}
 
-        //<!-- Other fields -->
-        appendComment( entityElement, " Other fields " );
+		return null;
+	}
 
-        columnElem = NodeUtil.appendChildElement( entityElement, "column" );
-        columnElem.setAttribute( "name", "field1" );
-        columnElem.setAttribute( "type", "String" );
+	public IStatus removeAllEntities() {
+		IFile descriptorFile = getDescriptorFile();
 
-        columnElem = NodeUtil.appendChildElement( entityElement, "column" );
-        columnElem.setAttribute( "name", "field2" );
-        columnElem.setAttribute( "type", "boolean" );
+		if (FileUtil.notExists(descriptorFile)) {
+			return Status.OK_STATUS;
+		}
 
-        columnElem = NodeUtil.appendChildElement( entityElement, "column" );
-        columnElem.setAttribute( "name", "field3" );
-        columnElem.setAttribute( "type", "int" );
+		String tagName = "entity";
 
-        columnElem = NodeUtil.appendChildElement( entityElement, "column" );
-        columnElem.setAttribute( "name", "field4" );
-        columnElem.setAttribute( "type", "Date" );
+		DOMModelEditOperation editOperation = new DOMModelEditOperation(descriptorFile) {
 
-        columnElem = NodeUtil.appendChildElement( entityElement, "column" );
-        columnElem.setAttribute( "name", "field5" );
-        columnElem.setAttribute( "type", "String" );
+			@Override
+			protected IStatus doExecute(IDOMDocument document) {
+				return removeAllElements(document, tagName);
+			}
 
-        // <!-- Order -->
-        appendComment( entityElement, " Order " );
+		};
 
-        final Element orderElem = NodeUtil.appendChildElement( entityElement, "order" );
-        orderElem.setAttribute( "by", "asc" );
-        NodeUtil.appendChildElement( orderElem, "order-column" ).setAttribute( "name", "field1" );
+		return editOperation.execute();
+	}
 
-        // <!-- Finder methods -->
-        appendComment( entityElement, " Finder methods " );
+	@Override
+	protected void addDescriptorOperations() {
+		addDescriptorOperation(
+			new RemoveSampleElementsOperation() {
 
-        final Element finderElem = NodeUtil.appendChildElement( entityElement, "finder" );
-        finderElem.setAttribute( "name", "Field2" );
-        finderElem.setAttribute( "return-type", "Collection" );
-        NodeUtil.appendChildElement( finderElem, "finder-column" ).setAttribute( "name", "field2" );
+				@Override
+				public IStatus removeSampleElements() {
+					return removeAllEntities();
+				}
 
-        // Insert the <entity> element
-        Node refNode = NodeUtil.findFirstChild( rootElement, "exceptions" );
-        if( refNode == null )
-        {
-            NodeUtil.findFirstChild( rootElement, "service-builder-import" );
-        }
+			});
+	}
 
-        rootElement.insertBefore( entityElement, refNode );
+	protected IStatus doAddDefaultColumns(IDOMDocument document, String entityName) {
+		Element entityElement = null;
 
-        new FormatProcessorXML().formatNode( entityElement );
+		Element element = document.getDocumentElement();
 
-        rootElement.appendChild( document.createTextNode( NEW_LINE ) );
+		NodeList nodes = element.getChildNodes();
 
-        return Status.OK_STATUS;
-    }
+		if ((nodes != null) && (nodes.getLength() > 0)) {
+			for (int i = 0; i < nodes.getLength(); i++) {
+				Node node = nodes.item(i);
 
-    protected IStatus doAddEntity( IDOMDocument document, String entityName )
-    {
-        NodeList entities = document.getElementsByTagName( "entity" );
+				if (Objects.equals("entity", node.getNodeName()) && (node instanceof Element)) {
+					Element elementNode = (Element)node;
 
-        // If there is entity named "entityName", do nothing
-        for( int i = 0; i < entities.getLength(); ++i )
-        {
-            Node entity = entities.item( i );
+					if (entityName.equals(elementNode.getAttribute("name"))) {
+						entityElement = (Element)node;
+					}
+				}
+			}
+		}
 
-            if( entity instanceof Element )
-            {
-                String name = ( (Element) entity ).getAttribute( "name" );
+		if (entityElement == null) {
+			return Status.CANCEL_STATUS;
+		}
 
-                if( name != null && name.equals( entityName ) )
-                {
-                    return Status.OK_STATUS;
-                }
-            }
+		// <!-- PK fields -->
 
-        }
+		_appendComment(entityElement, " PK fields ");
 
-        Element rootElement = document.getDocumentElement();
+		Element columnElem = NodeUtil.appendChildElement(entityElement, "column");
 
-        // new <entity> element
-        Element entityElement = document.createElement( "entity" );
+		columnElem.setAttribute("name", _generateEntityId(entityName));
+		columnElem.setAttribute("primary", "true");
+		columnElem.setAttribute("type", "long");
 
-        entityElement.setAttribute( "name", entityName );
+		// <!-- Group instance -->
 
-        // Insert the <entity> element
-        Node refNode = NodeUtil.findFirstChild( rootElement, "exceptions" );
+		_appendComment(entityElement, " Group instance ");
+		columnElem = NodeUtil.appendChildElement(entityElement, "column");
 
-        if( refNode == null )
-        {
-            NodeUtil.findFirstChild( rootElement, "service-builder-import" );
-        }
+		columnElem.setAttribute("name", "groupId");
+		columnElem.setAttribute("type", "long");
 
-        rootElement.insertBefore( entityElement, refNode );
+		// <!-- Aduit fields -->
 
-        new FormatProcessorXML().formatNode( entityElement );
+		_appendComment(entityElement, " Audit fields ");
+		columnElem = NodeUtil.appendChildElement(entityElement, "column");
 
-        rootElement.appendChild( document.createTextNode( NEW_LINE ) );
+		columnElem.setAttribute("name", "companyId");
+		columnElem.setAttribute("type", "long");
 
-        return Status.OK_STATUS;
-    }
+		columnElem = NodeUtil.appendChildElement(entityElement, "column");
 
-    private String generateEntityId( String entityName )
-    {
-        if( entityName == null )
-        {
-            return "Id";
-        }
+		columnElem.setAttribute("name", "userId");
+		columnElem.setAttribute("type", "long");
 
-       return Character.toLowerCase( entityName.charAt( 0 ) ) + 
-                       ( entityName.length() > 1 ? entityName.substring( 1 ) : "" ) + "Id";
-    }
+		columnElem = NodeUtil.appendChildElement(entityElement, "column");
 
-    private String generateSampleEntityName( IDOMDocument document )
-    {
-        String retval = "Sample";
+		columnElem.setAttribute("name", "userName");
+		columnElem.setAttribute("type", "String");
 
-        List<String> entityNames = new ArrayList<String>();
+		columnElem = NodeUtil.appendChildElement(entityElement, "column");
 
-        final NodeList nodes = document.getDocumentElement().getChildNodes();
+		columnElem.setAttribute("name", "createDate");
+		columnElem.setAttribute("type", "Date");
 
-        if( nodes != null && nodes.getLength() > 0 )
-        {
-            Node node = null;
+		columnElem = NodeUtil.appendChildElement(entityElement, "column");
 
-            for( int i = 0; i < nodes.getLength(); i++ )
-            {
-                node = nodes.item( i );
+		columnElem.setAttribute("name", "modifiedDate");
+		columnElem.setAttribute("type", "Date");
 
-                if( "entity".equals( node.getNodeName() ) )
-                {
-                    String entityName = ( (Element) node ).getAttribute( "name" );
+		entityElement.appendChild(document.createTextNode(_NEW_LINE));
 
-                    if( ! CoreUtil.isNullOrEmpty( entityName ) )
-                    {
-                        entityNames.add( entityName );
-                    }
-                }
-            }
-        }
+		new FormatProcessorXML().formatNode(entityElement);
 
-        while( entityNames.contains( retval ) )
-        {
-            retval = nextSuffix( retval );
-        }
+		return Status.OK_STATUS;
+	}
 
-        return retval;
-    }
+	protected IStatus doAddDefaultEntity(IDOMDocument document) {
+		String entityName = _generateSampleEntityName(document);
 
-    public IFile getDescriptorFile()
-    {
-        return super.getDescriptorFile( DESCRIPTOR_FILE );
-    }
+		Element rootElement = document.getDocumentElement();
 
-    private String nextSuffix( String val )
-    {
-        final Matcher matcher = Pattern.compile( "(Sample)([0-9]+)$" ).matcher( val );
+		// new <entity> element
 
-        if( matcher.matches() )
-        {
-            int num = Integer.parseInt( matcher.group( 2 ) );
+		Element entityElement = document.createElement("entity");
 
-            return matcher.group( 1 ) + ( num + 1 ) ;
-        }
+		entityElement.setAttribute("local-service", "true");
+		entityElement.setAttribute("name", entityName);
+		entityElement.setAttribute("remote-service", "true");
 
-        return val + "1";
-    }
+		// <!-- PK fields -->
 
-    public IStatus removeAllEntities()
-    {
-        final IFile descriptorFile = getDescriptorFile();
+		_appendComment(entityElement, " PK fields ");
 
-        if( descriptorFile == null || ! descriptorFile.exists() )
-        {
-            return Status.OK_STATUS;
-        }
+		Element columnElem = NodeUtil.appendChildElement(entityElement, "column");
 
-        final String tagName = "entity";
+		columnElem.setAttribute("name", _generateEntityId(entityName));
+		columnElem.setAttribute("primary", "true");
+		columnElem.setAttribute("type", "long");
 
-        DOMModelEditOperation editOperation = new DOMModelEditOperation( descriptorFile )
-        {
-            @Override
-            protected IStatus doExecute( IDOMDocument document )
-            {
-                return removeAllElements( document, tagName );
-            }
-        };
+		// <!-- Group instance -->
 
-        return editOperation.execute();
-    }
+		_appendComment(entityElement, " Group instance ");
+
+		columnElem = NodeUtil.appendChildElement(entityElement, "column");
+
+		columnElem.setAttribute("name", "groupId");
+		columnElem.setAttribute("type", "long");
+
+		// <!-- Aduit fields -->
+
+		_appendComment(entityElement, " Audit fields ");
+
+		columnElem = NodeUtil.appendChildElement(entityElement, "column");
+
+		columnElem.setAttribute("name", "companyId");
+		columnElem.setAttribute("type", "long");
+
+		columnElem = NodeUtil.appendChildElement(entityElement, "column");
+
+		columnElem.setAttribute("name", "userId");
+		columnElem.setAttribute("type", "long");
+
+		columnElem = NodeUtil.appendChildElement(entityElement, "column");
+
+		columnElem.setAttribute("name", "userName");
+		columnElem.setAttribute("type", "String");
+
+		columnElem = NodeUtil.appendChildElement(entityElement, "column");
+
+		columnElem.setAttribute("name", "createDate");
+		columnElem.setAttribute("type", "Date");
+
+		columnElem = NodeUtil.appendChildElement(entityElement, "column");
+
+		columnElem.setAttribute("name", "modifiedDate");
+		columnElem.setAttribute("type", "Date");
+
+		// <!-- Other fields -->
+
+		_appendComment(entityElement, " Other fields ");
+
+		columnElem = NodeUtil.appendChildElement(entityElement, "column");
+
+		columnElem.setAttribute("name", "field1");
+		columnElem.setAttribute("type", "String");
+
+		columnElem = NodeUtil.appendChildElement(entityElement, "column");
+
+		columnElem.setAttribute("name", "field2");
+		columnElem.setAttribute("type", "boolean");
+
+		columnElem = NodeUtil.appendChildElement(entityElement, "column");
+
+		columnElem.setAttribute("name", "field3");
+		columnElem.setAttribute("type", "int");
+
+		columnElem = NodeUtil.appendChildElement(entityElement, "column");
+
+		columnElem.setAttribute("name", "field4");
+		columnElem.setAttribute("type", "Date");
+
+		columnElem = NodeUtil.appendChildElement(entityElement, "column");
+
+		columnElem.setAttribute("name", "field5");
+		columnElem.setAttribute("type", "String");
+
+		// <!-- Order -->
+
+		_appendComment(entityElement, " Order ");
+
+		Element orderElem = NodeUtil.appendChildElement(entityElement, "order");
+
+		orderElem.setAttribute("by", "asc");
+
+		Element orderColumn = NodeUtil.appendChildElement(orderElem, "order-column");
+
+		orderColumn.setAttribute("name", "field1");
+
+		// <!-- Finder methods -->
+
+		_appendComment(entityElement, " Finder methods ");
+
+		Element finderElem = NodeUtil.appendChildElement(entityElement, "finder");
+
+		finderElem.setAttribute("name", "Field2");
+		finderElem.setAttribute("return-type", "Collection");
+
+		Element finderColumn = NodeUtil.appendChildElement(finderElem, "finder-column");
+
+		finderColumn.setAttribute("name", "field2");
+
+		// Insert the <entity> element
+
+		Node refNode = NodeUtil.findFirstChild(rootElement, "exceptions");
+
+		if (refNode == null) {
+			NodeUtil.findFirstChild(rootElement, "service-builder-import");
+		}
+
+		rootElement.insertBefore(entityElement, refNode);
+
+		new FormatProcessorXML().formatNode(entityElement);
+
+		rootElement.appendChild(document.createTextNode(_NEW_LINE));
+
+		return Status.OK_STATUS;
+	}
+
+	protected IStatus doAddEntity(IDOMDocument document, String entityName) {
+		NodeList entities = document.getElementsByTagName("entity");
+
+		// If there is entity named "entityName", do nothing
+
+		for (int i = 0; i < entities.getLength(); ++i) {
+			Node entity = entities.item(i);
+
+			if (entity instanceof Element) {
+				Element entityElement = (Element)entity;
+
+				String name = entityElement.getAttribute("name");
+
+				if ((name != null) && name.equals(entityName)) {
+					return Status.OK_STATUS;
+				}
+			}
+		}
+
+		Element rootElement = document.getDocumentElement();
+
+		// new <entity> element
+
+		Element entityElement = document.createElement("entity");
+
+		entityElement.setAttribute("name", entityName);
+
+		// Insert the <entity> element
+
+		Node refNode = NodeUtil.findFirstChild(rootElement, "exceptions");
+
+		if (refNode == null) {
+			NodeUtil.findFirstChild(rootElement, "service-builder-import");
+		}
+
+		rootElement.insertBefore(entityElement, refNode);
+
+		new FormatProcessorXML().formatNode(entityElement);
+
+		rootElement.appendChild(document.createTextNode(_NEW_LINE));
+
+		return Status.OK_STATUS;
+	}
+
+	private void _appendComment(Element element, String comment) {
+		Document document = element.getOwnerDocument();
+
+		element.appendChild(document.createTextNode(_NEW_LINE + _NEW_LINE));
+		element.appendChild(document.createComment(comment));
+		element.appendChild(document.createTextNode(_NEW_LINE + _NEW_LINE));
+	}
+
+	private String _generateEntityId(String entityName) {
+		if (entityName == null) {
+			return "Id";
+		}
+
+		return Character.toLowerCase(entityName.charAt(0)) +
+			((entityName.length() > 1) ? entityName.substring(1) : "") + "Id";
+	}
+
+	private String _generateSampleEntityName(IDOMDocument document) {
+		String retval = "Sample";
+
+		List<String> entityNames = new ArrayList<>();
+
+		Element element = document.getDocumentElement();
+
+		NodeList nodes = element.getChildNodes();
+
+		if ((nodes != null) && (nodes.getLength() > 0)) {
+			Node node = null;
+
+			for (int i = 0; i < nodes.getLength(); i++) {
+				node = nodes.item(i);
+
+				if (Objects.equals("entity", node.getNodeName())) {
+					Element elementNode = (Element)node;
+
+					String entityName = elementNode.getAttribute("name");
+
+					if (!CoreUtil.isNullOrEmpty(entityName)) {
+						entityNames.add(entityName);
+					}
+				}
+			}
+		}
+
+		while (entityNames.contains(retval)) {
+			retval = _nextSuffix(retval);
+		}
+
+		return retval;
+	}
+
+	private String _nextSuffix(String val) {
+		Matcher matcher = _pattern.matcher(val);
+
+		if (matcher.matches()) {
+			int num = 0;
+
+			try {
+				num = Integer.parseInt(matcher.group(2));
+			}
+			catch (NumberFormatException nfe) {
+			}
+
+			return matcher.group(1) + (num + 1);
+		}
+
+		return val + "1";
+	}
+
+	private static final String _NEW_LINE = System.getProperty("line.separator");
+
+	private Pattern _pattern = Pattern.compile("(Sample)([0-9]+)$");
+	private IFile _serviceXMLFile;
+
 }

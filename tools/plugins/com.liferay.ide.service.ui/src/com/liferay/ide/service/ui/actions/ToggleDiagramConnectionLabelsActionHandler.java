@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,10 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- * Contributors:
- * 		Gregory Amerson - initial implementation and ongoing maintenance
- *******************************************************************************/
+ */
 
 package com.liferay.ide.service.ui.actions;
 
@@ -21,28 +18,33 @@ import com.liferay.ide.service.core.model.ServiceBuilder;
 
 import org.eclipse.sapphire.ui.Presentation;
 import org.eclipse.sapphire.ui.SapphireActionHandler;
+import org.eclipse.sapphire.ui.SapphirePart;
 
-public class ToggleDiagramConnectionLabelsActionHandler extends SapphireActionHandler
-{
+/**
+ * @author Gregory Amerson
+ */
+public class ToggleDiagramConnectionLabelsActionHandler extends SapphireActionHandler {
 
-    protected boolean checked = true;
+	@Override
+	public boolean isChecked() {
+		return checked;
+	}
 
-    @Override
-    public boolean isChecked()
-    {
-        return checked;
-    }
+	@Override
+	protected Object run(Presentation context) {
+		checked = !checked;
 
-    @Override
-    protected Object run( Presentation context )
-    {
-        checked = !checked;
+		SapphirePart sapphirePart = context.part();
 
-        ServiceBuilder serviceBuilder = (ServiceBuilder) context.part().getModelElement();
-        serviceBuilder.setShowRelationshipLabels( checked );
-        serviceBuilder.refresh();
+		ServiceBuilder serviceBuilder = (ServiceBuilder)sapphirePart.getModelElement();
 
-        return null;
-    }
+		serviceBuilder.setShowRelationshipLabels(checked);
+
+		serviceBuilder.refresh();
+
+		return null;
+	}
+
+	protected boolean checked = true;
 
 }

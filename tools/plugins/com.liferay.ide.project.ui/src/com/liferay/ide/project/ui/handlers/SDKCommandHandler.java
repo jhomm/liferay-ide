@@ -1,3 +1,17 @@
+/**
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
+ *
+ * This library is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU Lesser General Public License as published by the Free
+ * Software Foundation; either version 2.1 of the License, or (at your option)
+ * any later version.
+ *
+ * This library is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+ * details.
+ */
+
 package com.liferay.ide.project.ui.handlers;
 
 import com.liferay.ide.core.util.CoreUtil;
@@ -17,6 +31,7 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.internal.ui.packageview.PackageFragmentRootContainer;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
@@ -27,105 +42,101 @@ import org.eclipse.ui.handlers.HandlerUtil;
  * @author Simon Jiang
  * @author Kuo Zhang
  */
-@SuppressWarnings( "restriction" )
-public abstract class SDKCommandHandler extends AbstractHandler
-{
+@SuppressWarnings("restriction")
+public abstract class SDKCommandHandler extends AbstractHandler {
 
-    @Override
-    public Object execute( ExecutionEvent event ) throws ExecutionException
-    {
-        IStatus retval = null;
-        IProject project = null;
+	@Override
+	public Object execute(ExecutionEvent event) throws ExecutionException {
+		IStatus retval = null;
+		IProject project = null;
 
-        final ISelection selection = HandlerUtil.getCurrentSelection( event );
+		final ISelection selection = HandlerUtil.getCurrentSelection(event);
 
-        if( selection instanceof IStructuredSelection )
-        {
-            final IStructuredSelection structuredSelection = (IStructuredSelection) selection;
+		if (selection instanceof IStructuredSelection) {
+			final IStructuredSelection structuredSelection = (IStructuredSelection)selection;
 
-            final Object selected = structuredSelection.getFirstElement();
+			final Object selected = structuredSelection.getFirstElement();
 
-            if( selected instanceof IResource )
-            {
-                project = ( (IResource) selected ).getProject();
-            }
-            else if( selected instanceof IJavaElement )
-            {
-                project = ( (IJavaElement) selected ).getJavaProject().getProject();
-            }
-            else if( selected instanceof PackageFragmentRootContainer )
-            {
-                project = ( (PackageFragmentRootContainer) selected ).getJavaProject().getProject();
-            }
-        }
+			if (selected instanceof IResource) {
+				IResource selectedResource = (IResource)selected;
 
-        if( project == null )
-        {
-            final IEditorInput editorInput = HandlerUtil.getActiveEditorInput( event );
+				project = selectedResource.getProject();
+			}
+			else if (selected instanceof IJavaElement) {
+				IJavaElement selectedJavaElement = (IJavaElement)selected;
 
-            if( editorInput != null && editorInput.getAdapter( IResource.class ) != null )
-            {
-                project = ( (IResource) editorInput.getAdapter( IResource.class ) ).getProject();
-            }
-        }
+				IJavaProject javaProject = selectedJavaElement.getJavaProject();
 
-        final boolean isLiferay = CoreUtil.isLiferayProject( project );
+				project = javaProject.getProject();
+			}
+			else if (selected instanceof PackageFragmentRootContainer) {
+				PackageFragmentRootContainer selectedContainer = (PackageFragmentRootContainer)selected;
 
-        if( isLiferay )
-        {
-            if( SDKUtil.isSDKProject( project ) )
-            {
-                retval = executeSdkCommand( project );
-            }
-        }
+				IJavaProject javaProject = selectedContainer.getJavaProject();
 
-        return retval;
-    }
+				project = javaProject.getProject();
+			}
+		}
 
-    protected IStatus executeSdkCommand( final IProject project )
-    {
-        IStatus retval = null;
+		if (project == null) {
+			final IEditorInput editorInput = HandlerUtil.getActiveEditorInput(event);
 
-        try
-        {
-            final IFile buildXmlFile = project.getFile( "build.xml" );
+			if ((editorInput != null) && (editorInput.getAdapter(IResource.class) != null)) {
+				IResource editorInputAdapter = (IResource)editorInput.getAdapter(IResource.class);
 
-            if( buildXmlFile.exists() )
-            {
-                final IProject p = project;
-                final IFile buildFile = buildXmlFile;
+				project = editorInputAdapter.getProject();
+			}
+		}
 
-                new Job( p.getName() + " : " + getSDKCommand() )
-                {
-                    @Override
-                    protected IStatus run( IProgressMonitor monitor )
-                    {
-                        try
-                        {
-                            final SDK sdk = SDKUtil.getSDK( p );
+		final boolean liferay = CoreUtil.isLiferayProject(project);
 
-                            sdk.runCommand( p, buildFile, getSDKCommand(), null, monitor );
+		if (liferay && SDKUtil.isSDKProject(project)) {
+			retval = executeSdkCommand(project);
+		}
 
-                            p.refreshLocal( IResource.DEPTH_INFINITE, monitor );
-                        }
-                        catch( Exception e )
-                        {
-                            return ProjectUI.createErrorStatus( "Error running SDK command " + getSDKCommand(), e );
-                        }
+		return retval;
+	}
 
-                        return Status.OK_STATUS;
-                    }
-                }.schedule();
-            }
-        }
-        catch( Exception e )
-        {
-            retval = ProjectCore.createErrorStatus( "Unable to execute sdk command", e );
-        }
+	protected IStatus executeSdkCommand(final IProject project) {
+		IStatus retval = null;
 
-        return retval;
-    }
+		try {
+			final IFile buildXmlFile = project.getFile("build.xml");
 
-    protected abstract String getSDKCommand();
+			if (buildXmlFile.exists()) {
+				final IProject p = project;
+				final IFile buildFile = buildXmlFile;
+
+				new Job(
+					p.getName() + " : " + getSDKCommand()
+				) {
+
+					@Override
+					protected IStatus run(IProgressMonitor monitor) {
+						try {
+							final SDK sdk = SDKUtil.getSDK(p);
+
+							sdk.runCommand(p, buildFile, getSDKCommand(), null, monitor);
+
+							p.refreshLocal(IResource.DEPTH_INFINITE, monitor);
+						}
+						catch (Exception e) {
+							return ProjectUI.createErrorStatus("Error running SDK command " + getSDKCommand(), e);
+						}
+
+						return Status.OK_STATUS;
+					}
+
+				}.schedule();
+			}
+		}
+		catch (Exception e) {
+			retval = ProjectCore.createErrorStatus("Unable to execute sdk command", e);
+		}
+
+		return retval;
+	}
+
+	protected abstract String getSDKCommand();
 
 }

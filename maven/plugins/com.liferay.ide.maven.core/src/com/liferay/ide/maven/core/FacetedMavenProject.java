@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,18 +10,23 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
+
 package com.liferay.ide.maven.core;
 
 import com.liferay.ide.core.ILiferayPortal;
+import com.liferay.ide.core.IResourceBundleProject;
 import com.liferay.ide.core.IWebProject;
+import com.liferay.ide.core.util.FileUtil;
 import com.liferay.ide.project.core.FlexibleProject;
 
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 
+import org.apache.maven.model.Build;
 import org.apache.maven.project.MavenProject;
+
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
@@ -34,103 +39,106 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.m2e.core.project.IMavenProjectFacade;
 
-
 /**
  * @author Gregory Amerson
  * @author Cindy Li
  * @author Simon Jiang
  */
-public class FacetedMavenProject extends LiferayMavenProject implements IWebProject
-{
+public class FacetedMavenProject extends LiferayMavenProject implements IResourceBundleProject, IWebProject {
 
-    private final FlexibleProject flexibleProject;
+	public FacetedMavenProject(IProject project) {
+		super(project);
 
-    public FacetedMavenProject( IProject project )
-    {
-        super( project );
+		_flexibleProject = new FlexibleProject(project) {
 
-        this.flexibleProject = new FlexibleProject( project )
-        {
-            @Override
-            public IPath getLibraryPath( String filename )
-            {
-                return null;
-            }
+			@Override
+			public IPath getLibraryPath(String filename) {
+				return null;
+			}
 
-            @Override
-            public String getProperty( String key, String defaultValue )
-            {
-                return null;
-            }
-        };
-    }
+			@Override
+			public String getProperty(String key, String defaultValue) {
+				return null;
+			}
 
-    public <T> T adapt( Class<T> adapterType )
-    {
-        T adapter = super.adapt( adapterType );
+		};
+	}
 
-        if( adapter != null )
-        {
-            return adapter;
-        }
+	@Override
+	public <T> T adapt(Class<T> adapterType) {
+		T adapter = super.adapt(adapterType);
 
-        final IMavenProjectFacade facade = MavenUtil.getProjectFacade( getProject(), new NullProgressMonitor() );
+		if (adapter != null) {
+			return adapter;
+		}
 
-        if( facade != null )
-        {
-            if( ILiferayPortal.class.equals( adapterType ) )
-            {
-                final ILiferayPortal portal = new LiferayPortalMaven( this );
+		IMavenProjectFacade facade = MavenUtil.getProjectFacade(getProject(), new NullProgressMonitor());
 
-                return adapterType.cast( portal );
-            }
-        }
+		if ((facade != null) && adapterType.equals(ILiferayPortal.class)) {
+			ILiferayPortal portal = new LiferayPortalMaven(this);
 
-        return null;
-    }
+			return adapterType.cast(portal);
+		}
 
-    @Override
-    public IResource findDocrootResource( IPath path )
-    {
-        return this.flexibleProject.findDocrootResource( path );
-    }
+		return null;
+	}
 
-    @Override
-    public IFolder getDefaultDocrootFolder()
-    {
-        return this.flexibleProject.getDefaultDocrootFolder();
-    }
+	@Override
+	public IResource findDocrootResource(IPath path) {
+		return this._flexibleProject.findDocrootResource(path);
+	}
 
-    @Override
-    public IFile getDescriptorFile( String name )
-    {
-        return this.flexibleProject.getDescriptorFile( name );
-    }
+	@Override
+	public IFolder getDefaultDocrootFolder() {
+		return this._flexibleProject.getDefaultDocrootFolder();
+	}
 
-    public Collection<IFile> getOutputs( boolean buildIfNeeded, IProgressMonitor monitor ) throws CoreException
-    {
-        final Collection<IFile> outputs = new HashSet<IFile>();
+	@Override
+	public List<IFile> getDefaultLanguageProperties() {
+		return _flexibleProject.getDefaultLanguageProperties();
+	}
 
-        if( buildIfNeeded )
-        {
-            this.getProject().build( IncrementalProjectBuilder.INCREMENTAL_BUILD, monitor );
+	@Override
+	public IFile getDescriptorFile(String name) {
+		return this._flexibleProject.getDescriptorFile(name);
+	}
 
-            new MavenProjectBuilder( this.getProject() ).runMavenGoal( getProject(), "package", monitor );
+	public Collection<IFile> getOutputs(boolean buildIfNeeded, IProgressMonitor monitor) throws CoreException {
+		Collection<IFile> outputs = new HashSet<>();
 
-            final IMavenProjectFacade projectFacade = MavenUtil.getProjectFacade( getProject(), monitor );
-            final MavenProject mavenProject = projectFacade.getMavenProject( monitor );
-            final String targetFolder = mavenProject.getBuild().getDirectory();
-            final String targetWar = mavenProject.getBuild().getFinalName() + "." + mavenProject.getPackaging();
+		if (buildIfNeeded) {
+			getProject().build(IncrementalProjectBuilder.INCREMENTAL_BUILD, monitor);
 
-            final IFile output = getProject().getFile( new Path( targetFolder ).append( targetWar ) );
+			new MavenProjectBuilder(
+				getProject()
+			).runMavenGoal(
+				getProject(), "package", monitor
+			);
 
-            if( output.exists() )
-            {
-                outputs.add( output );
-            }
-        }
+			IMavenProjectFacade projectFacade = MavenUtil.getProjectFacade(getProject(), monitor);
 
-        return outputs;
-    }
+			MavenProject mavenProject = projectFacade.getMavenProject(monitor);
+
+			Build build = mavenProject.getBuild();
+
+			String targetFolder = build.getDirectory();
+			String targetWar = build.getFinalName() + "." + mavenProject.getPackaging();
+
+			IFile output = getProject().getFile(
+				new Path(
+					targetFolder
+				).append(
+					targetWar
+				));
+
+			if (FileUtil.exists(output)) {
+				outputs.add(output);
+			}
+		}
+
+		return outputs;
+	}
+
+	private FlexibleProject _flexibleProject;
 
 }

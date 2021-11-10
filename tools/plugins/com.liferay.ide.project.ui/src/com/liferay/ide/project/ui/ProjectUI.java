@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,14 +10,14 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.project.ui;
 
 import java.net.URL;
 
 import org.eclipse.core.runtime.FileLocator;
+import org.eclipse.core.runtime.ILog;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
@@ -25,147 +25,142 @@ import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.jface.resource.ImageRegistry;
+import org.eclipse.swt.graphics.Image;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
+
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 
 /**
  * The activator class controls the plugin life cycle
  *
- * @author Greg Amerson
+ * @author Gregory Amerson
+ * @author Lovett Li
  */
-public class ProjectUI extends AbstractUIPlugin
-{
+public class ProjectUI extends AbstractUIPlugin {
 
-    // Shared images
-    public static final String IMAGE_ID = "war.image"; //$NON-NLS-1$
+	public static final String CHECKED_IMAGE_ID = "checked.image";
 
-    public static final String LAST_SDK_IMPORT_LOCATION_PREF = "last.sdk.import.location"; //$NON-NLS-1$
+	public static final String LAST_SDK_IMPORT_LOCATION_PREF = "last.sdk.import.location";
 
-    // The shared instance
-    private static ProjectUI plugin;
+	public static final String LIFERAY_LOGO_IMAGE_ID = "liferay.logo.image";
 
-    // The plugin ID
-    public static final String PLUGIN_ID = "com.liferay.ide.project.ui"; //$NON-NLS-1$
+	public static final String PLUGIN_ID = "com.liferay.ide.project.ui";
 
-    public static IStatus createErrorStatus( String msg )
-    {
-        return createErrorStatus( msg, null );
-    }
+	public static final String PROPERTIES_IMAGE_ID = "properties";
 
-    public static IStatus createErrorStatus( String msg, Exception e )
-    {
-        return new Status( IStatus.ERROR, PLUGIN_ID, msg, e );
-    }
+	public static final String UNCHECKED_IMAGE_ID = "unchecked.image";
 
-    public static IStatus createInfoStatus( String msg )
-    {
-        return new Status( IStatus.INFO, PLUGIN_ID, msg, null );
-    }
+	public static final String WAR_IMAGE_ID = "war.image";
 
-    /**
-     * Returns the shared instance
-     *
-     * @return the shared instance
-     */
-    public static ProjectUI getDefault()
-    {
-        return plugin;
-    }
+	public static IStatus createErrorStatus(String msg) {
+		return createErrorStatus(msg, null);
+	}
 
-    public static void logError( Exception e )
-    {
-        getDefault().getLog().log( createErrorStatus( e.getMessage(), e ) );
-    }
+	public static IStatus createErrorStatus(String msg, Exception e) {
+		return new Status(IStatus.ERROR, PLUGIN_ID, msg, e);
+	}
 
-    // private static IConfigurationElement[] pluginWizardFragmentElements;
+	public static IStatus createInfoStatus(String msg) {
+		return new Status(IStatus.INFO, PLUGIN_ID, msg, null);
+	}
 
-    // public static IPluginWizardFragment getPluginWizardFragment(String pluginFacetId) {
-    // if (CoreUtil.isNullOrEmpty(pluginFacetId)) {
-    // return null;
-    // }
-    //
-    // IConfigurationElement[] fragmentElements = getPluginWizardFragmentsElements();
-    //
-    // for (IConfigurationElement fragmentElement : fragmentElements) {
-    // if (pluginFacetId.equals(fragmentElement.getAttribute("facetId"))) {
-    // try {
-    // Object o = fragmentElement.createExecutableExtension("class");
-    //
-    // if (o instanceof IPluginWizardFragment) {
-    // IPluginWizardFragment fragment = (IPluginWizardFragment) o;
-    // fragment.setFragment(true);
-    // return fragment;
-    // }
-    // }
-    // catch (CoreException e) {
-    // ProjectUIPlugin.logError("Could not load plugin wizard fragment for " + pluginFacetId, e);
-    // }
-    // }
-    // }
-    //
-    // return null;
-    // }
+	public static ProjectUI getDefault() {
+		return _plugin;
+	}
 
-    // public static IConfigurationElement[] getPluginWizardFragmentsElements() {
-    // if (pluginWizardFragmentElements == null) {
-    // pluginWizardFragmentElements =
-    // Platform.getExtensionRegistry().getConfigurationElementsFor(IPluginWizardFragment.ID);
-    // }
-    //
-    // return pluginWizardFragmentElements;
-    // }
+	public static Bundle getPluginBundle() {
+		return _plugin.getBundle();
+	}
 
-    public static void logError( String msg, Exception e )
-    {
-        getDefault().getLog().log( createErrorStatus( msg, e ) );
-    }
+	public static ImageRegistry getPluginImageRegistry() {
+		return _plugin.getImageRegistry();
+	}
 
-    public static void logInfo( String msg )
-    {
-        getDefault().getLog().log( createInfoStatus( msg ) );
-    }
+	public static IPath getPluginStateLocation() {
+		return _plugin.getStateLocation();
+	}
 
-    /**
-     * The constructor
-     */
-    public ProjectUI()
-    {
-    }
+	public static void logError(Exception e) {
+		ILog log = _plugin.getLog();
 
-    @Override
-    protected void initializeImageRegistry( ImageRegistry registry )
-    {
-        Bundle bundle = Platform.getBundle( PLUGIN_ID );
-        IPath path = new Path( "icons/e16/war.gif" ); //$NON-NLS-1$
-        URL url = FileLocator.find( bundle, path, null );
-        ImageDescriptor desc = ImageDescriptor.createFromURL( url );
-        registry.put( IMAGE_ID, desc );
-    }
+		log.log(createErrorStatus(e.getMessage(), e));
+	}
 
-    /*
-     * (non-Javadoc)
-     * @see org.eclipse.ui.plugin.AbstractUIPlugin#start(org.osgi.framework.BundleContext )
-     */
-    @Override
-    public void start( BundleContext context ) throws Exception
-    {
+	public static void logError(String msg) {
+		ILog log = _plugin.getLog();
 
-        super.start( context );
+		log.log(createErrorStatus(msg));
+	}
 
-        plugin = this;
-    }
+	public static void logError(String msg, Exception e) {
+		ILog log = _plugin.getLog();
 
-    /*
-     * (non-Javadoc)
-     * @see org.eclipse.ui.plugin.AbstractUIPlugin#stop(org.osgi.framework.BundleContext )
-     */
-    @Override
-    public void stop( BundleContext context ) throws Exception
-    {
+		log.log(createErrorStatus(msg, e));
+	}
 
-        plugin = null;
+	public static void logInfo(String msg) {
+		ILog log = _plugin.getLog();
 
-        super.stop( context );
-    }
+		log.log(createInfoStatus(msg));
+	}
+
+	public ProjectUI() {
+	}
+
+	public Image getImage(String imageName) {
+		ImageDescriptor descriptor = ImageDescriptor.createFromURL(getBundle().getEntry("icons/e16/" + imageName));
+
+		return descriptor.createImage();
+	}
+
+	@Override
+	public void start(BundleContext context) throws Exception {
+		super.start(context);
+
+		_plugin = this;
+	}
+
+	@Override
+	public void stop(BundleContext context) throws Exception {
+		_plugin = null;
+
+		super.stop(context);
+	}
+
+	@Override
+	protected void initializeImageRegistry(ImageRegistry registry) {
+		Bundle bundle = Platform.getBundle(PLUGIN_ID);
+
+		IPath checked = new Path("icons/e16/checked.png");
+
+		URL checkedurl = FileLocator.find(bundle, checked, null);
+
+		ImageDescriptor checkeddesc = ImageDescriptor.createFromURL(checkedurl);
+
+		registry.put(CHECKED_IMAGE_ID, checkeddesc);
+
+		IPath unchecked = new Path("icons/e16/unchecked.png");
+
+		URL uncheckedurl = FileLocator.find(bundle, unchecked, null);
+
+		ImageDescriptor uncheckeddesc = ImageDescriptor.createFromURL(uncheckedurl);
+
+		registry.put(UNCHECKED_IMAGE_ID, uncheckeddesc);
+
+		URL warPicUrl = FileLocator.find(bundle, new Path("icons/e16/war.gif"), null);
+
+		registry.put(WAR_IMAGE_ID, ImageDescriptor.createFromURL(warPicUrl));
+
+		URL propertiesPicUrl = FileLocator.find(bundle, new Path("icons/e16/properties.png"), null);
+
+		registry.put(PROPERTIES_IMAGE_ID, ImageDescriptor.createFromURL(propertiesPicUrl));
+
+		URL liferayLogoPicUrl = FileLocator.find(bundle, new Path("icons/e16/liferay.png"), null);
+
+		registry.put(LIFERAY_LOGO_IMAGE_ID, ImageDescriptor.createFromURL(liferayLogoPicUrl));
+	}
+
+	private static ProjectUI _plugin;
+
 }

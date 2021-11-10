@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,13 +10,16 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
+
 package com.liferay.ide.project.core;
 
-import com.liferay.ide.core.IBundleProject;
-import com.liferay.ide.core.ILiferayProject;
+import com.liferay.ide.core.Event;
+import com.liferay.ide.core.EventListener;
 import com.liferay.ide.core.LiferayCore;
+import com.liferay.ide.core.ListenerRegistry;
+import com.liferay.ide.core.workspace.ProjectDeletedEvent;
+import com.liferay.ide.project.core.util.ProjectUtil;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -28,58 +31,60 @@ import org.eclipse.wst.server.core.IModule;
 import org.eclipse.wst.server.core.model.ModuleDelegate;
 import org.eclipse.wst.server.core.util.ProjectModuleFactoryDelegate;
 
-
 /**
  * @author Gregory Amerson
+ * @author Simon Jiang
  */
-public class BundleFactoryDelegate extends ProjectModuleFactoryDelegate
-{
+public class BundleFactoryDelegate extends ProjectModuleFactoryDelegate implements EventListener {
 
-    private Map <IModule, BundleModulelDelegate> moduleDelegates = new HashMap<IModule, BundleModulelDelegate>(5);
+	public BundleFactoryDelegate() {
+		ListenerRegistry listenerRegistry = LiferayCore.listenerRegistry();
 
-    public BundleFactoryDelegate()
-    {
-        super();
-    }
+		listenerRegistry.addEventListener(this);
+	}
 
-    @Override
-    protected IPath[] getListenerPaths()
-    {
-        return new IPath[] { new Path( "pom.xml" ), new Path( "bnd.bnd" ), new Path( "build.gradle" ) };
-    }
+	public IModule createSimpleModule(IProject project) {
+		return createModule(project.getName(), project.getName(), "liferay.bundle", "1.0", project);
+	}
 
-    @Override
-    protected IModule[] createModules( IProject project )
-    {
-        IModule[] retval = new IModule[0];
+	@Override
+	public ModuleDelegate getModuleDelegate(IModule module) {
+		BundleModulelDelegate md = _moduleDelegates.get(module);
 
-        ILiferayProject lrProject = LiferayCore.create( project );
+		if (md != null) {
+			return md;
+		}
 
-        if( lrProject instanceof IBundleProject )
-        {
-            retval = new IModule[] { createSimpleModule( project ) };
-        }
+		md = new BundleModulelDelegate(module.getProject());
 
-        return retval;
-    }
+		_moduleDelegates.put(module, md);
 
-    private IModule createSimpleModule( IProject project )
-    {
-        return createModule( project.getName(), project.getName(), "liferay.bundle", "1.0", project );
-    }
+		return md;
+	}
 
-    @Override
-    public ModuleDelegate getModuleDelegate( IModule module )
-    {
-        BundleModulelDelegate md = moduleDelegates.get( module );
+	@Override
+	public void onEvent(Event event) {
+		if (event instanceof ProjectDeletedEvent) {
+			ProjectDeletedEvent deletedEvent = (ProjectDeletedEvent)event;
 
-        if( md == null )
-        {
-            md = new BundleModulelDelegate( module.getProject() );
-            moduleDelegates.put( module, md );
-        }
+			clearCache(deletedEvent.getProject());
+		}
+	}
 
-        return md;
-    }
+	@Override
+	protected IModule[] createModules(IProject project) {
+		if (!ProjectUtil.is7xServerDeployableProject(project)) {
+			return new IModule[0];
+		}
+
+		return new IModule[] {createSimpleModule(project)};
+	}
+
+	@Override
+	protected IPath[] getListenerPaths() {
+		return new IPath[] {new Path(".project"), new Path("pom.xml"), new Path("bnd.bnd"), new Path("build.gradle")};
+	}
+
+	private Map<IModule, BundleModulelDelegate> _moduleDelegates = new HashMap<>(5);
 
 }

@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,340 +10,391 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
+
 package com.liferay.ide.server.core.portal;
 
 import com.liferay.ide.core.ILiferayConstants;
 import com.liferay.ide.core.util.CoreUtil;
 import com.liferay.ide.core.util.FileListing;
+import com.liferay.ide.core.util.FileUtil;
 import com.liferay.ide.core.util.StringPool;
 import com.liferay.ide.server.core.LiferayServerCore;
+import com.liferay.ide.server.util.JavaUtil;
 import com.liferay.ide.server.util.LiferayPortalValueLoader;
 import com.liferay.ide.server.util.ServerUtil;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+
+import java.nio.file.Files;
+
+import java.text.SimpleDateFormat;
+
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
-import java.util.jar.Attributes;
-import java.util.jar.JarFile;
-import java.util.jar.Manifest;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
+
 import org.osgi.framework.Version;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.NamedNodeMap;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
 /**
  * @author Simon Jiang
+ * @author Charles Wu
  */
-public abstract class AbstractPortalBundle implements PortalBundle
-{
-    private static final String CONFIG_TYPE_SERVER = "server";
-    private static final String CONFIG_TYPE_VERSION = "version";
-    private static final Version MANIFEST_VERSION_REQUIRED = ILiferayConstants.V700;
+public abstract class AbstractPortalBundle implements PortalBundle {
 
-    protected IPath autoDeployPath;
-    protected IPath liferayHome;
-    protected IPath modulesPath;
-    protected IPath bundlePath;
-    protected String version;
-    protected int jmxRemotePort;
+	public AbstractPortalBundle(IPath path) {
+		if (path == null) {
+			throw new IllegalArgumentException("path cannot be null");
+		}
 
-    public AbstractPortalBundle( IPath path )
-    {
-        if( path == null )
-        {
-            throw new IllegalArgumentException( "path cannot be null" );
-        }
+		bundlePath = path;
 
-        this.bundlePath = path;
+		liferayHome = bundlePath.append("..");
 
-        this.liferayHome = bundlePath.append( ".." );
+		autoDeployPath = liferayHome.append("deploy");
 
-        this.jmxRemotePort = getDefaultJMXRemotePort();
+		modulesPath = liferayHome.append("osgi");
+	}
 
-        this.autoDeployPath = this.liferayHome.append( "deploy" );
+	public AbstractPortalBundle(Map<String, String> appServerProperties) {
+		if (appServerProperties == null) {
+			throw new IllegalArgumentException("bundle parameters cannot be null");
+		}
 
-        this.version = getPortalVersion( getAppServerPortalDir(), getBundleDependencyJars()  );
+		String appServerPath = appServerProperties.get("app.server.dir");
+		String appServerDeployPath = appServerProperties.get("app.server.deploy.dir");
+		String appServerParentPath = appServerProperties.get("app.server.parent.dir");
 
-        this.modulesPath = this.liferayHome.append( "osgi" );
-    }
+		bundlePath = new Path(appServerPath);
 
-    public AbstractPortalBundle( Map<String, String> appServerProperties)
-    {
-        if( appServerProperties == null )
-        {
-            throw new IllegalArgumentException( "bundle parameters cannot be null" );
-        }
+		liferayHome = new Path(appServerParentPath);
 
-        final String appServerPath = (appServerProperties.get( "app.server.dir"));
-        final String appServerDeployPath = (appServerProperties.get( "app.server.deploy.dir"));
-        //final String appServerLibPath = (String) (appServerProperties.get( "app.server.lib.global.dir"));
-        final String appServerParentPath = (appServerProperties.get( "app.server.parent.dir"));
-        //final String appServerPortalPath = (String) (appServerProperties.get( "app.server.portal.dir"));
+		autoDeployPath = new Path(appServerDeployPath);
 
-        this.bundlePath = new Path(appServerPath);
+		modulesPath = null;
+	}
 
-        this.liferayHome = new Path(appServerParentPath);
+	@Override
+	public IPath getAppServerDir() {
+		return bundlePath;
+	}
 
-        this.jmxRemotePort = getDefaultJMXRemotePort();
+	@Override
+	public IPath getAutoDeployPath() {
+		return autoDeployPath;
+	}
 
-        this.autoDeployPath = new Path(appServerDeployPath);
+	@Override
+	public IPath[] getBundleDependencyJars() {
+		List<IPath> libs = new ArrayList<>();
 
-        this.version = getPortalVersion( getAppServerPortalDir(), getBundleDependencyJars() );
+		File bundleLibPath = new File(getAppServerLibDir().toOSString());
 
-        this.modulesPath = null;
-    }
+		if (FileUtil.exists(bundleLibPath)) {
+			libs = FileListing.getFileListing(bundleLibPath, "jar");
+		}
 
-    @Override
-    public IPath getAppServerDir()
-    {
-        return this.bundlePath;
-    }
+		return libs.toArray(new IPath[0]);
+	}
 
-    @Override
-    public IPath[] getBundleDependencyJars()
-    {
-        List<IPath> libs = new ArrayList<IPath>();
-        IPath bundleLibPath =  getAppServerLibDir();
-        List<File> libFiles;
-        try
-        {
-            libFiles = FileListing.getFileListing( new File( bundleLibPath.toOSString() ) );
-            for( File lib : libFiles )
-            {
-                if( lib.exists() && lib.getName().endsWith( ".jar" ) ) //$NON-NLS-1$
-                {
-                    libs.add( new Path( lib.getPath() ) );
-                }
-            }
-        }
-        catch( FileNotFoundException e )
-        {
-        }
+	@Override
+	public String[] getHookSupportedProperties() {
+		IPath portalDir = getAppServerPortalDir();
+		IPath[] extraLibs = getBundleDependencyJars();
 
-        return libs.toArray( new IPath[libs.size()] );
-    }
+		return new LiferayPortalValueLoader(
+			portalDir, extraLibs
+		).loadHookPropertiesFromClass();
+	}
 
-    protected abstract IPath getAppServerLibDir();
+	@Override
+	public int getJmxRemotePort() {
+		return getDefaultJMXRemotePort();
+	}
 
-    protected abstract int getDefaultJMXRemotePort();
+	@Override
+	public IPath getLiferayHome() {
+		return liferayHome;
+	}
 
-    @Override
-    public String[] getHookSupportedProperties()
-    {
-        IPath portalDir = getAppServerPortalDir();
-        IPath[] extraLibs = getBundleDependencyJars();
+	public IPath getLogPath() {
+		IPath liferayHomeLogsPath = liferayHome.append("logs");
+		SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd");
 
-        return new LiferayPortalValueLoader( portalDir, extraLibs ).loadHookPropertiesFromClass();
-    }
+		return liferayHomeLogsPath.append("liferay." + simpleDateFormat.format(new Date()) + ".log");
+	}
 
-    @Override
-    public int getJmxRemotePort()
-    {
-        return this.jmxRemotePort;
-    }
+	@Override
+	public IPath getModulesPath() {
+		return modulesPath;
+	}
 
-    @Override
-    public IPath getAutoDeployPath()
-    {
-        return this.autoDeployPath;
-    }
+	@Override
+	public IPath getOSGiBundlesDir() {
+		IPath retval = null;
 
-    @Override
-    public IPath getModulesPath()
-    {
-        return this.modulesPath;
-    }
+		if (liferayHome != null) {
+			retval = liferayHome.append("osgi");
+		}
 
-    @Override
-    public IPath getLiferayHome()
-    {
-        return this.liferayHome;
-    }
+		return retval;
+	}
 
-    @Override
-    public String getVersion()
-    {
-        return this.version;
-    }
+	@Override
+	public Properties getPortletCategories() {
+		return ServerUtil.getPortletCategories(getAppServerPortalDir());
+	}
 
-    @Override
-    public Properties getPortletCategories()
-    {
-        return ServerUtil.getPortletCategories( getAppServerPortalDir() );
-    }
+	@Override
+	public Properties getPortletEntryCategories() {
+		return ServerUtil.getEntryCategories(getAppServerPortalDir(), getVersion());
+	}
 
-    @Override
-    public Properties getPortletEntryCategories()
-    {
-        return ServerUtil.getEntryCategories( getAppServerPortalDir(), getVersion() );
-    }
+	@Override
+	public String getServerReleaseInfo() {
+		return _getConfigInfoFromManifest(_CONFIG_TYPE_SERVER, getAppServerPortalDir());
+	}
 
-    private String getConfigInfoFromCache( String configType, IPath portalDir )
-    {
-        IPath configInfoPath = null;
+	@Override
+	public String getVersion() {
+		return _getPortalVersion(getAppServerPortalDir(), getBundleDependencyJars());
+	}
 
-        if( configType.equals( CONFIG_TYPE_VERSION ) )
-        {
-            configInfoPath = LiferayServerCore.getDefault().getStateLocation().append( "version.properties" );
-        }
+	protected abstract IPath getAppServerLibDir();
 
-        else if( configType.equals( CONFIG_TYPE_SERVER ) )
-        {
-            configInfoPath = LiferayServerCore.getDefault().getStateLocation().append( "serverInfos.properties" );
-        }
+	protected abstract int getDefaultJMXRemotePort();
 
-        else
-        {
-            return null;
-        }
+	protected String getHttpPortValue(
+		File xmlFile, String tagName, String attriName, String attriValue, String targetName) {
 
-        File configInfoFile = configInfoPath.toFile();
+		DocumentBuilder db = null;
 
-        String portalDirKey = CoreUtil.createStringDigest( portalDir.toPortableString() );
+		DocumentBuilderFactory dbf = null;
 
-        Properties properties = new Properties();
+		try {
+			dbf = DocumentBuilderFactory.newInstance();
 
-        if( configInfoFile.exists() )
-        {
-            try( FileInputStream fileInput = new FileInputStream( configInfoFile ) )
-            {
-                properties.load( fileInput );
-                String configInfo = (String) properties.get( portalDirKey );
+			db = dbf.newDocumentBuilder();
 
-                if( !CoreUtil.isNullOrEmpty( configInfo ) )
-                {
-                    return configInfo;
-                }
-            }
-            catch(IOException e)
-            {
-                LiferayServerCore.logError( e );
-            }
-        }
+			Document document = db.parse(xmlFile);
 
-        return null;
-    }
+			NodeList connectorNodes = document.getElementsByTagName(tagName);
 
-    private String getPortalVersion( IPath portalDir, IPath[] extraLib)
-    {
-        String version = getConfigInfoFromCache( CONFIG_TYPE_VERSION, portalDir );
+			for (int i = 0; i < connectorNodes.getLength(); i++) {
+				Node node = connectorNodes.item(i);
 
-        if( version == null )
-        {
-            version = getConfigInfoFromManifest( CONFIG_TYPE_VERSION, portalDir );
+				NamedNodeMap attributes = node.getAttributes();
 
-            if( version == null )
-            {
-                final LiferayPortalValueLoader loader = new LiferayPortalValueLoader( portalDir, extraLib );
+				Node protocolNode = attributes.getNamedItem(attriName);
 
-                final Version loadedVersion = loader.loadVersionFromClass();
+				if (protocolNode != null) {
+					String nodeValue = protocolNode.getNodeValue();
 
-                if( loadedVersion != null )
-                {
-                    version = loadedVersion.toString();
-                }
-            }
+					if (nodeValue.equals(attriValue)) {
+						Node portNode = attributes.getNamedItem(targetName);
 
-            if( version != null )
-            {
-                saveConfigInfoIntoCache( CONFIG_TYPE_VERSION, version, portalDir );
-            }
-        }
+						return portNode.getNodeValue();
+					}
+				}
+			}
+		}
+		catch (Exception e) {
+			LiferayServerCore.logError(e);
+		}
 
-        return version;
-    }
+		return null;
+	}
 
-    private String getConfigInfoFromManifest( String configType, IPath portalDir )
-    {
-        File implJar = portalDir.append( "/WEB-INF/lib/portal-impl.jar").toFile();
+	protected IPath autoDeployPath;
+	protected IPath bundlePath;
+	protected IPath liferayHome;
+	protected IPath modulesPath;
 
-        String version = null;
-        String serverInfo = null;
+	private String _getConfigInfoFromCache(String configType, IPath portalDir) {
+		IPath configInfoPath = _getConfigInfoPath(configType);
 
-        if( implJar.exists() )
-        {
-            try ( JarFile jar = new JarFile( implJar ) )
-            {
-                Manifest manifest = jar.getManifest();
+		File configInfoFile = configInfoPath.toFile();
 
-                Attributes attributes = manifest.getMainAttributes();
+		String portalDirKey = CoreUtil.createStringDigest(portalDir.toPortableString());
 
-                version = attributes.getValue( "Liferay-Portal-Version" );
-                serverInfo = attributes.getValue( "Liferay-Portal-Server-Info" );
+		Properties properties = new Properties();
 
-                if( CoreUtil.compareVersions( Version.parseVersion( version ), MANIFEST_VERSION_REQUIRED ) < 0 )
-                {
-                    version = null;
-                    serverInfo = null;
-                }
-            }
-            catch( IOException e )
-            {
-                LiferayServerCore.logError( e );
-            }
-        }
+		if (FileUtil.exists(configInfoFile)) {
+			try (InputStream fileInput = Files.newInputStream(configInfoFile.toPath())) {
+				properties.load(fileInput);
 
-        if( configType.equals( CONFIG_TYPE_VERSION ) )
-        {
-            return version;
-        }
+				String configInfo = (String)properties.get(portalDirKey);
 
-        if( configType.equals( CONFIG_TYPE_SERVER ) )
-        {
-            return serverInfo;
-        }
+				if (!CoreUtil.isNullOrEmpty(configInfo)) {
+					return configInfo;
+				}
+			}
+			catch (IOException ioe) {
+				LiferayServerCore.logError(ioe);
+			}
+		}
 
-        return null;
-    }
+		return null;
+	}
 
-    private void saveConfigInfoIntoCache( String configType, String configInfo, IPath portalDir )
-    {
-        IPath versionsInfoPath = null;
+	private String _getConfigInfoFromManifest(String configType, IPath portalDir) {
+		String[] implJarFolders = {"lib", "shielded-container-lib"};
 
-        if( configType.equals( CONFIG_TYPE_VERSION ) )
-        {
-            versionsInfoPath = LiferayServerCore.getDefault().getStateLocation().append( "version.properties" );
-        }
-        else if( configType.equals( CONFIG_TYPE_SERVER ) )
-        {
-            versionsInfoPath = LiferayServerCore.getDefault().getStateLocation().append( "serverInfos.properties" );
-        }
+		IPath implJarPath = null;
+		File implJar = null;
 
-        if( versionsInfoPath != null )
-        {
-            File versionInfoFile = versionsInfoPath.toFile();
+		for (String implJarFolder : implJarFolders) {
+			implJarPath = portalDir.append("/WEB-INF/" + implJarFolder + "/portal-impl.jar");
 
-            if( configInfo != null )
-            {
-                String portalDirKey = CoreUtil.createStringDigest( portalDir.toPortableString() );
-                Properties properties = new Properties();
+			if (FileUtil.exists(implJarPath)) {
+				implJar = implJarPath.toFile();
 
-                try ( FileInputStream fileInput = new FileInputStream( versionInfoFile ) )
-                {
-                    properties.load( fileInput );
-                }
-                catch( Exception e )
-                {
-                }
+				break;
+			}
+		}
 
-                try ( FileOutputStream fileOutput = new FileOutputStream( versionInfoFile ) )
-                {
-                    properties.put( portalDirKey, configInfo );
-                    properties.store( fileOutput, StringPool.EMPTY );
-                }
-                catch( Exception e )
-                {
-                    LiferayServerCore.logError( e );
-                }
-            }
-        }
-    }
+		String version = null;
+		String serverInfo = null;
+
+		if (Objects.nonNull(implJar)) {
+			version = JavaUtil.getJarProperty(implJar, "Liferay-Portal-Version");
+			serverInfo = JavaUtil.getJarProperty(implJar, "Liferay-Portal-Release-Info");
+
+			if (CoreUtil.compareVersions(Version.parseVersion(version), _MANIFEST_VERSION_REQUIRED) < 0) {
+				version = null;
+				serverInfo = null;
+			}
+		}
+
+		switch (configType) {
+			case _CONFIG_TYPE_VERSION:
+				return version;
+			case _CONFIG_TYPE_SERVER:
+				if (Objects.nonNull(serverInfo)) {
+					serverInfo = serverInfo.substring(0, serverInfo.indexOf("("));
+
+					return serverInfo.trim();
+				}
+		}
+
+		return null;
+	}
+
+	private IPath _getConfigInfoPath(String configType) {
+		IPath configInfoPath = null;
+
+		LiferayServerCore serverCore = LiferayServerCore.getDefault();
+
+		IPath stateLocation = serverCore.getStateLocation();
+
+		if (configType.equals(_CONFIG_TYPE_VERSION)) {
+			configInfoPath = stateLocation.append("version.properties");
+		}
+		else if (configType.equals(_CONFIG_TYPE_SERVER)) {
+			configInfoPath = stateLocation.append("serverInfos.properties");
+		}
+
+		if (!_clearedConfigInfoCacheOnce) {
+			File configInfoFile = configInfoPath.toFile();
+
+			configInfoFile.delete();
+
+			_clearedConfigInfoCacheOnce = true;
+		}
+
+		return configInfoPath;
+	}
+
+	private String _getPortalVersion(IPath portalDir, IPath[] extraLib) {
+		if (FileUtil.notExists(portalDir)) {
+			return Version.emptyVersion.toString();
+		}
+
+		String version = _getConfigInfoFromCache(_CONFIG_TYPE_VERSION, portalDir);
+
+		if (version == null) {
+			version = _getConfigInfoFromManifest(_CONFIG_TYPE_VERSION, portalDir);
+
+			if (version == null) {
+				LiferayPortalValueLoader loader = new LiferayPortalValueLoader(portalDir, extraLib);
+
+				Version loadedVersion = loader.loadVersionFromClass();
+
+				if (loadedVersion != null) {
+					version = loadedVersion.toString();
+				}
+			}
+
+			if (version != null) {
+				_saveConfigInfoIntoCache(_CONFIG_TYPE_VERSION, version, portalDir);
+			}
+		}
+
+		return version;
+	}
+
+	private void _saveConfigInfoIntoCache(String configType, String configInfo, IPath portalDir) {
+		IPath versionsInfoPath = null;
+
+		LiferayServerCore serverCore = LiferayServerCore.getDefault();
+
+		IPath stateLocation = serverCore.getStateLocation();
+
+		if (configType.equals(_CONFIG_TYPE_VERSION)) {
+			versionsInfoPath = stateLocation.append("version.properties");
+		}
+		else if (configType.equals(_CONFIG_TYPE_SERVER)) {
+			versionsInfoPath = stateLocation.append("serverInfos.properties");
+		}
+
+		if (versionsInfoPath != null) {
+			File versionInfoFile = versionsInfoPath.toFile();
+
+			if (configInfo != null) {
+				String portalDirKey = CoreUtil.createStringDigest(portalDir.toPortableString());
+
+				Properties properties = new Properties();
+
+				try (InputStream fileInput = Files.newInputStream(versionInfoFile.toPath())) {
+					properties.load(fileInput);
+				}
+				catch (Exception e) {
+				}
+
+				try (OutputStream fileOutput = Files.newOutputStream(versionInfoFile.toPath())) {
+					properties.put(portalDirKey, configInfo);
+					properties.store(fileOutput, StringPool.EMPTY);
+				}
+				catch (Exception e) {
+					LiferayServerCore.logError(e);
+				}
+			}
+		}
+	}
+
+	private static final String _CONFIG_TYPE_SERVER = "server";
+
+	private static final String _CONFIG_TYPE_VERSION = "version";
+
+	private static final Version _MANIFEST_VERSION_REQUIRED = ILiferayConstants.V700;
+
+	private static boolean _clearedConfigInfoCacheOnce = false;
+
 }

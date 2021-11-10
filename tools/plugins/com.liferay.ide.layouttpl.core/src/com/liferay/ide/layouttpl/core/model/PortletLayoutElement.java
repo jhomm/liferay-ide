@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,8 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.layouttpl.core.model;
 
@@ -22,6 +21,7 @@ import org.eclipse.sapphire.Element;
 import org.eclipse.sapphire.ElementList;
 import org.eclipse.sapphire.ElementType;
 import org.eclipse.sapphire.ListProperty;
+import org.eclipse.sapphire.Type;
 import org.eclipse.sapphire.Value;
 import org.eclipse.sapphire.ValueProperty;
 import org.eclipse.sapphire.modeling.annotations.DefaultValue;
@@ -29,35 +29,30 @@ import org.eclipse.sapphire.modeling.annotations.Label;
 import org.eclipse.sapphire.modeling.annotations.Listeners;
 import org.eclipse.sapphire.modeling.annotations.Required;
 import org.eclipse.sapphire.modeling.annotations.Service;
-import org.eclipse.sapphire.modeling.annotations.Type;
-
 
 /**
  * @author Kuo Zhang
- *
- * shows as a row
  */
-@Label( standard = "Row" )
-public interface PortletLayoutElement extends Element
-{
-    ElementType TYPE = new ElementType( PortletLayoutElement.class );
+@Label(standard = "Row")
+public interface PortletLayoutElement extends Element {
 
-    // *** Portlet Columns ***
+	public static final ElementType TYPE = new ElementType(PortletLayoutElement.class);
 
-    @Listeners( PortletColumnsListener.class )
-    @Service( impl = PortletColumnsValidtionSerivce.class )
-    @Type( base = PortletColumnElement.class )
-    ListProperty PROP_PORTLET_COLUMNS = new ListProperty( TYPE, "PortletColumns" );
+	@Listeners(PortletColumnsListener.class)
+	@Service(impl = PortletColumnsValidtionSerivce.class)
+	@Type(base = PortletColumnElement.class)
+	public static final ListProperty PROP_PORTLET_COLUMNS = new ListProperty(TYPE, "PortletColumns");
 
-    ElementList<PortletColumnElement> getPortletColumns();
+	@DefaultValue(
+		text = "${ Concat( \"portlet-layout\", Root.BootstrapStyle ? (Root.Is62 ? \" row-fluid\" : \" row\") : \"\" ) }"
+	)
+	@Required
+	public static final ValueProperty PROP_ClASS_NAME = new ValueProperty(TYPE, "ClassName");
 
-    // *** Class Name ***
+	public Value<String> getClassName();
 
-    @DefaultValue( text = "${ Concat( \"portlet-layout\", Root.BootstrapStyle ? \" row-fluid\" : \"\" ) }" )
-    @Required
-    ValueProperty PROP_ClASS_NAME = new ValueProperty( TYPE, "ClassName" );
+	public ElementList<PortletColumnElement> getPortletColumns();
 
-    Value<String> getClassName();
-    void setClassName( String className);
+	public void setClassName(String className);
 
 }

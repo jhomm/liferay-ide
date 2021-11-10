@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,10 +10,11 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.project.ui;
+
+import java.util.Objects;
 
 import org.eclipse.core.expressions.PropertyTester;
 import org.eclipse.core.resources.IFile;
@@ -21,39 +22,33 @@ import org.eclipse.core.runtime.content.IContentDescription;
 import org.eclipse.core.runtime.content.IContentType;
 
 /**
- * @author Greg Amerson
+ * @author Gregory Amerson
  */
-public class ServiceFilePropertyTester extends PropertyTester
-{
+public class ServiceFilePropertyTester extends PropertyTester {
 
-    public boolean test( Object receiver, String property, Object[] args, Object expectedValue )
-    {
-        if( receiver instanceof IFile )
-        {
-            IFile file = (IFile) receiver;
+	public boolean test(Object receiver, String property, Object[] args, Object expectedValue) {
+		if (receiver instanceof IFile) {
+			IFile file = (IFile)receiver;
 
-            try
-            {
-                IContentDescription description = file.getContentDescription();
+			try {
+				IContentDescription description = file.getContentDescription();
 
-                if( description != null )
-                {
-                    IContentType contentType = description.getContentType();
+				if (description != null) {
+					IContentType contentType = description.getContentType();
 
-                    if( contentType.getId().equals( "com.liferay.ide.portlet.core.servicebuildercontent" ) ) //$NON-NLS-1$
-                    {
-                        return true;
-                    }
-                }
+					if (Objects.equals("com.liferay.ide.portlet.core.servicebuildercontent", contentType.getId())) {
+						return true;
+					}
+				}
+			}
+			catch (Throwable t) {
 
-            }
-            catch( Throwable t )
-            {
-                // ignore
-            }
-        }
+				// ignore
 
-        return false;
-    }
+			}
+		}
+
+		return false;
+	}
 
 }

@@ -2,17 +2,22 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: Liferay Server Core Tests
 Bundle-SymbolicName: com.liferay.ide.server.core.tests
-Bundle-Version: 3.0.0.qualifier
+Bundle-Version: 4.0.0.qualifier
 Bundle-Vendor: Liferay, Inc.
-Require-Bundle: org.eclipse.core.runtime,
- org.eclipse.wst.server.core,
- com.liferay.ide.core.tests;bundle-version="2.1.0",
- com.liferay.ide.server.core;bundle-version="2.1.0",
- com.liferay.ide.project.core;bundle-version="2.1.0",
- com.liferay.ide.server.tomcat.core;bundle-version="2.1.0",
- org.apache.commons.io;bundle-version="2.0.1",
+Require-Bundle: com.liferay.ide.core,
+ com.liferay.ide.core.tests,
+ com.liferay.ide.project.core,
+ com.liferay.ide.server.core,
+ com.liferay.ide.server.tomcat.core,
+ org.eclipse.core.runtime,
+ org.eclipse.debug.core,
+ org.eclipse.jdt.launching,
  org.eclipse.jst.server.tomcat.core,
- org.eclipse.m2e.maven.runtime
-Bundle-RequiredExecutionEnvironment: JavaSE-1.7
+ org.eclipse.sapphire.modeling;bundle-version="[9,10)",
+ org.eclipse.sapphire.platform;bundle-version="[9,10)",
+ org.eclipse.wst.common.project.facet.core,
+ org.eclipse.wst.server.core,
+ org.junit
+Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-ActivationPolicy: lazy
 Export-Package: com.liferay.ide.server.core.tests

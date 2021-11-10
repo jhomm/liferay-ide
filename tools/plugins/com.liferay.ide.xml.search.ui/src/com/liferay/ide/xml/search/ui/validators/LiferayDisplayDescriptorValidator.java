@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,11 +10,13 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
+
 package com.liferay.ide.xml.search.ui.validators;
 
-import com.liferay.ide.project.core.ValidationPreferences.ValidationType;
+import com.liferay.ide.project.core.ValidationPreferences;
+
+import java.util.Objects;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.osgi.util.NLS;
@@ -23,55 +25,62 @@ import org.eclipse.wst.validation.internal.provisional.core.IReporter;
 import org.eclipse.wst.validation.internal.provisional.core.IValidator;
 import org.eclipse.wst.xml.core.internal.provisional.document.IDOMNode;
 import org.eclipse.wst.xml.search.editor.references.IXMLReference;
-import org.w3c.dom.Attr;
-import org.w3c.dom.Node;
 
+import org.w3c.dom.Attr;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
 
 /**
  * @author Kuo Zhang
  */
-@SuppressWarnings( "restriction" )
-public class LiferayDisplayDescriptorValidator extends LiferayBaseValidator
-{
+@SuppressWarnings("restriction")
+public class LiferayDisplayDescriptorValidator extends LiferayBaseValidator {
 
-    public static final String MESSAGE_CATEGORY_NAME_CANNOT_BE_EMPTY = Msgs.categoryNameCannotBeEmpty;
+	public static final String MESSAGE_CATEGORY_NAME_CANNOT_BE_EMPTY = Msgs.categoryNameCannotBeEmpty;
 
-    @Override
-    protected boolean validateSyntax( IXMLReference reference, IDOMNode node, IFile file,
-                                      IValidator validator, IReporter reporter, boolean batchMode )
-    {
-        int severity = getServerity( ValidationType.SYNTAX_INVALID, file );
+	@Override
+	protected boolean validateSyntax(
+		IXMLReference reference, IDOMNode node, IFile file, IValidator validator, IReporter reporter,
+		boolean batchMode) {
 
-        if( severity != ValidationMessage.IGNORE )
-        {
-            if( node.getNodeType() == Node.ATTRIBUTE_NODE && "name".equals( node.getNodeName() ) &&
-                "category".equals( ( (Attr) node ).getOwnerElement().getNodeName() ) )
-            {
-                if( node.getNodeValue().matches( "\\s*" ) )
-                {
-                    final String liferayPluginValidationType =
-                        getLiferayPluginValidationType( ValidationType.SYNTAX_INVALID, file );
-                    String validationMsg = MESSAGE_CATEGORY_NAME_CANNOT_BE_EMPTY;
+		int severity = getServerity(ValidationPreferences.ValidationType.SYNTAX_INVALID, file);
 
-                    addMessage(
-                        node, file, validator, reporter, batchMode, validationMsg, severity,
-                        liferayPluginValidationType );
+		if (severity == ValidationMessage.IGNORE) {
+			return true;
+		}
 
-                    return false;
-                }
-            }
-        }
+		Attr attrNode = (Attr)node;
 
-        return true;
-    }
+		Element element = attrNode.getOwnerElement();
 
-    private static class Msgs extends NLS
-    {
-        public static String categoryNameCannotBeEmpty;
+		if ((node.getNodeType() == Node.ATTRIBUTE_NODE) && Objects.equals("name", node.getNodeName()) &&
+			Objects.equals("category", element.getNodeName())) {
 
-        static
-        {
-            initializeMessages( LiferayDisplayDescriptorValidator.class.getName(), Msgs.class );
-        }
-    }
+			String nodeValue = node.getNodeValue();
+
+			if (nodeValue.matches("\\s*")) {
+				String liferayPluginValidationType = getLiferayPluginValidationType(
+					ValidationPreferences.ValidationType.SYNTAX_INVALID, file);
+				String validationMsg = MESSAGE_CATEGORY_NAME_CANNOT_BE_EMPTY;
+
+				addMessage(
+					node, file, validator, reporter, batchMode, validationMsg, severity, liferayPluginValidationType);
+
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	private static class Msgs extends NLS {
+
+		public static String categoryNameCannotBeEmpty;
+
+		static {
+			initializeMessages(LiferayDisplayDescriptorValidator.class.getName(), Msgs.class);
+		}
+
+	}
+
 }

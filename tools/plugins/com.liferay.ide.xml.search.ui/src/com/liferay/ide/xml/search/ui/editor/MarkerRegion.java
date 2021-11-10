@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,9 +10,11 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *******************************************************************************/
+ */
 
 package com.liferay.ide.xml.search.ui.editor;
+
+import com.liferay.ide.core.util.StringUtil;
 
 import org.eclipse.jface.text.IRegion;
 import org.eclipse.ui.texteditor.MarkerAnnotation;
@@ -20,54 +22,49 @@ import org.eclipse.ui.texteditor.MarkerAnnotation;
 /**
  * @author Kuo Zhang
  */
-public class MarkerRegion implements IRegion
-{
+public class MarkerRegion implements IRegion {
 
-    private final MarkerAnnotation annotation;
-    private final int length;
-    private final int offset;
+	public MarkerRegion(int offset, int length, MarkerAnnotation applicable) {
+		_offset = offset;
+		_length = length;
+		_annotation = applicable;
+	}
 
-    public MarkerRegion( int offset, int length, MarkerAnnotation applicable )
-    {
-        this.offset = offset;
-        this.length = length;
-        this.annotation = applicable;
-    }
+	@Override
+	public boolean equals(Object obj) {
+		if (!(obj instanceof MarkerRegion)) {
+			return false;
+		}
 
-    @Override
-    public boolean equals( Object obj )
-    {
-        if( !( obj instanceof MarkerRegion ) )
-        {
-            return false;
-        }
+		MarkerRegion compared = (MarkerRegion)obj;
 
-        MarkerRegion compared = (MarkerRegion) obj;
+		String annotationText = _annotation.getText();
 
-        if( this.length == compared.length &&
-            this.offset == compared.offset &&
-            this.annotation.getText() != null &&
-            compared.annotation.getText() != null &&
-            this.annotation.getText().equals( compared.annotation.getText() ) )
-        {
-            return true;
-        }
+		MarkerAnnotation comparedAnnotatiopn = compared._annotation;
 
-        return super.equals( obj );
-    }
+		if ((_length == compared._length) && (_offset == compared._offset) &&
+			StringUtil.equals(annotationText, comparedAnnotatiopn.getText())) {
 
-    public MarkerAnnotation getAnnotation()
-    {
-        return annotation;
-    }
+			return true;
+		}
 
-    public int getLength()
-    {
-        return length;
-    }
+		return super.equals(obj);
+	}
 
-    public int getOffset()
-    {
-        return offset;
-    }
+	public MarkerAnnotation getAnnotation() {
+		return _annotation;
+	}
+
+	public int getLength() {
+		return _length;
+	}
+
+	public int getOffset() {
+		return _offset;
+	}
+
+	private final MarkerAnnotation _annotation;
+	private final int _length;
+	private final int _offset;
+
 }

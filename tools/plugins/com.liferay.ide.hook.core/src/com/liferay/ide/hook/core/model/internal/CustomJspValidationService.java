@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,14 +10,14 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.hook.core.model.internal;
 
 import com.liferay.ide.core.ILiferayPortal;
 import com.liferay.ide.core.ILiferayProject;
 import com.liferay.ide.core.LiferayCore;
+import com.liferay.ide.core.util.FileUtil;
 import com.liferay.ide.hook.core.HookCore;
 import com.liferay.ide.hook.core.model.Hook;
 import com.liferay.ide.hook.core.util.HookUtil;
@@ -38,117 +38,116 @@ import org.eclipse.sapphire.services.ValidationService;
 /**
  * @author Gregory Amerson
  */
-public class CustomJspValidationService extends ValidationService
-{
+public class CustomJspValidationService extends ValidationService {
 
-    private IPath portalDir;
+	@Override
+	public Status compute() {
+		Element element = context(Element.class);
 
-    private IPath getPortalDir()
-    {
-        if( this.portalDir == null )
-        {
-            try
-            {
-                final Element element = context().find( Element.class );
-                final IProject project = element.nearest( Hook.class ).adapt( IFile.class ).getProject();
-                final ILiferayProject liferayProject = LiferayCore.create( project );
+		Property property = context(Property.class);
 
-                if( liferayProject != null )
-                {
-                    final ILiferayPortal portal = liferayProject.adapt( ILiferayPortal.class );
+		Value<?> value = (Value<?>)element.property(property.definition());
 
-                    if( portal != null )
-                    {
-                        this.portalDir = portal.getAppServerPortalDir();
-                    }
-                }
-            }
-            catch( Exception e )
-            {
-                HookCore.logError( e );
-            }
-        }
+		ValueProperty valueProperty = value.definition();
 
-        return this.portalDir;
-    }
+		String label = valueProperty.getLabel(true, CapitalizationType.NO_CAPS, false);
 
-    private boolean isValidPortalJsp( Value<?> value )
-    {
-        String customJsp = value.content().toString();
+		if (_isValueEmpty(value)) {
+			String msg = NLS.bind(Msgs.nonEmptyValueRequired, label);
 
-        IPath customJspPath = getPortalDir().append( customJsp );
+			return Status.createErrorStatus(msg);
+		}
+		else if (!_isValidPortalJsp(value) && !_isValidProjectJsp(value)) {
+			String msg = NLS.bind(Msgs.customJspInvalidPath, label);
 
-        if( customJspPath != null && customJspPath.toFile().exists() )
-        {
-            return true;
-        }
+			return Status.createErrorStatus(msg);
+		}
 
-        return false;
-    }
+		return Status.createOkStatus();
+	}
 
-    private boolean isValidProjectJsp( Value<?> value )
-    {
-        String customJsp = value.content().toString();
+	protected Hook hook() {
+		return context().find(Hook.class);
+	}
 
-        IFolder customFolder = HookUtil.getCustomJspFolder( hook(), project() );
+	protected IProject project() {
+		return hook().adapt(IProject.class);
+	}
 
-        if( customFolder != null && customFolder.exists() )
-        {
-            IFile customJspFile = customFolder.getFile( customJsp );
+	private IPath _getPortalDir() {
+		if (_portalDir == null) {
+			try {
+				Element element = context().find(Element.class);
 
-            if( customJspFile.exists() )
-            {
-                return true;
-            }
-        }
+				Hook hook = element.nearest(Hook.class);
 
-        return false;
-    }
+				IFile file = hook.adapt(IFile.class);
 
-    protected Hook hook()
-    {
-        return this.context().find( Hook.class );
-    }
+				ILiferayProject liferayProject = LiferayCore.create(ILiferayProject.class, file.getProject());
 
-    protected IProject project()
-    {
-        return this.hook().adapt( IProject.class );
-    }
+				if (liferayProject != null) {
+					ILiferayPortal portal = liferayProject.adapt(ILiferayPortal.class);
 
-    private boolean isValueEmpty( Value<?> value )
-    {
-        return value.content( false ) == null;
-    }
+					if (portal != null) {
+						_portalDir = portal.getAppServerPortalDir();
+					}
+				}
+			}
+			catch (Exception e) {
+				HookCore.logError(e);
+			}
+		}
 
-    @Override
-    public Status compute()
-    {
-        final Value<?> value = (Value<?>) context( Element.class ).property( context( Property.class ).definition() );
-        final ValueProperty property = value.definition();
-        final String label = property.getLabel( true, CapitalizationType.NO_CAPS, false );
+		return _portalDir;
+	}
 
-        if( isValueEmpty( value ) )
-        {
-            final String msg = NLS.bind( Msgs.nonEmptyValueRequired, label );
-            return Status.createErrorStatus( msg );
-        }
-        else if( !isValidPortalJsp( value ) && !isValidProjectJsp( value ) )
-        {
-            final String msg = NLS.bind( Msgs.customJspInvalidPath, label );
-            return Status.createErrorStatus( msg );
-        }
+	private boolean _isValidPortalJsp(Value<?> value) {
+		Object fileName = value.content();
 
-        return Status.createOkStatus();
-    }
+		IPath customJspPath = _getPortalDir().append(fileName.toString());
 
-    private static class Msgs extends NLS
-    {
-        public static String customJspInvalidPath;
-        public static String nonEmptyValueRequired;
+		if (FileUtil.exists(customJspPath)) {
+			return true;
+		}
 
-        static
-        {
-            initializeMessages( CustomJspValidationService.class.getName(), Msgs.class );
-        }
-    }
+		return false;
+	}
+
+	private boolean _isValidProjectJsp(Value<?> value) {
+		Object fileName = value.content();
+
+		IFolder customFolder = HookUtil.getCustomJspFolder(hook(), project());
+
+		if (FileUtil.exists(customFolder)) {
+			IFile customJspFile = customFolder.getFile(fileName.toString());
+
+			if (FileUtil.exists(customJspFile)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private boolean _isValueEmpty(Value<?> value) {
+		if (value.content(false) == null) {
+			return true;
+		}
+
+		return false;
+	}
+
+	private IPath _portalDir;
+
+	private static class Msgs extends NLS {
+
+		public static String customJspInvalidPath;
+		public static String nonEmptyValueRequired;
+
+		static {
+			initializeMessages(CustomJspValidationService.class.getName(), Msgs.class);
+		}
+
+	}
+
 }

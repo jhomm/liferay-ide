@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,14 +10,14 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.portlet.core.jsf;
 
 import com.liferay.ide.core.ILiferayConstants;
 import com.liferay.ide.core.util.CoreUtil;
 import com.liferay.ide.core.util.NodeUtil;
+import com.liferay.ide.core.util.StringUtil;
 import com.liferay.ide.portlet.core.PortletCore;
 import com.liferay.ide.portlet.core.dd.LiferayPortletDescriptorHelper;
 import com.liferay.ide.project.core.descriptor.UpdateDescriptorVersionOperation;
@@ -29,183 +29,169 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.wst.common.frameworks.datamodel.IDataModel;
 import org.eclipse.wst.sse.core.StructuredModelManager;
+import org.eclipse.wst.sse.core.internal.provisional.IModelManager;
 import org.eclipse.wst.xml.core.internal.provisional.document.IDOMDocument;
 import org.eclipse.wst.xml.core.internal.provisional.document.IDOMModel;
 import org.eclipse.wst.xml.core.internal.provisional.format.FormatProcessorXML;
+
 import org.osgi.framework.Version;
+
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-
 
 /**
  * @author Greg Amerson
  * @author Simon Jiang
  * @author Kuo Zhang
  */
-@SuppressWarnings( "restriction" )
-public class JSFLiferayPortletDescriptorHelper extends LiferayPortletDescriptorHelper
-                                               implements INewJSFPortletClassDataModelProperties
-{
-    public JSFLiferayPortletDescriptorHelper()
-    {
-        super();
-    }
+@SuppressWarnings("restriction")
+public class JSFLiferayPortletDescriptorHelper
+	extends LiferayPortletDescriptorHelper implements INewJSFPortletClassDataModelProperties {
 
-    public JSFLiferayPortletDescriptorHelper( IProject project )
-    {
-        super( project );
-    }
+	public JSFLiferayPortletDescriptorHelper() {
+	}
 
-    @Override
-    protected void addDescriptorOperations()
-    {
-        super.addDescriptorOperations();
+	public JSFLiferayPortletDescriptorHelper(IProject project) {
+		super(project);
+	}
 
-        addDescriptorOperation
-        (
-            new UpdateDescriptorVersionOperation()
-            {
-                @Override
-                public IStatus update( Version preVersion, Version postVersion )
-                {
-                    if( ( CoreUtil.compareVersions( preVersion, ILiferayConstants.V620 ) >= 0 ) &&
-                          CoreUtil.compareVersions( postVersion, ILiferayConstants.V620 ) < 0 )
-                    {
-                        final IFile descriptorFile = getDescriptorFile();
+	@Override
+	protected void addDescriptorOperations() {
+		super.addDescriptorOperations();
 
-                        IDOMModel domModel = null;
+		UpdateDescriptorVersionOperation operation = new UpdateDescriptorVersionOperation() {
 
-                        try
-                        {
-                            domModel = (IDOMModel) StructuredModelManager.
-                                        getModelManager().getModelForEdit( descriptorFile );
+			@Override
+			public IStatus update(Version preVersion, Version postVersion) {
+				if ((CoreUtil.compareVersions(preVersion, ILiferayConstants.V620) >= 0) &&
+					(CoreUtil.compareVersions(postVersion, ILiferayConstants.V620) < 0)) {
 
-                            final IDOMDocument document = domModel.getDocument();
+					IFile descriptorFile = getDescriptorFile();
 
-                            IStatus status = downgradeJSFLiferayPortletXMLTo61( document );
+					IDOMModel domModel = null;
 
-                            if( !status.isOK() )
-                            {
-                                return status;
-                            }
+					try {
+						IModelManager modelManager = StructuredModelManager.getModelManager();
 
-                            domModel.save();
-                        }
-                        catch( Exception e )
-                        {
-                            PortletCore.logError( "Error editing liferay-portlet.xml", e );
-                        }
-                        finally
-                        {
-                            if( domModel != null )
-                            {
-                                domModel.releaseFromEdit();
-                            }
-                        }
-                    }
+						domModel = (IDOMModel)modelManager.getModelForEdit(descriptorFile);
 
-                    return Status.OK_STATUS;
-                }
-            }
-        );
-    }
+						IStatus status = _downgradeJSFLiferayPortletXMLTo61(domModel.getDocument());
 
-    @Override
-    protected boolean canAddNewPortlet( IDataModel model )
-    {
-        return model.getID().contains( "NewJSFPortlet" );
-    }
+						if (!status.isOK()) {
+							return status;
+						}
 
-    @Override
-    protected IStatus doAddNewPortlet( IDOMDocument document, IDataModel model )
-    {
-        IStatus status = Status.OK_STATUS;
+						domModel.save();
+					}
+					catch (Exception e) {
+						PortletCore.logError("Error editing liferay-portlet.xml", e);
+					}
+					finally {
+						if (domModel != null) {
+							domModel.releaseFromEdit();
+						}
+					}
+				}
 
-        status = super.doAddNewPortlet( document, model );
+				return Status.OK_STATUS;
+			}
 
-        if( ! status.isOK() )
-        {
-            return status;
-        }
+		};
 
-        final Version runtimeVersion = ServerUtil.getRuntimeVersion( project );
+		addDescriptorOperation(operation);
+	}
 
-        // Runtime version should be equal or greater than 6.2.
-        if( CoreUtil.compareVersions( runtimeVersion, ILiferayConstants.V620 ) >= 0 )
-        {
-            final IFile descriptorFile = getDescriptorFile();
+	@Override
+	protected boolean canAddNewPortlet(IDataModel model) {
+		return StringUtil.contains(model.getID(), "NewJSFPortlet");
+	}
 
-            if( descriptorFile != null )
-            {
-                final DOMModelOperation op = new DOMModelEditOperation( descriptorFile )
-                {
-                    @Override
-                    protected void createDefaultFile()
-                    {
-                        // Getting document from super( descriptorFile );
-                    }
+	@Override
+	protected IStatus doAddNewPortlet(IDOMDocument document, IDataModel model) {
+		IStatus status = super.doAddNewPortlet(document, model);
 
-                    @Override
-                    protected IStatus doExecute( IDOMDocument document )
-                    {
-                        return updateJSFLiferayPortletXMLTo62( document );
-                    }
-                };
+		if (!status.isOK()) {
+			return status;
+		}
 
-                status = op.execute();
-            }
-        }
+		Version runtimeVersion = ServerUtil.getRuntimeVersion(project);
 
-        return status;
-    }
+		// Runtime version should be equal or greater than 6.2.
 
-    private IStatus downgradeJSFLiferayPortletXMLTo61( final IDOMDocument document )
-    {
-        final Element rootElement = document.getDocumentElement();
+		if (CoreUtil.compareVersions(runtimeVersion, ILiferayConstants.V620) >= 0) {
+			IFile descriptorFile = getDescriptorFile();
 
-        final NodeList requiresELements = rootElement.getElementsByTagName( "requires-namespaced-parameters" );
+			if (descriptorFile != null) {
+				DOMModelOperation op = new DOMModelEditOperation(descriptorFile) {
 
-        for( int i = 0; i < requiresELements.getLength(); i++ )
-        {
-            Node requiresElement = requiresELements.item( i );
+					@Override
+					protected void createDefaultFile() {
 
-            Node prevNode = requiresElement.getPreviousSibling();
-            Node parentNode = requiresElement.getParentNode();
+						// Getting document from super( descriptorFile );
 
-            if( prevNode != null &&
-                prevNode.getNodeType() == Node.TEXT_NODE &&
-                prevNode.getNodeValue().trim().length() == 0 )
-            {
-                parentNode.removeChild(prevNode);
-            }
+					}
 
-            parentNode.removeChild( requiresElement );
-        }
+					@Override
+					protected IStatus doExecute(IDOMDocument document) {
+						return _updateJSFLiferayPortletXMLTo62(document);
+					}
 
-        new FormatProcessorXML().formatNode( rootElement );
+				};
 
-        return Status.OK_STATUS;
-    }
+				return op.execute();
+			}
+		}
 
-    private IStatus updateJSFLiferayPortletXMLTo62( IDOMDocument document )
-    {
-        final Element rootElement = document.getDocumentElement();
+		return Status.OK_STATUS;
+	}
 
-        final NodeList portletNodes = rootElement.getElementsByTagName( "portlet" );
+	private IStatus _downgradeJSFLiferayPortletXMLTo61(IDOMDocument document) {
+		Element rootElement = document.getDocumentElement();
 
-        if( portletNodes.getLength() > 1 )
-        {
-            final Element lastPortletElement = (Element) portletNodes.item( portletNodes.getLength() - 1 );
-            final Node headerPortletClassElement =
-                lastPortletElement.getElementsByTagName( "header-portlet-css" ).item( 0 );
+		NodeList requiresELements = rootElement.getElementsByTagName("requires-namespaced-parameters");
 
-            NodeUtil.insertChildElement(
-                lastPortletElement, headerPortletClassElement, "requires-namespaced-parameters", "false" );
+		for (int i = 0; i < requiresELements.getLength(); i++) {
+			Node requiresElement = requiresELements.item(i);
 
-            new FormatProcessorXML().formatNode( lastPortletElement );
-        }
+			Node prevNode = requiresElement.getPreviousSibling();
+			Node parentNode = requiresElement.getParentNode();
 
-        return Status.OK_STATUS;
-    }
+			String nodeValue = prevNode.getNodeValue();
+
+			if ((prevNode != null) && (prevNode.getNodeType() == Node.TEXT_NODE) &&
+				CoreUtil.isNullOrEmpty(nodeValue.trim())) {
+
+				parentNode.removeChild(prevNode);
+			}
+
+			parentNode.removeChild(requiresElement);
+		}
+
+		new FormatProcessorXML().formatNode(rootElement);
+
+		return Status.OK_STATUS;
+	}
+
+	private IStatus _updateJSFLiferayPortletXMLTo62(IDOMDocument document) {
+		Element rootElement = document.getDocumentElement();
+
+		NodeList portletNodes = rootElement.getElementsByTagName("portlet");
+
+		if (portletNodes.getLength() > 1) {
+			Element lastPortletElement = (Element)portletNodes.item(portletNodes.getLength() - 1);
+
+			NodeList nodeList = lastPortletElement.getElementsByTagName("header-portlet-css");
+
+			Node headerPortletClassElement = nodeList.item(0);
+
+			NodeUtil.insertChildElement(
+				lastPortletElement, headerPortletClassElement, "requires-namespaced-parameters", "false");
+
+			new FormatProcessorXML().formatNode(lastPortletElement);
+		}
+
+		return Status.OK_STATUS;
+	}
+
 }

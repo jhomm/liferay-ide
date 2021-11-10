@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,11 +10,12 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
+
 package com.liferay.ide.portlet.ui.editor;
 
-import com.liferay.ide.core.util.CoreUtil;
+import com.liferay.ide.core.util.ListUtil;
+import com.liferay.ide.core.util.StringUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -43,185 +44,180 @@ import org.eclipse.jface.text.hyperlink.AbstractHyperlinkDetector;
 import org.eclipse.jface.text.hyperlink.IHyperlink;
 import org.eclipse.wst.xml.core.internal.provisional.document.IDOMNode;
 import org.eclipse.wst.xml.search.core.util.DOMUtils;
-import org.w3c.dom.Node;
 
+import org.w3c.dom.NamedNodeMap;
+import org.w3c.dom.Node;
 
 /**
  * @author Gregory Amerson
  */
-@SuppressWarnings( "restriction" )
-public class PortletURLHyperlinkDetector extends AbstractHyperlinkDetector
-{
-    private IFile lastFile;
-    private long lastModStamp;
-    private IRegion lastNodeRegion;
-    private IMethod[] lastActionUrlMethods;
+@SuppressWarnings("restriction")
+public class PortletURLHyperlinkDetector extends AbstractHyperlinkDetector {
 
-    private static class ActionMethodCollector extends SearchRequestor
-    {
-        private final List<IMethod> results;
+	public PortletURLHyperlinkDetector() {
+	}
 
-        public ActionMethodCollector( List<IMethod> results )
-        {
-            super();
-            this.results = results;
-        }
+	public IHyperlink[] detectHyperlinks(ITextViewer textViewer, IRegion region, boolean canShowMultipleHyperlinks) {
+		IHyperlink[] retval = null;
 
-        @Override
-        public void acceptSearchMatch( SearchMatch match ) throws CoreException
-        {
-            final Object element = match.getElement();
+		if (_shouldDetectHyperlinks(textViewer, region)) {
+			IDocument document = textViewer.getDocument();
 
-            if( element instanceof IMethod && isActionMethod( (IMethod) element ) )
-            {
-                this.results.add( (IMethod) element );
-            }
-        }
-    }
+			IDOMNode currentNode = DOMUtils.getNodeByOffset(document, region.getOffset());
 
-    private static boolean isActionMethod( IMethod method )
-    {
-        final String[] paramTypes = method.getParameterTypes();
+			IRegion nodeRegion = new Region(
+				currentNode.getStartOffset(), currentNode.getEndOffset() - currentNode.getStartOffset());
 
-        return paramTypes.length == 2 && paramTypes[0].toLowerCase().contains( "request" ) &&
-            paramTypes[1].toLowerCase().contains( "response" );
-    }
+			if (_isActionURL(currentNode)) {
+				NamedNodeMap attributes = currentNode.getAttributes();
 
-    public PortletURLHyperlinkDetector()
-    {
-        super();
-    }
+				Node name = attributes.getNamedItem("name");
 
-    public IHyperlink[] detectHyperlinks( ITextViewer textViewer, IRegion region, boolean canShowMultipleHyperlinks )
-    {
-        IHyperlink[] retval = null;
+				if (name != null) {
+					IDocumentExtension4 docExtension = (IDocumentExtension4)document;
 
-        if( shouldDetectHyperlinks( textViewer, region ) )
-        {
-            final IDocument document = textViewer.getDocument();
-            final int offset = region.getOffset();
-            final IDOMNode currentNode = DOMUtils.getNodeByOffset( document, offset );
-            final IRegion nodeRegion =
-                new Region( currentNode.getStartOffset(), currentNode.getEndOffset() - currentNode.getStartOffset() );
+					long modStamp = docExtension.getModificationStamp();
 
-            if( isActionURL( currentNode ) )
-            {
-                final Node name = currentNode.getAttributes().getNamedItem( "name" );
+					IFile file = DOMUtils.getFile(document);
 
-                if( name != null )
-                {
-                    final long modStamp = ( (IDocumentExtension4) document ).getModificationStamp();
-                    final IFile file = DOMUtils.getFile( document );
+					IMethod[] actionUrlMethods = null;
 
-                    IMethod[] actionUrlMethods = null;
+					if (file.equals(_lastFile) && (modStamp == _lastModStamp) && nodeRegion.equals(_lastNodeRegion)) {
+						actionUrlMethods = _lastActionUrlMethods;
+					}
+					else {
+						String nameValue = name.getNodeValue();
 
-                    if( file.equals( this.lastFile ) && modStamp == this.lastModStamp &&
-                        nodeRegion.equals( this.lastNodeRegion ) )
-                    {
-                        actionUrlMethods = this.lastActionUrlMethods;
-                    }
-                    else
-                    {
-                        final String nameValue = name.getNodeValue();
+						// search for this method in any portlet classes
 
-                        // search for this method in any portlet classes
-                        actionUrlMethods = findPortletMethods( document, nameValue );
+						actionUrlMethods = _findPortletMethods(document, nameValue);
 
-                        this.lastModStamp = modStamp;
-                        this.lastFile = file;
-                        this.lastNodeRegion = nodeRegion;
-                        this.lastActionUrlMethods = actionUrlMethods;
-                    }
+						_lastModStamp = modStamp;
+						_lastFile = file;
+						_lastNodeRegion = nodeRegion;
+						_lastActionUrlMethods = actionUrlMethods;
+					}
 
-                    if( ! CoreUtil.isNullOrEmpty( actionUrlMethods ) )
-                    {
-                        final List<IHyperlink> links = new ArrayList<IHyperlink>();
+					if (ListUtil.isNotEmpty(actionUrlMethods)) {
+						List<IHyperlink> links = new ArrayList<>();
 
-                        for( IMethod method : actionUrlMethods )
-                        {
-                            if( method.exists() )
-                            {
-                                links.add( new BasicJavaElementHyperlink( nodeRegion, method ) );
-                            }
-                        }
+						for (IMethod method : actionUrlMethods) {
+							if (method.exists()) {
+								links.add(new BasicJavaElementHyperlink(nodeRegion, method));
+							}
+						}
 
-                        if( links.size() != 0 )
-                        {
-                            if( canShowMultipleHyperlinks )
-                            {
-                                retval = links.toArray( new IHyperlink[0] );
-                            }
-                            else
-                            {
-                                retval = new IHyperlink[] { links.get( 0 ) };
-                            }
-                        }
-                    }
-                }
-            }
-        }
+						if (ListUtil.isNotEmpty(links)) {
+							if (canShowMultipleHyperlinks) {
+								retval = links.toArray(new IHyperlink[0]);
+							}
+							else {
+								retval = new IHyperlink[] {links.get(0)};
+							}
+						}
+					}
+				}
+			}
+		}
 
-        return retval;
-    }
+		return retval;
+	}
 
-    private IMethod[] findPortletMethods( IDocument document, String nameValue )
-    {
-        IMethod[] retval = null;
+	private static boolean _isActionMethod(IMethod method) {
+		String[] paramTypes = method.getParameterTypes();
 
-        final IFile file = DOMUtils.getFile( document );
+		if ((paramTypes.length == 2) && StringUtil.contains(paramTypes[0].toLowerCase(), "request") &&
+			StringUtil.contains(paramTypes[1].toLowerCase(), "response")) {
 
-        if( file != null && file.exists() )
-        {
-            final IJavaProject project = JavaCore.create( file.getProject() );
+			return true;
+		}
 
-            if( project != null && project.exists() )
-            {
-                try
-                {
-                    final IType portlet = project.findType( "javax.portlet.Portlet" );
+		return false;
+	}
 
-                    if( portlet != null )
-                    {
-                        final List<IMethod> methods = new ArrayList<IMethod>();
-                        final SearchRequestor requestor = new ActionMethodCollector( methods );
+	private IMethod[] _findPortletMethods(IDocument document, String nameValue) {
+		IMethod[] retval = null;
 
-                        final IJavaSearchScope scope =
-                            SearchEngine.createStrictHierarchyScope( project, portlet, true, false, null );
+		IFile file = DOMUtils.getFile(document);
 
-                        final SearchPattern search =
-                            SearchPattern.createPattern(
-                                nameValue, IJavaSearchConstants.METHOD, IJavaSearchConstants.DECLARATIONS,
-                                SearchPattern.R_EXACT_MATCH | SearchPattern.R_CASE_SENSITIVE );
+		if ((file != null) && file.exists()) {
+			IJavaProject project = JavaCore.create(file.getProject());
 
-                        new SearchEngine().search(
-                            search, new SearchParticipant[] { SearchEngine.getDefaultSearchParticipant() }, scope,
-                            requestor, new NullProgressMonitor() );
+			if ((project != null) && project.exists()) {
+				try {
+					IType portlet = project.findType("javax.portlet.Portlet");
 
-                        retval = methods.toArray( new IMethod[0] );
-                    }
-                }
-                catch( JavaModelException e )
-                {
-                }
-                catch( CoreException e )
-                {
-                }
-            }
-        }
+					if (portlet != null) {
+						List<IMethod> methods = new ArrayList<>();
 
-        return retval;
-    }
+						SearchRequestor requestor = new ActionMethodCollector(methods);
 
-    private boolean isActionURL( Node currentNode )
-    {
-        return currentNode != null && currentNode.getNodeName() != null &&
-            currentNode.getNodeType() == Node.ELEMENT_NODE &&
-            currentNode.getNodeName().endsWith( "actionURL" );
-    }
+						IJavaSearchScope scope = SearchEngine.createStrictHierarchyScope(
+							project, portlet, true, false, null);
 
-    private boolean shouldDetectHyperlinks( final ITextViewer textViewer, final IRegion region )
-    {
-        return region != null && textViewer != null;
-    }
+						SearchPattern search = SearchPattern.createPattern(
+							nameValue, IJavaSearchConstants.METHOD, IJavaSearchConstants.DECLARATIONS,
+							SearchPattern.R_EXACT_MATCH | SearchPattern.R_CASE_SENSITIVE);
+
+						SearchParticipant[] searchParticipant = {SearchEngine.getDefaultSearchParticipant()};
+
+						new SearchEngine().search(
+							search, searchParticipant, scope, requestor, new NullProgressMonitor());
+
+						retval = methods.toArray(new IMethod[0]);
+					}
+				}
+				catch (JavaModelException jme) {
+				}
+				catch (CoreException ce) {
+				}
+			}
+		}
+
+		return retval;
+	}
+
+	private boolean _isActionURL(Node currentNode) {
+		if ((currentNode != null) && (currentNode.getNodeName() != null) &&
+			(currentNode.getNodeType() == Node.ELEMENT_NODE) &&
+			StringUtil.endsWith(currentNode.getNodeName(), "actionURL")) {
+
+			return true;
+		}
+
+		return false;
+	}
+
+	private boolean _shouldDetectHyperlinks(ITextViewer textViewer, IRegion region) {
+		if ((region != null) && (textViewer != null)) {
+			return true;
+		}
+
+		return false;
+	}
+
+	private IMethod[] _lastActionUrlMethods;
+	private IFile _lastFile;
+	private long _lastModStamp;
+	private IRegion _lastNodeRegion;
+
+	private static class ActionMethodCollector extends SearchRequestor {
+
+		public ActionMethodCollector(List<IMethod> results) {
+			_results = results;
+		}
+
+		@Override
+		public void acceptSearchMatch(SearchMatch match) throws CoreException {
+			Object element = match.getElement();
+
+			if ((element instanceof IMethod) && _isActionMethod((IMethod)element)) {
+				this._results.add((IMethod)element);
+			}
+		}
+
+		private List<IMethod> _results;
+
+	}
 
 }

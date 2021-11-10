@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,15 +10,17 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.server.ui.handlers;
 
+import com.liferay.ide.server.core.ILiferayRuntime;
 import com.liferay.ide.server.ui.LiferayServerUI;
 import com.liferay.ide.server.ui.util.ServerUIUtil;
+import com.liferay.ide.server.util.ServerUtil;
 
 import java.io.IOException;
+
 import java.util.List;
 
 import org.eclipse.core.commands.AbstractHandler;
@@ -33,36 +35,34 @@ import org.eclipse.wst.server.core.IServer;
 /**
  * @author Terry Jia
  */
-@SuppressWarnings( "rawtypes" )
-public class OpenLiferayHomeFolderHandler extends AbstractHandler
-{
+@SuppressWarnings("rawtypes")
+public class OpenLiferayHomeFolderHandler extends AbstractHandler {
 
-    public Object execute( ExecutionEvent event ) throws ExecutionException
-    {
-        final ISelection selection = HandlerUtil.getCurrentSelection( event );
+	public Object execute(ExecutionEvent event) throws ExecutionException {
+		ISelection selection = HandlerUtil.getCurrentSelection(event);
 
-        if( selection instanceof IStructuredSelection )
-        {
-            List selectedObj = ( (IStructuredSelection) selection ).toList();
+		if (selection instanceof IStructuredSelection) {
+			IStructuredSelection structuredSelection = (IStructuredSelection)selection;
 
-            if( ( selectedObj.size() == 1 ) && ( selectedObj.get( 0 ) instanceof IServer ) )
-            {
-                IServer server = (IServer) selectedObj.get( 0 );
+			List selectedObj = structuredSelection.toList();
 
-                final IPath path = server.getRuntime().getLocation();
+			if ((selectedObj.size() == 1) && (selectedObj.get(0) instanceof IServer)) {
+				IServer server = (IServer)selectedObj.get(0);
 
-                try
-                {
-                    ServerUIUtil.openFileInSystemExplorer( path );
-                }
-                catch( IOException e )
-                {
-                    LiferayServerUI.logError( "Error opening portal home folder.", e );
-                }
-            }
-        }
+				ILiferayRuntime liferayRuntime = ServerUtil.getLiferayRuntime(server.getRuntime());
 
-        return null;
-    }
+				IPath path = liferayRuntime.getAppServerDir();
+
+				try {
+					ServerUIUtil.openFileInSystemExplorer(path);
+				}
+				catch (IOException ioe) {
+					LiferayServerUI.logError("Error opening portal home folder.", ioe);
+				}
+			}
+		}
+
+		return null;
+	}
 
 }

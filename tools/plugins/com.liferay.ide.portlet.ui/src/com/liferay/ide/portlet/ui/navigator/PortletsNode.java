@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,26 +10,27 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- * Contributors:
- *      Kamesh Sampath - initial implementation
- *      Gregory Amerson - initial implementation review and ongoing maintenance
- *******************************************************************************/
+ */
 
 package com.liferay.ide.portlet.ui.navigator;
 
+import com.liferay.ide.core.util.FileUtil;
 import com.liferay.ide.portlet.core.model.Portlet;
 import com.liferay.ide.portlet.core.model.PortletApp;
 import com.liferay.ide.portlet.ui.PortletUIPlugin;
 import com.liferay.ide.project.core.util.ProjectUtil;
 
+import java.io.InputStream;
+
 import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.core.resources.IFile;
+import org.eclipse.sapphire.ElementList;
 import org.eclipse.sapphire.modeling.xml.RootXmlResource;
 import org.eclipse.sapphire.modeling.xml.XmlResourceStore;
 import org.eclipse.wst.sse.core.StructuredModelManager;
+import org.eclipse.wst.sse.core.internal.provisional.IModelManager;
 import org.eclipse.wst.sse.core.internal.provisional.IModelStateListener;
 import org.eclipse.wst.sse.core.internal.provisional.IStructuredModel;
 
@@ -37,131 +38,114 @@ import org.eclipse.wst.sse.core.internal.provisional.IStructuredModel;
  * @author <a href="mailto:kamesh.sampath@hotmail.com">Kamesh Sampath</a>
  * @author Gregory Amerson
  */
-@SuppressWarnings( "restriction" )
-public class PortletsNode
-{
+@SuppressWarnings("restriction")
+public class PortletsNode {
 
-    private static final Object[] EMPTY = new Object[] {};
+	public PortletsNode(PortletResourcesRootNode parent) {
+		_parent = parent;
+	}
 
-    private PortletApp modelElement = null;
-    private PortletResourcesRootNode parent;
+	public Object[] getChildren() {
+		if (_getPortletAppModelElement() != null) {
+			List<PortletNode> portletNodes = new ArrayList<>();
 
-    public PortletsNode( PortletResourcesRootNode parent )
-    {
-        this.parent = parent;
-    }
+			for (Portlet portlet : _getPortletAppModelElement().getPortlets()) {
+				portletNodes.add(new PortletNode(this, portlet));
+			}
 
-    public Object[] getChildren()
-    {
-        if( this.getPortletAppModelElement() != null )
-        {
-            final List<PortletNode> portletNodes = new ArrayList<PortletNode>();
+			return portletNodes.toArray(new PortletNode[0]);
+		}
 
-            for( Portlet portlet : this.getPortletAppModelElement().getPortlets() )
-            {
-                portletNodes.add( new PortletNode( this, portlet ) );
-            }
+		return _EMPTY;
+	}
 
-            return portletNodes.toArray( new PortletNode[0] );
-        }
+	public PortletResourcesRootNode getParent() {
+		return _parent;
+	}
 
-        return EMPTY;
-    }
+	public boolean hasChildren() {
+		PortletApp model = _getPortletAppModelElement();
 
-    public PortletResourcesRootNode getParent()
-    {
-        return this.parent;
-    }
+		if (model != null) {
+			ElementList<Portlet> portlets = model.getPortlets();
 
-    private PortletApp getPortletAppModelElement()
-    {
-        if( this.modelElement == null )
-        {
-            IFile portletXmlFile = ProjectUtil.getPortletXmlFile( this.parent.getProject() );
+			if (!portlets.isEmpty()) {
+				return true;
+			}
 
-            if( portletXmlFile != null && portletXmlFile.exists() )
-            {
-                try
-                {
-                    final IStructuredModel portletXmlModel =
-                        StructuredModelManager.getModelManager().getModelForRead( portletXmlFile );
+			return false;
+		}
 
-                    IModelStateListener listener = new IModelStateListener()
-                    {
+		return false;
+	}
 
-                        public void modelAboutToBeChanged( IStructuredModel model )
-                        {
-                        }
+	private PortletApp _getPortletAppModelElement() {
+		if (_modelElement == null) {
+			IFile portletXmlFile = ProjectUtil.getPortletXmlFile(this._parent.getProject());
 
-                        public void modelAboutToBeReinitialized( IStructuredModel structuredModel )
-                        {
-                        }
+			if (FileUtil.exists(portletXmlFile)) {
+				try (InputStream inputStream = portletXmlFile.getContents()) {
+					IModelManager modelManager = StructuredModelManager.getModelManager();
 
-                        public void modelChanged( IStructuredModel model )
-                        {
-                            refresh();
-                        }
+					IStructuredModel portletXmlModel = modelManager.getModelForRead(portletXmlFile);
 
-                        public void modelDirtyStateChanged( IStructuredModel model, boolean isDirty )
-                        {
-                            refresh();
-                        }
+					IModelStateListener listener = new IModelStateListener() {
 
-                        public void modelReinitialized( IStructuredModel structuredModel )
-                        {
-                            refresh();
-                        }
+						public void modelAboutToBeChanged(IStructuredModel model) {
+						}
 
-                        public void modelResourceDeleted( IStructuredModel model )
-                        {
-                            refresh();
-                        }
+						public void modelAboutToBeReinitialized(IStructuredModel structuredModel) {
+						}
 
-                        public void modelResourceMoved( IStructuredModel oldModel, IStructuredModel newModel )
-                        {
-                            refresh();
-                        }
+						public void modelChanged(IStructuredModel model) {
+							_refresh();
+						}
 
-                        private void refresh()
-                        {
-                            portletXmlModel.removeModelStateListener( this );
+						public void modelDirtyStateChanged(IStructuredModel model, boolean dirty) {
+							_refresh();
+						}
 
-                            if( !PortletsNode.this.modelElement.disposed() )
-                            {
-                                PortletsNode.this.modelElement.dispose();
-                            }
+						public void modelReinitialized(IStructuredModel structuredModel) {
+							_refresh();
+						}
 
-                            PortletsNode.this.modelElement = null;
-                            PortletsNode.this.parent.refresh();
-                        }
-                    };
+						public void modelResourceDeleted(IStructuredModel model) {
+							_refresh();
+						}
 
-                    portletXmlModel.addModelStateListener( listener );
+						public void modelResourceMoved(IStructuredModel oldModel, IStructuredModel newModel) {
+							_refresh();
+						}
 
-                    modelElement =
-                        PortletApp.TYPE.instantiate( new RootXmlResource( new XmlResourceStore(
-                            portletXmlFile.getContents() ) ) );
-                }
-                catch( Exception e )
-                {
-                    PortletUIPlugin.logError( e );
-                }
-            }
-        }
+						private void _refresh() {
+							portletXmlModel.removeModelStateListener(this);
 
-        return this.modelElement;
-    }
+							if (!PortletsNode.this._modelElement.disposed()) {
+								PortletsNode.this._modelElement.dispose();
+							}
 
-    public boolean hasChildren()
-    {
-        PortletApp model = getPortletAppModelElement();
+							PortletsNode.this._modelElement = null;
+							PortletsNode.this._parent.refresh();
+						}
 
-        if( model != null )
-        {
-            return model.getPortlets().size() > 0;
-        }
+					};
 
-        return false;
-    }
+					portletXmlModel.addModelStateListener(listener);
+
+					_modelElement = PortletApp.TYPE.instantiate(new RootXmlResource(new XmlResourceStore(inputStream)));
+				}
+				catch (Exception e) {
+					PortletUIPlugin.logError(e);
+				}
+			}
+		}
+
+		return _modelElement;
+	}
+
+	private static final Object[] _EMPTY = {};
+
+	private PortletApp _modelElement = null;
+	private PortletResourcesRootNode _parent;
 
 }

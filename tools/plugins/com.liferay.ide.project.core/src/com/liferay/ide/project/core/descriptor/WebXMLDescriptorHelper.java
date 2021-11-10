@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,14 +10,15 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.project.core.descriptor;
 
 import com.liferay.ide.core.ILiferayConstants;
+import com.liferay.ide.core.util.FileUtil;
 import com.liferay.ide.core.util.NodeUtil;
 import com.liferay.ide.core.util.StringPool;
+import com.liferay.ide.core.util.StringUtil;
 import com.liferay.ide.project.core.ProjectCore;
 
 import org.eclipse.core.resources.IFile;
@@ -32,308 +33,283 @@ import org.eclipse.jst.j2ee.web.componentcore.util.WebArtifactEdit;
 import org.eclipse.jst.j2ee.webapplication.WebApp;
 import org.eclipse.wst.xml.core.internal.provisional.document.IDOMDocument;
 import org.eclipse.wst.xml.core.internal.provisional.format.FormatProcessorXML;
+
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 /**
- * @author Greg Amerson
+ * @author Gregory Amerson
  */
-@SuppressWarnings( "restriction" )
-public class WebXMLDescriptorHelper extends LiferayDescriptorHelper
-{
-    private static String DESCRIPTOR_FILE = ILiferayConstants.WEB_XML_FILE;
+@SuppressWarnings({"restriction", "rawtypes", "unchecked"})
+public class WebXMLDescriptorHelper extends LiferayDescriptorHelper {
 
-    public WebXMLDescriptorHelper( IProject project )
-    {
-        super( project );
+	public WebXMLDescriptorHelper(IProject project) {
+		super(project);
 
-        setDescriptorPath( ILiferayConstants.WEB_XML_FILE );
-    }
+		setDescriptorPath(ILiferayConstants.WEB_XML_FILE);
+	}
 
-    @Override
-    protected void addDescriptorOperations()
-    {
-        // currently, no descriptor operations for this descriptor
-    }
+	public IStatus addTagLib(TagLibRefType tagLibRefType) {
+		IFile file = getDescriptorFile(getDescriptorPath());
 
-    public IStatus addTagLib( final TagLibRefType tagLibRefType )
-    {
-        IFile file = getDescriptorFile( getDescriptorPath() );
+		IStatus status = null;
 
-        IStatus status = null;
+		if (FileUtil.exists(file)) {
+			DOMModelOperation op = new DOMModelEditOperation(file) {
 
-        if( file != null && file.exists() )
-        {
-            final DOMModelOperation op = new DOMModelEditOperation( file )
-            {
-                protected void createDefaultFile()
-                {
-                    //never create the file
-                }
+				protected void createDefaultFile() {
 
-                protected IStatus doExecute( IDOMDocument document )
-                {
-                    return doAddTagLib( document, tagLibRefType );
-                }
-            };
- 
-            status = op.execute();
-        }
-        else
-        {
-            WebArtifactEdit webArtifactEdit = WebArtifactEdit.getWebArtifactEditForWrite( this.project );
-            int j2eeVersion = webArtifactEdit.getJ2EEVersion();
+					// never create the file
 
-            WebApp webApp = webArtifactEdit.getWebApp();
+				}
 
-            if( tagLibReferenceExists( webApp, tagLibRefType ) )
-            {
-                return Status.OK_STATUS;
-            }
-            // webApp.setFileList(null);
-            JSPConfig jspConfig = webApp.getJspConfig();
+				protected IStatus doExecute(IDOMDocument document) {
+					return doAddTagLib(document, tagLibRefType);
+				}
 
-            if( jspConfig == null && webApp.getVersionID() != 23 )
-            {
-                jspConfig = JspFactory.eINSTANCE.createJSPConfig();
-            }
+			};
 
-            if( jspConfig != null )
-            {
-                jspConfig.getTagLibs().add( tagLibRefType );
-            }
-            else
-            {
-                EList tagLibs = webApp.getTagLibs();
-                tagLibs.add( tagLibRefType );
-            }
+			status = op.execute();
+		}
+		else {
+			WebArtifactEdit webArtifactEdit = WebArtifactEdit.getWebArtifactEditForWrite(project);
 
-            if( jspConfig != null )
-            {
-                webApp.setJspConfig( jspConfig );
-            }
+			WebApp webApp = webArtifactEdit.getWebApp();
 
-            webArtifactEdit.save( null );
-            webArtifactEdit.dispose();
+			if (tagLibReferenceExists(webApp, tagLibRefType)) {
+				return Status.OK_STATUS;
+			}
 
-            status = Status.OK_STATUS;
-        }
+			// webApp.setFileList(null);
 
-        if( !status.isOK() )
-        {
-            return status;
-        }
+			JSPConfig jspConfig = webApp.getJspConfig();
 
-        return status;
-    }
+			if ((jspConfig == null) && (webApp.getVersionID() != 23)) {
+				jspConfig = JspFactory.eINSTANCE.createJSPConfig();
+			}
 
-    public IStatus deleteWelcomeFileListElements()
-    {
-        IFile file = getDescriptorFile( getDescriptorPath() );
+			if (jspConfig != null) {
+				EList eList = jspConfig.getTagLibs();
 
-        IStatus status = null;
+				eList.add(tagLibRefType);
+			}
+			else {
+				EList tagLibs = webApp.getTagLibs();
 
-        if( file != null && file.exists() )
-        {
-            status = new DOMModelEditOperation( file )
-            {
-                protected void createDefaultFile()
-                {
-                    //never create the file
-                }
+				tagLibs.add(tagLibRefType);
+			}
 
-                protected IStatus doExecute( IDOMDocument document )
-                {
-                    try
-                    {
-                        NodeList welcomeFileLists = document.getElementsByTagName( "welcome-file-list" ); //$NON-NLS-1$
+			if (jspConfig != null) {
+				webApp.setJspConfig(jspConfig);
+			}
 
-                        for( int i = 0; i < welcomeFileLists.getLength(); i++ )
-                        {
-                            Node welcomeFileList = welcomeFileLists.item( i );
-                            welcomeFileList.getParentNode().removeChild( welcomeFileList );
-                        }
-                    }
-                    catch( Exception e )
-                    {
-                        return ProjectCore.createErrorStatus( e );
-                    }
+			webArtifactEdit.save(null);
 
-                    return Status.OK_STATUS;
-                }
-            }.execute();
-        }
+			webArtifactEdit.dispose();
 
-        return status;
-    }
+			status = Status.OK_STATUS;
+		}
 
-    protected IStatus doAddTagLib( IDOMDocument document, TagLibRefType tagLibRefType )
-    {
-        if( tagLibReferenceExists( document, tagLibRefType ) )
-        {
-            return Status.OK_STATUS;
-        }
+		if (!status.isOK()) {
+			return status;
+		}
 
-        String typeId = document.getDocumentTypeId();
-        Element rootElement = document.getDocumentElement();
+		return status;
+	}
 
-        if( typeId != null && typeId.contains( "2.3" ) ) //$NON-NLS-1$
-        {
-            Element taglibNextSibling = NodeUtil.findChildElement( rootElement, "resource-env-ref" ); //$NON-NLS-1$
+	public IStatus deleteWelcomeFileListElements() {
+		IFile file = getDescriptorFile(getDescriptorPath());
 
-            if( taglibNextSibling == null )
-            {
-                taglibNextSibling = NodeUtil.findChildElement( rootElement, "resource-ref" ); //$NON-NLS-1$
-            }
+		if (FileUtil.notExists(file)) {
+			return null;
+		}
 
-            if( taglibNextSibling == null )
-            {
-                taglibNextSibling = NodeUtil.findChildElement( rootElement, "security-constraint" ); //$NON-NLS-1$
-            }
+		return new DOMModelEditOperation(
+			file
+		) {
 
-            if( taglibNextSibling == null )
-            {
-                taglibNextSibling = NodeUtil.findChildElement( rootElement, "login-config" ); //$NON-NLS-1$
-            }
+			protected void createDefaultFile() {
 
-            if( taglibNextSibling == null )
-            {
-                taglibNextSibling = NodeUtil.findChildElement( rootElement, "security-role" ); //$NON-NLS-1$
-            }
+				// never create the file
 
-            if( taglibNextSibling == null )
-            {
-                taglibNextSibling = NodeUtil.findChildElement( rootElement, "env-entry" ); //$NON-NLS-1$
-            }
+			}
 
-            if( taglibNextSibling == null )
-            {
-                taglibNextSibling = NodeUtil.findChildElement( rootElement, "ejb-ref" ); //$NON-NLS-1$
-            }
+			protected IStatus doExecute(IDOMDocument document) {
+				try {
+					NodeList welcomeFileLists = document.getElementsByTagName("welcome-file-list");
 
-            if( taglibNextSibling == null )
-            {
-                taglibNextSibling = NodeUtil.findChildElement( rootElement, "ejb-local-ref" ); //$NON-NLS-1$
-            }
+					for (int i = 0; i < welcomeFileLists.getLength(); i++) {
+						Node welcomeFileList = welcomeFileLists.item(i);
 
-            Element taglib = NodeUtil.insertChildElement( rootElement, taglibNextSibling, "taglib", StringPool.EMPTY ); //$NON-NLS-1$
+						Node parentNode = welcomeFileList.getParentNode();
 
-            NodeUtil.appendChildElement( taglib, "taglib-uri", tagLibRefType.getTaglibURI() ); //$NON-NLS-1$
+						parentNode.removeChild(welcomeFileList);
+					}
+				}
+				catch (Exception e) {
+					return ProjectCore.createErrorStatus(e);
+				}
 
-            NodeUtil.appendChildElement( taglib, "taglib-location", tagLibRefType.getTaglibLocation() ); //$NON-NLS-1$
+				return Status.OK_STATUS;
+			}
 
+		}.execute();
+	}
 
-            if( taglibNextSibling == null )
-            {
-                rootElement.appendChild( document.createTextNode( System.getProperty( "line.separator" ) ) ); //$NON-NLS-1$
-            }
-            // format the new node added to the model;
-            FormatProcessorXML processor = new FormatProcessorXML();
+	@Override
+	public IFile getDescriptorFile() {
+		return super.getDescriptorFile(_DESCRIPTOR_FILE);
+	}
 
-            processor.formatNode( taglib );
-        }
-        else
-        {
-            Element jspConfig = NodeUtil.findChildElement( rootElement, "jsp-config" ); //$NON-NLS-1$
+	@Override
+	protected void addDescriptorOperations() {
 
-            if( jspConfig == null )
-            {
-                jspConfig = NodeUtil.appendChildElement( rootElement, "jsp-config" ); //$NON-NLS-1$
-            }
+		// currently, no descriptor operations for this descriptor
 
-            Element taglib = NodeUtil.appendChildElement( jspConfig, "taglib" ); //$NON-NLS-1$
+	}
 
-            NodeUtil.appendChildElement( taglib, "taglib-uri", tagLibRefType.getTaglibURI() ); //$NON-NLS-1$
+	protected IStatus doAddTagLib(IDOMDocument document, TagLibRefType tagLibRefType) {
+		if (tagLibReferenceExists(document, tagLibRefType)) {
+			return Status.OK_STATUS;
+		}
 
-            NodeUtil.appendChildElement( taglib, "taglib-location", tagLibRefType.getTaglibLocation() ); //$NON-NLS-1$
+		String typeId = document.getDocumentTypeId();
 
-            rootElement.appendChild( document.createTextNode( System.getProperty( "line.separator" ) ) ); //$NON-NLS-1$
+		Element rootElement = document.getDocumentElement();
 
-            // format the new node added to the model;
-            FormatProcessorXML processor = new FormatProcessorXML();
+		if ((typeId != null) && typeId.contains("2.3")) {
+			Element taglibNextSibling = NodeUtil.findChildElement(rootElement, "resource-env-ref");
 
-            processor.formatNode( jspConfig );
-        }
+			if (taglibNextSibling == null) {
+				taglibNextSibling = NodeUtil.findChildElement(rootElement, "resource-ref");
+			}
 
-        return Status.OK_STATUS;
-    }
+			if (taglibNextSibling == null) {
+				taglibNextSibling = NodeUtil.findChildElement(rootElement, "security-constraint");
+			}
 
-    @Override
-    public IFile getDescriptorFile()
-    {
-        return super.getDescriptorFile( DESCRIPTOR_FILE );
-    }
+			if (taglibNextSibling == null) {
+				taglibNextSibling = NodeUtil.findChildElement(rootElement, "login-config");
+			}
 
-    protected boolean tagLibReferenceExists( IDOMDocument document, TagLibRefType tagLibRefType )
-    {
-        NodeList taglibs = document.getElementsByTagName( "taglib" ); //$NON-NLS-1$
+			if (taglibNextSibling == null) {
+				taglibNextSibling = NodeUtil.findChildElement(rootElement, "security-role");
+			}
 
-        for( int i = 0; i < taglibs.getLength(); i++ )
-        {
-            Node taglib = taglibs.item( i );
+			if (taglibNextSibling == null) {
+				taglibNextSibling = NodeUtil.findChildElement(rootElement, "env-entry");
+			}
 
-            boolean taglibUriEquals =
-                NodeUtil.getChildElementContent( taglib, "taglib-uri" ).trim().equals( //$NON-NLS-1$
-                    tagLibRefType.getTaglibURI().trim() );
+			if (taglibNextSibling == null) {
+				taglibNextSibling = NodeUtil.findChildElement(rootElement, "ejb-ref");
+			}
 
-            boolean taglibLocationEquals =
-                NodeUtil.getChildElementContent( taglib, "taglib-location" ).trim().equals( //$NON-NLS-1$
-                    tagLibRefType.getTaglibLocation().trim() );
+			if (taglibNextSibling == null) {
+				taglibNextSibling = NodeUtil.findChildElement(rootElement, "ejb-local-ref");
+			}
 
-            if( taglibUriEquals && taglibLocationEquals )
-            {
-                return true;
-            }
-        }
+			Element taglib = NodeUtil.insertChildElement(rootElement, taglibNextSibling, "taglib", StringPool.EMPTY);
 
-        return false;
-    }
+			NodeUtil.appendChildElement(taglib, "taglib-uri", tagLibRefType.getTaglibURI());
 
-    protected boolean tagLibReferenceExists( WebApp webApp, TagLibRefType tagLibRefType )
-    {
-        EList taglibs = webApp.getTagLibs();
+			NodeUtil.appendChildElement(taglib, "taglib-location", tagLibRefType.getTaglibLocation());
 
-        if( taglibs != null )
-        {
-            for( Object taglib : taglibs )
-            {
-                if( taglib instanceof TagLibRefType )
-                {
-                    TagLibRefType existingTaglib = (TagLibRefType) taglib;
+			if (taglibNextSibling == null) {
+				rootElement.appendChild(document.createTextNode(System.getProperty("line.separator")));
+			}
 
-                    if( existingTaglib.equals( tagLibRefType ) )
-                    {
-                        return true;
-                    }
-                }
-            }
-        }
+			// format the new node added to the model;
 
-        JSPConfig config = webApp.getJspConfig();
+			FormatProcessorXML processor = new FormatProcessorXML();
 
-        if( config != null )
-        {
-            taglibs = config.getTagLibs();
+			processor.formatNode(taglib);
+		}
+		else {
+			Element jspConfig = NodeUtil.findChildElement(rootElement, "jsp-config");
 
-            if( taglibs != null )
-            {
-                for( Object taglib : taglibs )
-                {
-                    if( taglib instanceof TagLibRefType )
-                    {
-                        TagLibRefType existingTaglib = (TagLibRefType) taglib;
+			if (jspConfig == null) {
+				jspConfig = NodeUtil.appendChildElement(rootElement, "jsp-config");
+			}
 
-                        if( existingTaglib.equals( tagLibRefType ) )
-                        {
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
+			Element taglib = NodeUtil.appendChildElement(jspConfig, "taglib");
 
-        return false;
-    }
+			NodeUtil.appendChildElement(taglib, "taglib-uri", tagLibRefType.getTaglibURI());
+
+			NodeUtil.appendChildElement(taglib, "taglib-location", tagLibRefType.getTaglibLocation());
+
+			rootElement.appendChild(document.createTextNode(System.getProperty("line.separator")));
+
+			// format the new node added to the model;
+
+			FormatProcessorXML processor = new FormatProcessorXML();
+
+			processor.formatNode(jspConfig);
+		}
+
+		return Status.OK_STATUS;
+	}
+
+	protected boolean tagLibReferenceExists(IDOMDocument document, TagLibRefType tagLibRefType) {
+		NodeList taglibs = document.getElementsByTagName("taglib");
+
+		for (int i = 0; i < taglibs.getLength(); i++) {
+			Node taglib = taglibs.item(i);
+
+			String taglibUri = StringUtil.trim(NodeUtil.getChildElementContent(taglib, "taglib-uri"));
+			String taglibLocation = StringUtil.trim(NodeUtil.getChildElementContent(taglib, "taglib-location"));
+
+			boolean taglibUriEquals = taglibUri.equals(StringUtil.trim(tagLibRefType.getTaglibURI()));
+			boolean taglibLocationEquals = taglibLocation.equals(StringUtil.trim(tagLibRefType.getTaglibLocation()));
+
+			if (taglibUriEquals && taglibLocationEquals) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	protected boolean tagLibReferenceExists(WebApp webApp, TagLibRefType tagLibRefType) {
+		EList taglibs = webApp.getTagLibs();
+
+		if (taglibs != null) {
+			for (Object taglib : taglibs) {
+				if (taglib instanceof TagLibRefType) {
+					TagLibRefType existingTaglib = (TagLibRefType)taglib;
+
+					if (existingTaglib.equals(tagLibRefType)) {
+						return true;
+					}
+				}
+			}
+		}
+
+		JSPConfig config = webApp.getJspConfig();
+
+		if (config == null) {
+			return false;
+		}
+
+		taglibs = config.getTagLibs();
+
+		if (taglibs == null) {
+			return false;
+		}
+
+		for (Object taglib : taglibs) {
+			if (taglib instanceof TagLibRefType) {
+				TagLibRefType existingTaglib = (TagLibRefType)taglib;
+
+				if (existingTaglib.equals(tagLibRefType)) {
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
+	private static final String _DESCRIPTOR_FILE = ILiferayConstants.WEB_XML_FILE;
 
 }

@@ -1,19 +1,25 @@
-/*******************************************************************************
- * Copyright (c) 2011 Angelo ZERR.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+/**
+ * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
- * Contributors:
- *     Angelo Zerr <angelo.zerr@gmail.com> - initial API and implementation
- *******************************************************************************/
+ * This library is free software; you can redistribute it and/or modify it under
+ * the terms of the GNU Lesser General Public License as published by the Free
+ * Software Foundation; either version 2.1 of the License, or (at your option)
+ * any later version.
+ *
+ * This library is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+ * details.
+ */
 
 package com.liferay.ide.xml.search.ui;
 
+import org.eclipse.jface.resource.ImageRegistry;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.wst.xml.core.internal.provisional.document.IDOMElement;
+import org.eclipse.wst.xml.core.internal.provisional.document.IDOMModel;
 import org.eclipse.wst.xml.search.editor.contentassist.ElementContentAssistAdditionalProposalInfoProvider;
+
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -21,76 +27,82 @@ import org.w3c.dom.Text;
 
 /**
  * Custom content assist proposal info for portlet.
+ * @author Gregory Amerson
  */
-@SuppressWarnings( "restriction" )
-public class PortletContentAssistInfoProvider extends ElementContentAssistAdditionalProposalInfoProvider
-{
+@SuppressWarnings("restriction")
+public class PortletContentAssistInfoProvider extends ElementContentAssistAdditionalProposalInfoProvider {
 
-    @Override
-    protected String doGetTextInfo( IDOMElement portletNameElt )
-    {
-        final IDOMElement portletElt = (IDOMElement) portletNameElt.getParentNode();
+	public Image getImage(Node node) {
+		LiferayXMLSearchUI plugin = LiferayXMLSearchUI.getDefault();
 
-        final StringBuilder buf = new StringBuilder();
+		ImageRegistry imageRegistry = plugin.getImageRegistry();
 
-        buf.append( "<b>------------------------ Portlet ------------------------</b> " );
-        // description
-        buf.append( "<br><b>Portlet name:</b> " );
+		return imageRegistry.get(LiferayXMLSearchUI.portletImg);
+	}
 
-        final String portletName = getTextContent( portletElt, "portlet-name" );
+	@Override
+	protected String doGetTextInfo(IDOMElement portletNameElt) {
+		IDOMElement portletElt = (IDOMElement)portletNameElt.getParentNode();
 
-        if( portletName != null )
-        {
-            buf.append( portletName );
-        }
+		StringBuilder buf = new StringBuilder();
 
-        // display-name
-        buf.append( "<br><b>Display name:</b> " );
+		buf.append("<b>------------------------ Portlet ------------------------</b> ");
 
-        final String displayName = getTextContent( portletElt, "display-name" );
+		// description
 
-        if( displayName != null )
-        {
-            buf.append( displayName );
-        }
+		buf.append("<br><b>Portlet name:</b> ");
 
-        // portlet-class
+		String portletName = _getTextContent(portletElt, "portlet-name");
 
-        buf.append( "<br><b>Portlet class:</b> " );
+		if (portletName != null) {
+			buf.append(portletName);
+		}
 
-        final String portletClass = getTextContent( portletElt, "portlet-class" );
+		// display-name
 
-        if( portletClass != null )
-        {
-            buf.append( portletClass );
-        }
+		buf.append("<br><b>Display name:</b> ");
 
-        buf.append( "<br><b>File:</b> " );
-        buf.append( portletElt.getModel().getBaseLocation() );
+		String displayName = _getTextContent(portletElt, "display-name");
 
-        return buf.toString();
+		if (displayName != null) {
+			buf.append(displayName);
+		}
 
-    }
+		// portlet-class
 
-    public Image getImage( Node node )
-    {
-        return LiferayXMLSearchUI.getDefault().getImageRegistry().get( LiferayXMLSearchUI.PORTLET_IMG );
-    }
+		buf.append("<br><b>Portlet class:</b> ");
 
-    private String getTextContent( IDOMElement element, String elementName )
-    {
-        NodeList nodes = element.getElementsByTagName( elementName );
-        if( nodes.getLength() < 1 )
-        {
-            return "";
-        }
-        Element childElement = (Element) nodes.item( 0 );
-        Text text = (Text) childElement.getFirstChild();
-        if( text == null )
-        {
-            return "";
-        }
-        return text.getData();
-    }
+		String portletClass = _getTextContent(portletElt, "portlet-class");
+
+		if (portletClass != null) {
+			buf.append(portletClass);
+		}
+
+		buf.append("<br><b>File:</b> ");
+
+		IDOMModel model = portletElt.getModel();
+
+		buf.append(model.getBaseLocation());
+
+		return buf.toString();
+	}
+
+	private String _getTextContent(IDOMElement element, String elementName) {
+		NodeList nodes = element.getElementsByTagName(elementName);
+
+		if (nodes.getLength() < 1) {
+			return "";
+		}
+
+		Element childElement = (Element)nodes.item(0);
+
+		Text text = (Text)childElement.getFirstChild();
+
+		if (text == null) {
+			return "";
+		}
+
+		return text.getData();
+	}
 
 }

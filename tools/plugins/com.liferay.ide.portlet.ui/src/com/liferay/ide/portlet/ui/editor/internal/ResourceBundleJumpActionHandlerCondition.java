@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,14 +10,12 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- * Contributors:
- *               Kamesh Sampath - initial implementation
- *******************************************************************************/
+ */
 
 package com.liferay.ide.portlet.ui.editor.internal;
 
 import org.eclipse.sapphire.Property;
+import org.eclipse.sapphire.PropertyDef;
 import org.eclipse.sapphire.ValueProperty;
 import org.eclipse.sapphire.modeling.Path;
 import org.eclipse.sapphire.services.RelativePathService;
@@ -27,17 +25,21 @@ import org.eclipse.sapphire.ui.forms.PropertyEditorPart;
 /**
  * @author Kamesh Sampath
  */
-public class ResourceBundleJumpActionHandlerCondition extends PropertyEditorCondition
-{
+public class ResourceBundleJumpActionHandlerCondition extends PropertyEditorCondition {
 
-    @Override
-    protected boolean evaluate( PropertyEditorPart part )
-    {
-        final Property property = part.property();
+	@Override
+	protected boolean evaluate(PropertyEditorPart part) {
+		Property property = part.property();
 
-        return( property.definition() instanceof ValueProperty &&
-            Path.class.isAssignableFrom( property.definition().getTypeClass() ) &&
-            property.service( RelativePathService.class ) != null );
-    }
+		PropertyDef propertyDef = property.definition();
+
+		if ((propertyDef instanceof ValueProperty) && Path.class.isAssignableFrom(propertyDef.getTypeClass()) &&
+			(property.service(RelativePathService.class) != null)) {
+
+			return true;
+		}
+
+		return false;
+	}
 
 }

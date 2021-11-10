@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,8 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.server.remote;
 
@@ -25,6 +24,7 @@ import java.util.Map;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.core.runtime.Preferences;
 import org.eclipse.debug.core.ILaunch;
 import org.eclipse.debug.core.ILaunchConfiguration;
 import org.eclipse.debug.core.ILaunchManager;
@@ -38,146 +38,137 @@ import org.eclipse.wst.server.core.IServer;
 import org.eclipse.wst.server.core.ServerCore;
 
 /**
- * @author Greg Amerson
+ * @author Gregory Amerson
  * @author Cindy Li
  */
-public class RemoteLaunchConfigDelegate extends AbstractJavaLaunchConfigurationDelegate
-{
-    public static final String SERVER_ID = "server-id"; //$NON-NLS-1$
+public class RemoteLaunchConfigDelegate extends AbstractJavaLaunchConfigurationDelegate {
 
-    @SuppressWarnings( { "rawtypes", "unchecked", "deprecation" } )
-    protected void debugLaunch(
-        IServer server, ILaunchConfiguration configuration, ILaunch launch, IProgressMonitor monitor )
-        throws CoreException
-    {
-        if( monitor == null )
-        {
-            monitor = new NullProgressMonitor();
-        }
+	public static final String SERVER_ID = "server-id";
 
-        // setup the run launch so we get console monitor
-        runLaunch( server, configuration, launch, monitor );
+	public void launch(ILaunchConfiguration configuration, String mode, ILaunch launch, IProgressMonitor monitor)
+		throws CoreException {
 
-        String connectorId = getVMConnectorId( configuration );
+		String serverId = configuration.getAttribute(SERVER_ID, StringPool.EMPTY);
 
-        IVMConnector connector = null;
+		IServer server = ServerCore.findServer(serverId);
 
-        if( connectorId == null )
-        {
-            connector = JavaRuntime.getDefaultVMConnector();
-        }
-        else
-        {
-            connector = JavaRuntime.getVMConnector( connectorId );
-        }
+		if (server == null) {
 
-        if( connector == null )
-        {
-            abort(
-                "Debugging connector not specified.", null, //$NON-NLS-1$
-                IJavaLaunchConfigurationConstants.ERR_CONNECTOR_NOT_AVAILABLE );
-        }
+			// server has been deleted
 
-        Map connectMap = configuration.getAttribute( IJavaLaunchConfigurationConstants.ATTR_CONNECT_MAP, (Map) null );
+			launch.terminate();
 
-        int connectTimeout = JavaRuntime.getPreferences().getInt( JavaRuntime.PREF_CONNECT_TIMEOUT );
+			return;
+		}
 
-        connectMap.put( "timeout", StringPool.EMPTY + connectTimeout ); //$NON-NLS-1$
+		int state = server.getServerState();
 
-        // check for cancellation
-        if( monitor.isCanceled() )
-        {
-            return;
-        }
+		if (state != IServer.STATE_STARTED) {
+			throw new CoreException(LiferayServerCore.error(Msgs.serverNotRunning));
+		}
 
-//        final PortalSourceLookupDirector sourceLocator =
-//            new PortalSourceLookupDirector( configuration, "com.liferay.ide.server.tomcat.portalSourcePathComputer" ); //$NON-NLS-1$
-//        sourceLocator.configureLaunch( launch );
+		if (ILaunchManager.RUN_MODE.equals(mode)) {
+			runLaunch(server, configuration, launch, monitor);
+		}
+		else if (ILaunchManager.DEBUG_MODE.equals(mode)) {
+			debugLaunch(server, configuration, launch, monitor);
+		}
+		else {
+			throw new CoreException(LiferayServerCore.error("Profile mode is not supported."));
+		}
 
-        if( !launch.isTerminated() )
-        {
-            // connect to remote VM
-            connector.connect( connectMap, monitor, launch );
-        }
+		for (PortalLaunchParticipant participant : LiferayServerCore.getPortalLaunchParticipants()) {
+			participant.portalPostLaunch(configuration, mode, launch, monitor);
+		}
+	}
 
-        // check for cancellation
-        if( monitor.isCanceled() || launch.isTerminated() )
-        {
-            IDebugTarget[] debugTargets = launch.getDebugTargets();
+	@SuppressWarnings({"rawtypes", "unchecked", "deprecation"})
+	protected void debugLaunch(
+			IServer server, ILaunchConfiguration configuration, ILaunch launch, IProgressMonitor monitor)
+		throws CoreException {
 
-            for( int i = 0; i < debugTargets.length; i++ )
-            {
-                IDebugTarget target = debugTargets[i];
+		if (monitor == null) {
+			monitor = new NullProgressMonitor();
+		}
 
-                if( target.canDisconnect() )
-                {
-                    target.disconnect();
-                }
-            }
-            return;
-        }
+		// setup the run launch so we get console monitor
 
-        monitor.done();
-    }
+		runLaunch(server, configuration, launch, monitor);
 
-    public void launch( ILaunchConfiguration configuration, String mode, ILaunch launch, IProgressMonitor monitor )
-        throws CoreException
-    {
-        String serverId = configuration.getAttribute( SERVER_ID, StringPool.EMPTY );
-        IServer server = ServerCore.findServer( serverId );
+		String connectorId = getVMConnectorId(configuration);
 
-        if( server == null )
-        {
-            // server has been deleted
-            launch.terminate();
-            return;
-        }
+		IVMConnector connector = null;
 
-        int state = server.getServerState();
+		if (connectorId == null) {
+			connector = JavaRuntime.getDefaultVMConnector();
+		}
+		else {
+			connector = JavaRuntime.getVMConnector(connectorId);
+		}
 
-        if( state != IServer.STATE_STARTED )
-        {
-            throw new CoreException(
-                LiferayServerCore.error( Msgs.serverNotRunning ) );
-        }
+		if (connector == null) {
+			abort(
+				"Debugging connector not specified.", null,
+				IJavaLaunchConfigurationConstants.ERR_CONNECTOR_NOT_AVAILABLE);
+		}
 
-        if( ILaunchManager.RUN_MODE.equals( mode ) )
-        {
-            runLaunch( server, configuration, launch, monitor );
-        }
-        else if( ILaunchManager.DEBUG_MODE.equals( mode ) )
-        {
-            debugLaunch( server, configuration, launch, monitor );
-        }
-        else
-        {
-            throw new CoreException( LiferayServerCore.error( "Profile mode is not supported." ) ); //$NON-NLS-1$
-        }
+		Map connectMap = configuration.getAttribute(IJavaLaunchConfigurationConstants.ATTR_CONNECT_MAP, (Map)null);
 
-        for( PortalLaunchParticipant participant : LiferayServerCore.getPortalLaunchParticipants() )
-        {
-            participant.portalPostLaunch( configuration, mode, launch, monitor );
-        }
-    }
+		Preferences pref = JavaRuntime.getPreferences();
 
-    protected void runLaunch(
-        IServer server, ILaunchConfiguration configuration, ILaunch launch, IProgressMonitor monitor )
-        throws CoreException
-    {
-        IServerManagerConnection connection = ServerUtil.getServerManagerConnection( server, monitor );
+		int connectTimeout = pref.getInt(JavaRuntime.PREF_CONNECT_TIMEOUT);
 
-        RemoteMonitorProcess process = new RemoteMonitorProcess( server, connection, launch );
+		connectMap.put("timeout", StringPool.EMPTY + connectTimeout);
 
-        launch.addProcess( process );
-    }
+		// check for cancellation
 
-    private static class Msgs extends NLS
-    {
-        public static String serverNotRunning;
+		if (monitor.isCanceled()) {
+			return;
+		}
 
-        static
-        {
-            initializeMessages( RemoteLaunchConfigDelegate.class.getName(), Msgs.class );
-        }
-    }
+		if (!launch.isTerminated()) {
+
+			// connect to remote VM
+
+			connector.connect(connectMap, monitor, launch);
+		}
+
+		// check for cancellation
+
+		if (monitor.isCanceled() || launch.isTerminated()) {
+			IDebugTarget[] debugTargets = launch.getDebugTargets();
+
+			for (IDebugTarget target : debugTargets) {
+				if (target.canDisconnect()) {
+					target.disconnect();
+				}
+			}
+
+			return;
+		}
+
+		monitor.done();
+	}
+
+	protected void runLaunch(
+			IServer server, ILaunchConfiguration configuration, ILaunch launch, IProgressMonitor monitor)
+		throws CoreException {
+
+		IServerManagerConnection connection = ServerUtil.getServerManagerConnection(server, monitor);
+
+		RemoteMonitorProcess process = new RemoteMonitorProcess(server, connection, launch);
+
+		launch.addProcess(process);
+	}
+
+	private static class Msgs extends NLS {
+
+		public static String serverNotRunning;
+
+		static {
+			initializeMessages(RemoteLaunchConfigDelegate.class.getName(), Msgs.class);
+		}
+
+	}
+
 }

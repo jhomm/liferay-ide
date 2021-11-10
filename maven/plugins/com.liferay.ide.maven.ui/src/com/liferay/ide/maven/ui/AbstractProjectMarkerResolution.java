@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,15 +10,18 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
+
 package com.liferay.ide.maven.ui;
 
+import com.liferay.ide.core.util.MarkerUtil;
+import com.liferay.ide.core.util.SapphireContentAccessor;
 import com.liferay.ide.maven.core.model.NewLiferayProfileOp;
 import com.liferay.ide.project.core.model.NewLiferayPluginProjectOp;
 import com.liferay.ide.project.core.model.Profile;
 
 import java.net.URL;
+
 import java.util.List;
 
 import org.eclipse.core.resources.IMarker;
@@ -37,71 +40,78 @@ import org.eclipse.sapphire.ui.forms.swt.SapphireDialog;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.ui.IMarkerResolution2;
 
+import org.osgi.framework.Bundle;
 
 /**
  * @author Gregory Amerson
  */
-public abstract class AbstractProjectMarkerResolution implements IMarkerResolution2
-{
+public abstract class AbstractProjectMarkerResolution implements IMarkerResolution2, SapphireContentAccessor {
 
-    public String getDescription()
-    {
-        return getLabel();
-    }
+	public String getDescription() {
+		return getLabel();
+	}
 
-    public Image getImage()
-    {
-        final URL url = LiferayMavenUI.getDefault().getBundle().getEntry( "/icons/e16/m2e-liferay.png" );
-        return ImageDescriptor.createFromURL( url ).createImage();
-    }
+	public Image getImage() {
+		LiferayMavenUI plugin = LiferayMavenUI.getDefault();
 
-    public void run( IMarker marker )
-    {
-        final IProject project = marker.getResource().getProject();
-        final IProjectConfigurationManager projectManager = MavenPlugin.getProjectConfigurationManager();
-        final ResolverConfiguration configuration = projectManager.getResolverConfiguration( project );
-        final List<String> currentProfiles = configuration.getActiveProfileList();
+		Bundle bundle = plugin.getBundle();
 
-        final NewLiferayProfileOp op = NewLiferayProfileOp.TYPE.instantiate();
-        final ElementList<Profile> selectedProfiles = op.getSelectedProfiles();
+		URL url = bundle.getEntry("/icons/e16/m2e-liferay.png");
 
-        for( final String currentProfile : currentProfiles )
-        {
-            selectedProfiles.insert().setId( currentProfile );
-        }
+		ImageDescriptor imageDescriptor = ImageDescriptor.createFromURL(url);
 
-        final int result = promptUser( project, op );
+		return imageDescriptor.createImage();
+	}
 
-        if( result == SapphireDialog.OK )
-        {
-            configuration.setSelectedProfiles( op.getActiveProfilesValue().content() );
+	public void run(IMarker marker) {
+		IProject project = MarkerUtil.getProject(marker);
 
-            final boolean changed = projectManager.setResolverConfiguration( project, configuration );
+		IProjectConfigurationManager projectManager = MavenPlugin.getProjectConfigurationManager();
 
-            if( changed )
-            {
-                final WorkspaceJob job = new WorkspaceJob( "Updating project " + project.getName() )
-                {
-                    public IStatus runInWorkspace( IProgressMonitor monitor )
-                    {
-                        try
-                        {
-                            MavenPlugin.getProjectConfigurationManager().updateProjectConfiguration( project, monitor );
-                        }
-                        catch( CoreException ex )
-                        {
-                            return ex.getStatus();
-                        }
+		ResolverConfiguration configuration = projectManager.getResolverConfiguration(project);
 
-                        return Status.OK_STATUS;
-                    }
-                };
+		List<String> currentProfiles = configuration.getActiveProfileList();
 
-                job.setRule( MavenPlugin.getProjectConfigurationManager().getRule() );
-                job.schedule();
-            }
-        }
-    }
+		NewLiferayProfileOp op = NewLiferayProfileOp.TYPE.instantiate();
 
-    protected abstract int promptUser( IProject project, NewLiferayPluginProjectOp op );
+		ElementList<Profile> selectedProfiles = op.getSelectedProfiles();
+
+		for (String currentProfile : currentProfiles) {
+			Profile profile = selectedProfiles.insert();
+
+			profile.setId(currentProfile);
+		}
+
+		if (promptUser(project, op) != SapphireDialog.OK) {
+			return;
+		}
+
+		configuration.setSelectedProfiles(get(op.getActiveProfilesValue()));
+
+		boolean changed = projectManager.setResolverConfiguration(project, configuration);
+
+		if (changed) {
+			WorkspaceJob job = new WorkspaceJob("Updating project " + project.getName()) {
+
+				public IStatus runInWorkspace(IProgressMonitor monitor) {
+					try {
+						projectManager.updateProjectConfiguration(project, monitor);
+					}
+					catch (CoreException ce) {
+						return ce.getStatus();
+					}
+
+					return Status.OK_STATUS;
+				}
+
+			};
+
+			job.setRule(projectManager.getRule());
+
+			job.schedule();
+		}
+	}
+
+	protected abstract int promptUser(IProject project, NewLiferayPluginProjectOp op);
+
 }

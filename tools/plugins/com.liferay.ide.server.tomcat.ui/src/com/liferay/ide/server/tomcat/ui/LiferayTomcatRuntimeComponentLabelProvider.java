@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,8 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.server.tomcat.ui;
 
@@ -20,32 +19,29 @@ import org.eclipse.wst.common.project.facet.ui.IRuntimeComponentLabelProvider;
 import org.eclipse.wst.server.ui.FacetRuntimeComponentLabelProvider;
 
 /**
- * @author Greg Amerson
+ * @author Gregory Amerson
  */
-public class LiferayTomcatRuntimeComponentLabelProvider extends FacetRuntimeComponentLabelProvider
-{
+public class LiferayTomcatRuntimeComponentLabelProvider extends FacetRuntimeComponentLabelProvider {
 
-    public final class RuntimeLabelProvider implements IRuntimeComponentLabelProvider
-    {
+	@SuppressWarnings("rawtypes")
+	public Object getAdapter(Object adaptable, Class adapterType) {
+		IRuntimeComponent rc = (IRuntimeComponent)adaptable;
 
-        private final IRuntimeComponent rc;
+		return new RuntimeLabelProvider(rc);
+	}
 
-        public RuntimeLabelProvider( IRuntimeComponent rc )
-        {
-            this.rc = rc;
-        }
+	public class RuntimeLabelProvider implements IRuntimeComponentLabelProvider {
 
-        public String getLabel()
-        {
-            return rc.getProperty( "type" ); //$NON-NLS-1$
-        }
-    }
+		public RuntimeLabelProvider(IRuntimeComponent rc) {
+			_rc = rc;
+		}
 
-    @SuppressWarnings( "rawtypes" )
-    public Object getAdapter( Object adaptable, Class adapterType )
-    {
-        IRuntimeComponent rc = (IRuntimeComponent) adaptable;
+		public String getLabel() {
+			return _rc.getProperty("type");
+		}
 
-        return new RuntimeLabelProvider( rc );
-    }
+		private IRuntimeComponent _rc;
+
+	}
+
 }

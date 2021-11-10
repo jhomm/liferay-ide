@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,13 +10,12 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
+
 package com.liferay.ide.project.core.model.internal;
 
 import com.liferay.ide.core.ILiferayProjectProvider;
 import com.liferay.ide.core.LiferayCore;
-import com.liferay.ide.project.core.NewLiferayProjectProvider;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -25,43 +24,34 @@ import java.util.Set;
 
 import org.eclipse.sapphire.PossibleValuesService;
 
-
 /**
  * @author Gregory Amerson
  */
-public class ProjectProviderPossibleValuesService extends PossibleValuesService
-{
+public class ProjectProviderPossibleValuesService extends PossibleValuesService {
 
-    private List<String> possibleValues;
+	@Override
+	public boolean ordered() {
+		return true;
+	}
 
-    @Override
-    protected void initPossibleValuesService()
-    {
-        super.initPossibleValuesService();
+	@Override
+	protected void compute(Set<String> values) {
+		values.addAll(_possibleValues);
+	}
 
-        possibleValues = new ArrayList<String>();
+	@Override
+	protected void initPossibleValuesService() {
+		super.initPossibleValuesService();
 
-        for( final ILiferayProjectProvider provider : LiferayCore.getProviders() )
-        {
-            if( provider instanceof NewLiferayProjectProvider )
-            {
-                possibleValues.add( provider.getShortName() );
-            }
-        }
+		_possibleValues = new ArrayList<>();
 
-        Collections.sort( possibleValues );
-    }
+		for (ILiferayProjectProvider provider : LiferayCore.getProviders("plugin")) {
+			_possibleValues.add(provider.getShortName());
+		}
 
-    @Override
-    protected void compute( Set<String> values )
-    {
-        values.addAll( this.possibleValues );
-    }
+		Collections.sort(_possibleValues);
+	}
 
-    @Override
-    public boolean ordered()
-    {
-        return true;
-    }
+	private List<String> _possibleValues;
 
 }

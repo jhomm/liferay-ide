@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0"?>
 <!--
 /*******************************************************************************
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
@@ -14,45 +14,57 @@
  * details.
  *
  *******************************************************************************/
- -->
+-->
 
-<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
-    xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-    <modelVersion>4.0.0</modelVersion>
+<project
+	xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+>
+	<modelVersion>4.0.0</modelVersion>
 
-    <parent>
-        <groupId>com.liferay.ide.tools</groupId>
-        <artifactId>tools</artifactId>
-        <version>3.0.0-SNAPSHOT</version>
-    </parent>
+	<parent>
+		<groupId>com.liferay.ide.tools</groupId>
+		<artifactId>tools</artifactId>
+		<version>4.0.0-SNAPSHOT</version>
+	</parent>
 
-    <groupId>com.liferay.ide.tools.plugins</groupId>
-    <artifactId>tools-plugins</artifactId>
+	<groupId>com.liferay.ide.tools.plugins</groupId>
+	<artifactId>tools-plugins</artifactId>
 
-    <name>Liferay IDE Tools Plugins</name>
+	<name>Liferay IDE Tools Plugins</name>
 
-    <packaging>pom</packaging>
+	<packaging>pom</packaging>
 
-    <modules>
-        <module>com.liferay.ide.hook.core</module>
-        <module>com.liferay.ide.hook.ui</module>
-        <module>com.liferay.ide.layouttpl.core</module>
-        <module>com.liferay.ide.layouttpl.ui</module>
-        <module>com.liferay.ide.portlet.core</module>
-        <module>com.liferay.ide.portlet.ui</module>
-        <module>com.liferay.ide.portlet.vaadin.core</module>
-        <module>com.liferay.ide.portlet.vaadin.ui</module>
-        <module>com.liferay.ide.project.core</module>
-        <module>com.liferay.ide.project.ui</module>
-        <module>com.liferay.ide.sdk.core</module>
-        <module>com.liferay.ide.server.core</module>
-        <module>com.liferay.ide.server.tomcat.core</module>
-        <module>com.liferay.ide.server.tomcat.ui</module>
-        <module>com.liferay.ide.server.ui</module>
-        <module>com.liferay.ide.service.core</module>
-        <module>com.liferay.ide.service.ui</module>
-        <module>com.liferay.ide.theme.core</module>
-        <module>com.liferay.ide.ui.snippets</module>
-        <module>com.liferay.ide.xml.search.ui</module>
-    </modules>
+	<modules>
+		<module>com.liferay.ide.core</module>
+		<module>com.liferay.ide.gradle.core</module>
+		<module>com.liferay.ide.gradle.ui</module>
+		<module>com.liferay.ide.hook.core</module>
+		<module>com.liferay.ide.hook.ui</module>
+		<module>com.liferay.ide.layouttpl.core</module>
+		<module>com.liferay.ide.layouttpl.ui</module>
+		<module>com.liferay.ide.portlet.core</module>
+		<module>com.liferay.ide.portlet.ui</module>
+		<module>com.liferay.ide.project.core</module>
+		<module>com.liferay.ide.project.ui</module>
+		<module>com.liferay.ide.sdk.core</module>
+		<module>com.liferay.ide.server.core</module>
+		<module>com.liferay.ide.server.tomcat.core</module>
+		<module>com.liferay.ide.server.tomcat.ui</module>
+		<module>com.liferay.ide.server.ui</module>
+		<module>com.liferay.ide.service.core</module>
+		<module>com.liferay.ide.service.ui</module>
+		<module>com.liferay.ide.theme.core</module>
+		<module>com.liferay.ide.ui</module>
+		<module>com.liferay.ide.ui.snippets</module>
+		<module>com.liferay.ide.upgrade.plan.core</module>
+		<module>com.liferay.ide.upgrade.plan.ui</module>
+		<module>com.liferay.ide.upgrade.planner.ui</module>
+		<module>com.liferay.ide.upgrade.problems.core</module>
+		<module>com.liferay.ide.upgrade.problems.ui</module>
+		<module>com.liferay.ide.upgrade.commands.core</module>
+		<module>com.liferay.ide.upgrade.commands.ui</module>
+		<module>com.liferay.ide.xml.search.ui</module>
+	</modules>
 </project>

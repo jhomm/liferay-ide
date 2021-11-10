@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,16 +10,21 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
+
 package com.liferay.ide.project.core;
 
+import com.liferay.ide.core.AbstractLiferayProjectProvider;
 import com.liferay.ide.core.ILiferayProject;
 import com.liferay.ide.core.util.CoreUtil;
+import com.liferay.ide.core.util.FileUtil;
+import com.liferay.ide.core.util.SapphireContentAccessor;
+import com.liferay.ide.project.core.descriptor.LiferayDescriptorHelper;
 import com.liferay.ide.project.core.model.NewLiferayPluginProjectOp;
 import com.liferay.ide.project.core.model.NewLiferayPluginProjectOpMethods;
 import com.liferay.ide.project.core.model.PluginType;
 import com.liferay.ide.project.core.model.ProjectName;
+import com.liferay.ide.project.core.util.ClasspathUtil;
 import com.liferay.ide.project.core.util.ProjectImportUtil;
 import com.liferay.ide.project.core.util.ProjectUtil;
 import com.liferay.ide.project.core.util.WizardUtil;
@@ -33,11 +38,15 @@ import com.liferay.ide.server.util.ServerUtil;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 import org.apache.commons.io.FileUtils;
+
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
@@ -48,396 +57,438 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.jdt.core.IJavaProject;
+import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.sapphire.ElementList;
 import org.eclipse.sapphire.modeling.Path;
 import org.eclipse.sapphire.platform.PathBridge;
 import org.eclipse.wst.server.core.IRuntime;
-import org.osgi.framework.Version;
 
+import org.osgi.framework.Version;
 
 /**
  * @author Gregory Amerson
  * @author Simon Jiang
  * @author Terry Jia
  */
-public class PluginsSDKProjectProvider extends NewLiferayProjectProvider
-{
-
-    public PluginsSDKProjectProvider()
-    {
-        super( new Class<?>[] { IProject.class, IRuntime.class } );
-    }
-
-    @Override
-    public IStatus doCreateNewProject(
-        NewLiferayPluginProjectOp op, IProgressMonitor monitor, ElementList<ProjectName> projectNames )
-        throws CoreException
-    {
-        final PluginType pluginType = op.getPluginType().content( true );
-        final String originalProjectName = op.getProjectName().content();
-        final String pluginTypeSuffix = NewLiferayPluginProjectOpMethods.getPluginTypeSuffix( pluginType );
-
-        String fixedProjectName = originalProjectName;
-
-        if( originalProjectName.endsWith( pluginTypeSuffix ) )
-        {
-            fixedProjectName = originalProjectName.substring( 0, originalProjectName.length() - pluginTypeSuffix.length() );
-        }
-
-        final String projectName = fixedProjectName;
-
-        final String displayName = op.getDisplayName().content( true );
-        final boolean separateJRE = true;
-
-        SDK sdk = SDKUtil.getWorkspaceSDK();
-
-        if ( sdk == null )
-        {
-            sdk = SDKUtil.createSDKFromLocation( PathBridge.create( op.getSdkLocation().content() ) );
-
-            if ( sdk == null )
-            {
-                throw new CoreException( ProjectCore.createErrorStatus( "Can't get correct sdk." ) );
-            }
-        }
-
-        IStatus sdkStatus = sdk.validate();
-
-        if ( !sdkStatus.isOK() )
-        {
-            throw new CoreException( sdkStatus );
-        }
-
-        // workingDir should always be the directory of the type of plugin /sdk/portlets/ for a portlet, etc
-        String workingDir = null;
-
-        ArrayList<String> arguments = new ArrayList<String>();
-        arguments.add( projectName );
-        arguments.add( displayName );
-
-        final boolean hasGradleTools = SDKUtil.hasGradleTools( sdk.getLocation() );
-
-        IPath newSDKProjectPath = null;
-
-        switch( pluginType )
-        {
-            case servicebuilder:
-                op.setPortletFramework( "mvc" );
-            case portlet:
-                final String frameworkName = getFrameworkName( op );
-
-                workingDir = sdk.getLocation().append( ISDKConstants.PORTLET_PLUGIN_PROJECT_FOLDER ).toOSString();
-
-                if( hasGradleTools )
-                {
-                    arguments.add( frameworkName );
-
-                    sdk.createNewProject( projectName, arguments, "portlet", workingDir, monitor );
-                }
-                else
-                {
-                    newSDKProjectPath =
-                        sdk.createNewPortletProject(
-                            projectName, displayName, frameworkName, separateJRE, workingDir,
-                            null, monitor );
-                }
-
-                break;
-
-            case hook:
-                workingDir = sdk.getLocation().append( ISDKConstants.HOOK_PLUGIN_PROJECT_FOLDER ).toOSString();
-
-                if( hasGradleTools )
-                {
-                    sdk.createNewProject( projectName, arguments, "hook", workingDir, monitor );
-                }
-                else
-                {
-                    newSDKProjectPath =
-                        sdk.createNewHookProject(
-                            projectName, displayName, separateJRE, workingDir, null, monitor );
-                }
-
-                break;
-
-            case ext:
-                workingDir = sdk.getLocation().append( ISDKConstants.EXT_PLUGIN_PROJECT_FOLDER ).toOSString();
-
-                if( hasGradleTools )
-                {
-                    sdk.createNewProject( projectName, arguments, "ext", workingDir, monitor );
-                }
-                else
-                {
-                    newSDKProjectPath =
-                        sdk.createNewExtProject(
-                            projectName, displayName, separateJRE, workingDir, null, monitor );
-                }
+public class PluginsSDKProjectProvider
+	extends AbstractLiferayProjectProvider
+	implements NewLiferayProjectProvider<NewLiferayPluginProjectOp>, SapphireContentAccessor {
 
-                break;
+	public PluginsSDKProjectProvider() {
+		super(new Class<?>[] {IProject.class, IRuntime.class});
+	}
 
-            case layouttpl:
-                workingDir = sdk.getLocation().append( ISDKConstants.LAYOUTTPL_PLUGIN_PROJECT_FOLDER ).toOSString();
+	@Override
+	public IStatus createNewProject(NewLiferayPluginProjectOp op, IProgressMonitor monitor) throws CoreException {
+		ElementList<ProjectName> projectNames = op.getProjectNames();
 
-                if( hasGradleTools )
-                {
-                    sdk.createNewProject( projectName, arguments, "layouttpl", workingDir, monitor );
-                }
-                else
-                {
-                    newSDKProjectPath =
-                        sdk.createNewLayoutTplProject(
-                            projectName, displayName, separateJRE, workingDir, null, monitor );
-                }
+		PluginType pluginType = get(op.getPluginType());
 
-                break;
+		String originalProjectName = get(op.getProjectName());
 
-            case theme:
-                workingDir = sdk.getLocation().append( ISDKConstants.THEME_PLUGIN_PROJECT_FOLDER ).toOSString();
+		String pluginTypeSuffix = NewLiferayPluginProjectOpMethods.getPluginTypeSuffix(pluginType);
 
-                if( hasGradleTools )
-                {
-                    sdk.createNewProject( projectName, arguments, "theme", workingDir, monitor );
-                }
-                else
-                {
-                    newSDKProjectPath =
-                        sdk.createNewThemeProject( projectName, displayName, separateJRE, workingDir, null, monitor );
-                }
+		String fixedProjectName = originalProjectName;
 
-                break;
+		if (originalProjectName.endsWith(pluginTypeSuffix)) {
+			fixedProjectName = originalProjectName.substring(
+				0, originalProjectName.length() - pluginTypeSuffix.length());
+		}
 
-            case web:
-                workingDir = sdk.getLocation().append( ISDKConstants.WEB_PLUGIN_PROJECT_FOLDER ).toOSString();
+		String projectName = fixedProjectName;
 
-                if( hasGradleTools )
-                {
-                    sdk.createNewProject( projectName, arguments, "web", workingDir, monitor );
-                }
-                else
-                {
-                    newSDKProjectPath =
-                        sdk.createNewWebProject(
-                            projectName, displayName, separateJRE, workingDir, null, monitor );
-                }
+		String displayName = get(op.getDisplayName());
 
-                break;
-        }
-
-        final Path projectLocation = op.getLocation().content();
-
-        if( !hasGradleTools )
-        {
-            final File projectDir = projectLocation.toFile();
-
-            final File projectParent = projectDir.getParentFile();
-
-            projectParent.mkdirs();
-
-            final File newSDKProjectDir = newSDKProjectPath.toFile();
-
-            try
-            {
-                FileUtils.copyDirectory( newSDKProjectDir, projectParent );
-
-                FileUtils.deleteDirectory( newSDKProjectDir );
-            }
-            catch( IOException e )
-            {
-                throw new CoreException( ProjectCore.createErrorStatus( e ) );
-            }
-        }
-
-        final ProjectRecord projectRecord = ProjectUtil.getProjectRecordForDir( projectLocation.toOSString() );
-
-        final IProject newProject =
-            ProjectImportUtil.importProject( projectRecord.getProjectLocation(), monitor, op );
-
-        newProject.open( monitor );
-
-        // need to update project name incase the suffix was not correct
-        op.setFinalProjectName( newProject.getName() );
-
-        projectNames.insert().setName( op.getFinalProjectName().content() );
-
-        projectCreated( newProject );
-
-        switch( op.getPluginType().content() )
-        {
-            case portlet:
-
-                portletProjectCreated( op, newProject, monitor );
-
-                break;
-
-            case servicebuilder:
-
-                PortalBundle bundle = ServerUtil.getPortalBundle( newProject );
-                serviceBuilderProjectCreated( op, bundle.getVersion(), newProject, monitor );
-
-                break;
-            case theme:
-
-                themeProjectCreated( newProject );
-
-                break;
-            default:
-                break;
-        }
-
-        return Status.OK_STATUS;
-    }
-
-    private void portletProjectCreated( NewLiferayPluginProjectOp op, IProject newProject, IProgressMonitor monitor )
-        throws CoreException
-    {
-        final IPortletFramework portletFramework = op.getPortletFramework().content();
-        final String portletName = op.getPortletName().content( false );
-        final String frameworkName = getFrameworkName( op );
-
-        final IStatus status = portletFramework.postProjectCreated( newProject, frameworkName, portletName, monitor );
-
-        if( ! status.isOK() )
-        {
-            throw new CoreException( status );
-        }
-    }
-
-    private void projectCreated( IProject project )
-    {
-        final IFile ivyFile = project.getFile( "ivy.xml" );
-
-        if( ivyFile.exists() )
-        {
-            try
-            {
-                String contents = CoreUtil.readStreamToString( ivyFile.getContents() );
-
-                contents = contents.replace( "${sdk.dir}/ivy.xml", "../../ivy.xml" );
-
-                ivyFile.setContents(
-                    new ByteArrayInputStream( contents.toString().getBytes( "UTF-8" ) ), IResource.FORCE,
-                    new NullProgressMonitor() );
-            }
-            catch( Exception e )
-            {
-                ProjectCore.logError( e );
-            }
-        }
-    }
-
-    @Override
-    public ILiferayProject provide( Object type )
-    {
-        ILiferayProject retval = null;
-        IProject project = null;
-        ILiferayRuntime liferayRuntime = null;
-
-        if( type instanceof IProject )
-        {
-            project = (IProject) type;
-
-            try
-            {
-                if ( SDKUtil.isSDKProject( project ) )
-                {
-                    PortalBundle portalBundle = ServerUtil.getPortalBundle( project );
-
-                    if( portalBundle != null )
-                    {
-                        retval = new PluginsSDKBundleProject( project, portalBundle );
-                    }
-                }
-                else if ( SDKUtil.isSDKProject( project ))
-                {
-                    liferayRuntime = ServerUtil.getLiferayRuntime( project );
-
-                    if( liferayRuntime != null )
-                    {
-                        retval = new PluginsSDKRuntimeProject( project, liferayRuntime );
-                    }
-                }
-            }
-            catch( CoreException e )
-            {
-            }
-        }
-        else if( type instanceof IRuntime )
-        {
-            try
-            {
-                final IRuntime runtime = (IRuntime) type;
-
-                liferayRuntime = ServerUtil.getLiferayRuntime( runtime );
-            }
-            catch( Exception e )
-            {
-            }
-
-            if( liferayRuntime != null )
-            {
-                retval = new PluginsSDKRuntimeProject( project, liferayRuntime );
-            }
-        }
-
-        return retval;
-    }
-
-    private void serviceBuilderProjectCreated(
-        NewLiferayPluginProjectOp op, String version, IProject newProject, IProgressMonitor monitor ) throws CoreException
-    {
-        // create a default service.xml file in the project
-        final IFile serviceXmlFile = newProject.getFile( ISDKConstants.DEFAULT_DOCROOT_FOLDER + "/WEB-INF/service.xml" );
-
-        String descriptorVersion = null;
-
-        try
-        {
-            Version portalVersion = new Version( version );
-
-            descriptorVersion = portalVersion.getMajor() + "." + portalVersion.getMinor() + ".0";  //$NON-NLS-1$//$NON-NLS-2$
-        }
-        catch( Exception e )
-        {
-            ProjectCore.logError( "Could not determine liferay runtime version", e ); //$NON-NLS-1$
-            descriptorVersion = "6.0.0"; //$NON-NLS-1$
-        }
-
-        WizardUtil.createDefaultServiceBuilderFile(
-            serviceXmlFile, descriptorVersion, true, "com.liferay.sample", "SAMPLE", System.getProperty( "user.name" ), monitor );
-    }
-
-    private void themeProjectCreated( IProject newProject ) throws CoreException
-    {
-        final Map<String, String> args = new HashMap<String, String>();
-        args.put( "force", "true" );
-
-        newProject.build(
-            IncrementalProjectBuilder.FULL_BUILD, "com.liferay.ide.eclipse.theme.core.cssBuilder", args, null );
-    }
-
-    @Override
-    public IStatus validateProjectLocation( String name, IPath path )
-    {
-        IStatus retval = Status.OK_STATUS;
-
-        if( path.append(".project").toFile().exists() ) //$NON-NLS-1$
-        {
-            retval = ProjectCore.createErrorStatus( "\"" + path + //$NON-NLS-1$
-                    "\" is not valid because a project already exists at that location." ); //$NON-NLS-1$
-        }
-        else
-        {
-            final File pathFile = path.toFile();
-
-            if( pathFile.exists() && pathFile.isDirectory() && pathFile.listFiles().length > 0 )
-            {
-                retval = ProjectCore.createErrorStatus( "\"" + path + //$NON-NLS-1$
-                        "\" is not valid because it already contains files." ); //$NON-NLS-1$
-            }
-        }
-
-        return retval;
-    }
+		SDK sdk = _getSDK(op);
+
+		if (sdk == null) {
+			return ProjectCore.createErrorStatus(
+				"Can not get correct SDK for " + fixedProjectName + ", Please check SDK configuration setting.");
+		}
+
+		// workingDir should always be the directory of the type of plugin /sdk/portlets/ for a portlet, etc
+
+		String workingDir = null;
+
+		ArrayList<String> arguments = new ArrayList<>();
+
+		arguments.add(projectName);
+		arguments.add(displayName);
+
+		boolean hasGradleTools = SDKUtil.hasGradleTools(sdk.getLocation());
+
+		IPath newSDKProjectPath = null;
+
+		IPath path = null;
+
+		IPath sdkLocation = sdk.getLocation();
+
+		boolean separateJRE = true;
+
+		switch (pluginType) {
+			case servicebuilder:
+				op.setPortletFramework("mvc");
+			case portlet:
+				path = sdkLocation.append(ISDKConstants.PORTLET_PLUGIN_PROJECT_FOLDER);
+
+				String frameworkName = NewLiferayPluginProjectOpMethods.getFrameworkName(op);
+
+				workingDir = path.toOSString();
+
+				if (hasGradleTools) {
+					arguments.add(frameworkName);
+
+					sdk.createNewProject(projectName, arguments, "portlet", workingDir, monitor);
+				}
+				else {
+					newSDKProjectPath = sdk.createNewPortletProject(
+						projectName, displayName, frameworkName, separateJRE, workingDir, null, monitor);
+				}
+
+				break;
+
+			case hook:
+				path = sdkLocation.append(ISDKConstants.HOOK_PLUGIN_PROJECT_FOLDER);
+
+				workingDir = path.toOSString();
+
+				if (hasGradleTools) {
+					sdk.createNewProject(projectName, arguments, "hook", workingDir, monitor);
+				}
+				else {
+					newSDKProjectPath = sdk.createNewHookProject(
+						projectName, displayName, separateJRE, workingDir, null, monitor);
+				}
+
+				break;
+
+			case ext:
+				path = sdkLocation.append(ISDKConstants.EXT_PLUGIN_PROJECT_FOLDER);
+
+				workingDir = path.toOSString();
+
+				if (hasGradleTools) {
+					sdk.createNewProject(projectName, arguments, "ext", workingDir, monitor);
+				}
+				else {
+					newSDKProjectPath = sdk.createNewExtProject(
+						projectName, displayName, separateJRE, workingDir, null, monitor);
+				}
+
+				break;
+
+			case layouttpl:
+				path = sdkLocation.append(ISDKConstants.LAYOUTTPL_PLUGIN_PROJECT_FOLDER);
+
+				workingDir = path.toOSString();
+
+				if (hasGradleTools) {
+					sdk.createNewProject(projectName, arguments, "layouttpl", workingDir, monitor);
+				}
+				else {
+					newSDKProjectPath = sdk.createNewLayoutTplProject(
+						projectName, displayName, separateJRE, workingDir, null, monitor);
+				}
+
+				IProject layoutProject = ProjectUtil.getProject(projectName);
+
+				if (!Objects.equals("6.2.0", LiferayDescriptorHelper.getDescriptorVersion(layoutProject))) {
+					IPath projectPath = newSDKProjectPath.append(projectName + pluginTypeSuffix);
+
+					IPath fileWap = FileUtil.pathAppend(projectPath, "docroot", "blank_columns.wap.tpl");
+
+					if (FileUtil.exists(fileWap)) {
+						File file = fileWap.toFile();
+
+						file.delete();
+					}
+				}
+
+				break;
+
+			case theme:
+				path = sdkLocation.append(ISDKConstants.THEME_PLUGIN_PROJECT_FOLDER);
+
+				workingDir = path.toOSString();
+
+				if (hasGradleTools) {
+					sdk.createNewProject(projectName, arguments, "theme", workingDir, monitor);
+				}
+				else {
+					newSDKProjectPath = sdk.createNewThemeProject(
+						projectName, displayName, separateJRE, workingDir, null, monitor);
+				}
+
+				break;
+
+			case web:
+				path = sdkLocation.append(ISDKConstants.WEB_PLUGIN_PROJECT_FOLDER);
+
+				workingDir = path.toOSString();
+
+				if (hasGradleTools) {
+					sdk.createNewProject(projectName, arguments, "web", workingDir, monitor);
+				}
+				else {
+					newSDKProjectPath = sdk.createNewWebProject(
+						projectName, displayName, separateJRE, workingDir, null, monitor);
+				}
+
+				break;
+		}
+
+		NewLiferayPluginProjectOpMethods.updateLocation(op);
+
+		Path projectLocation = get(op.getLocation());
+
+		if (!hasGradleTools) {
+			File projectDir = projectLocation.toFile();
+
+			File projectParent = projectDir.getParentFile();
+
+			projectParent.mkdirs();
+
+			if (FileUtil.notExists(newSDKProjectPath)) {
+				return ProjectCore.createErrorStatus(
+					"Error create project due to '" + newSDKProjectPath + "' does not exist.");
+			}
+
+			File newSDKProjectDir = newSDKProjectPath.toFile();
+
+			try {
+				FileUtils.copyDirectory(newSDKProjectDir, projectParent);
+
+				FileUtils.deleteDirectory(newSDKProjectDir);
+			}
+			catch (IOException ioe) {
+				throw new CoreException(ProjectCore.createErrorStatus(ioe));
+			}
+		}
+
+		ProjectRecord projectRecord = ProjectUtil.getProjectRecordForDir(projectLocation.toOSString());
+
+		IProject newProject = ProjectImportUtil.importProject(projectRecord.getProjectLocation(), monitor, op);
+
+		newProject.open(monitor);
+
+		// need to update project name incase the suffix was not correct
+
+		op.setFinalProjectName(newProject.getName());
+
+		ProjectName name = projectNames.insert();
+
+		name.setName(get(op.getFinalProjectName()));
+
+		_projectCreated(newProject);
+
+		switch (get(op.getPluginType())) {
+			case portlet:
+
+				_portletProjectCreated(op, newProject, monitor);
+
+				break;
+
+			case servicebuilder:
+
+				PortalBundle bundle = ServerUtil.getPortalBundle(newProject);
+
+				_serviceBuilderProjectCreated(bundle.getVersion(), newProject, monitor);
+
+				break;
+			case theme:
+
+				_themeProjectCreated(newProject);
+
+				break;
+			default:
+
+				break;
+		}
+
+		return Status.OK_STATUS;
+	}
+
+	@Override
+	public ILiferayProject provide(Class<?> type, Object adaptable) {
+		if (adaptable instanceof IProject) {
+			IProject project = (IProject)adaptable;
+
+			if (!SDKUtil.isSDKProject(project)) {
+				return null;
+			}
+
+			try {
+				IJavaProject javaProject = JavaCore.create(project);
+
+				boolean hasNewSdk = ClasspathUtil.hasNewLiferaySDKContainer(javaProject.getRawClasspath());
+
+				if (hasNewSdk) {
+					PortalBundle portalBundle = ServerUtil.getPortalBundle(project);
+
+					if ((portalBundle != null) && type.isAssignableFrom(PluginsSDKBundleProject.class)) {
+						return new PluginsSDKBundleProject(project, portalBundle);
+					}
+				}
+				else {
+					ILiferayRuntime liferayRuntime = ServerUtil.getLiferayRuntime(project);
+
+					if ((liferayRuntime != null) && type.isAssignableFrom(PluginsSDKRuntimeProject.class)) {
+						return new PluginsSDKRuntimeProject(project, liferayRuntime);
+					}
+				}
+			}
+			catch (CoreException ce) {
+			}
+		}
+		else if (adaptable instanceof IRuntime) {
+			try {
+				IRuntime runtime = (IRuntime)adaptable;
+
+				ILiferayRuntime liferayRuntime = ServerUtil.getLiferayRuntime(runtime);
+
+				if ((liferayRuntime != null) && type.isAssignableFrom(PluginsSDKRuntimeProject.class)) {
+					return new PluginsSDKRuntimeProject(null, liferayRuntime);
+				}
+			}
+			catch (Exception e) {
+			}
+		}
+
+		return null;
+	}
+
+	@Override
+	public IStatus validateProjectLocation(String name, IPath path) {
+		IStatus retval = Status.OK_STATUS;
+
+		File file = FileUtil.getFile(path.append(".project"));
+
+		if (file.exists()) {
+			retval = ProjectCore.createErrorStatus(
+				"\"" + path + "\" is not valid because a project already exists at that location.");
+		}
+		else {
+			File pathFile = path.toFile();
+
+			if (FileUtil.hasChildren(pathFile)) {
+				retval = ProjectCore.createErrorStatus(
+					"\"" + path + "\" is not valid because it already contains files.");
+			}
+		}
+
+		return retval;
+	}
+
+	private SDK _getSDK(NewLiferayPluginProjectOp op) {
+		SDK sdk = null;
+
+		try {
+			boolean sdkValid = false;
+
+			sdk = SDKUtil.getWorkspaceSDK();
+
+			if (sdk != null) {
+				IStatus sdkStatus = sdk.validate();
+
+				if (sdkStatus.isOK()) {
+					sdkValid = true;
+				}
+			}
+
+			if (!sdkValid) {
+				Path sdkLocation = get(op.getSdkLocation());
+
+				if (sdkLocation != null) {
+					sdk = SDKUtil.createSDKFromLocation(PathBridge.create(sdkLocation));
+
+					if (sdk != null) {
+						IStatus sdkStatus = sdk.validate();
+
+						if (sdkStatus.isOK()) {
+							sdkValid = true;
+						}
+					}
+				}
+			}
+
+			if (!sdkValid) {
+				return null;
+			}
+		}
+		catch (CoreException ce) {
+			return null;
+		}
+
+		return sdk;
+	}
+
+	private void _portletProjectCreated(NewLiferayPluginProjectOp op, IProject newProject, IProgressMonitor monitor)
+		throws CoreException {
+
+		IPortletFramework portletFramework = get(op.getPortletFramework());
+
+		String portletName = get(op.getPortletName(), false);
+
+		IStatus status = portletFramework.postProjectCreated(
+			newProject, NewLiferayPluginProjectOpMethods.getFrameworkName(op), portletName, monitor);
+
+		if (!status.isOK()) {
+			throw new CoreException(status);
+		}
+	}
+
+	private void _projectCreated(IProject project) {
+		IFile ivyFile = project.getFile("ivy.xml");
+
+		if (ivyFile.exists()) {
+			try {
+				String contents = CoreUtil.readStreamToString(ivyFile.getContents());
+
+				contents = contents.replace("${sdk.dir}/ivy.xml", "../../ivy.xml");
+
+				try (InputStream inputStream = new ByteArrayInputStream(contents.getBytes("UTF-8"))) {
+					ivyFile.setContents(inputStream, IResource.FORCE, new NullProgressMonitor());
+				}
+			}
+			catch (Exception e) {
+				ProjectCore.logError(e);
+			}
+		}
+	}
+
+	private void _serviceBuilderProjectCreated(String version, IProject newProject, IProgressMonitor monitor)
+		throws CoreException {
+
+		// create a default service.xml file in the project
+
+		IFile serviceXmlFile = newProject.getFile(ISDKConstants.DEFAULT_DOCROOT_FOLDER + "/WEB-INF/service.xml");
+
+		String descriptorVersion = null;
+
+		try {
+			Version portalVersion = new Version(version);
+
+			descriptorVersion = portalVersion.getMajor() + "." + portalVersion.getMinor() + ".0";
+		}
+		catch (Exception e) {
+			ProjectCore.logError("Could not determine liferay runtime version", e);
+
+			descriptorVersion = "6.0.0";
+		}
+
+		WizardUtil.createDefaultServiceBuilderFile(
+			serviceXmlFile, descriptorVersion, true, "com.liferay.sample", "SAMPLE", System.getProperty("user.name"),
+			monitor);
+	}
+
+	private void _themeProjectCreated(IProject newProject) throws CoreException {
+		Map<String, String> args = new HashMap<>();
+
+		args.put("force", "true");
+
+		newProject.build(
+			IncrementalProjectBuilder.FULL_BUILD, "com.liferay.ide.eclipse.theme.core.cssBuilder", args, null);
+	}
 
 }

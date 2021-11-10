@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,63 +10,62 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
+
 package com.liferay.ide.service.core.model;
 
 import org.eclipse.sapphire.Element;
 import org.eclipse.sapphire.ElementType;
 import org.eclipse.sapphire.PossibleValues;
+import org.eclipse.sapphire.Type;
 import org.eclipse.sapphire.Value;
 import org.eclipse.sapphire.ValueProperty;
 import org.eclipse.sapphire.modeling.annotations.Image;
 import org.eclipse.sapphire.modeling.annotations.Label;
 import org.eclipse.sapphire.modeling.annotations.Required;
-import org.eclipse.sapphire.modeling.annotations.Type;
 import org.eclipse.sapphire.modeling.xml.annotations.XmlBinding;
-
 
 /**
  * @author Gregory Amerson
  */
 @Image(path = "images/column_16x16.gif")
-public interface OrderColumn extends Element
-{
-    ElementType TYPE = new ElementType( OrderColumn.class );
+public interface OrderColumn extends Element {
 
-    // *** Name ***
+	public ElementType TYPE = new ElementType(OrderColumn.class);
 
-    @XmlBinding( path = "@name" )
-    @Label( standard = "&name" )
-    @Required
-    ValueProperty PROP_NAME = new ValueProperty( TYPE, "Name" ); //$NON-NLS-1$
+	public Value<String> getName();
 
-    Value<String> getName();
+	// *** Name ***
 
-    void setName( String value );
+	public Value<String> getOrderBy();
 
-    // *** CaseSensitive ***
+	public Value<Boolean> isCaseSensitive();
 
-    @Type( base = Boolean.class )
-    @Label( standard = "&case sensitive" )
-    @XmlBinding( path = "@case-sensitive" )
-    ValueProperty PROP_CASE_SENSITIVE = new ValueProperty( TYPE, "CaseSensitive" ); //$NON-NLS-1$
+	public void setCaseSensitive(Boolean value);
 
-    Value<Boolean> isCaseSensitive();
+	// *** CaseSensitive ***
 
-    void setCaseSensitive( String value );
+	public void setCaseSensitive(String value);
 
-    void setCaseSensitive( Boolean value );
+	public void setName(String value);
 
-    // *** Order By ***
+	public void setOrderBy(String value);
 
-    @Label( standard = "order by" )
-    @XmlBinding( path = "@order-by" )
-    @PossibleValues( values = { "asc", "desc" }, invalidValueMessage = "{0} is not valid." )
-    ValueProperty PROP_ORDER_BY = new ValueProperty( TYPE, "OrderBy" ); //$NON-NLS-1$
+	@Label(standard = "&case sensitive")
+	@Type(base = Boolean.class)
+	@XmlBinding(path = "@case-sensitive")
+	public ValueProperty PROP_CASE_SENSITIVE = new ValueProperty(TYPE, "CaseSensitive");
 
-    Value<String> getOrderBy();
+	// *** Order By ***
 
-    void setOrderBy( String value );
+	@Label(standard = "&name")
+	@Required
+	@XmlBinding(path = "@name")
+	public ValueProperty PROP_NAME = new ValueProperty(TYPE, "Name");
+
+	@Label(standard = "order by")
+	@PossibleValues(invalidValueMessage = "{0} is not valid.", values = {"asc", "desc"})
+	@XmlBinding(path = "@order-by")
+	public ValueProperty PROP_ORDER_BY = new ValueProperty(TYPE, "OrderBy");
 
 }

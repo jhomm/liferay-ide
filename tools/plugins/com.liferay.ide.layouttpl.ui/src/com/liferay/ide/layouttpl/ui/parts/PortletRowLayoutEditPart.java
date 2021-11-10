@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,8 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.layouttpl.ui.parts;
 
@@ -24,120 +23,120 @@ import org.eclipse.draw2d.GridLayout;
 import org.eclipse.draw2d.IFigure;
 import org.eclipse.draw2d.MarginBorder;
 import org.eclipse.draw2d.Panel;
+import org.eclipse.draw2d.geometry.Dimension;
 import org.eclipse.draw2d.geometry.Rectangle;
 import org.eclipse.gef.editparts.AbstractEditPart;
 import org.eclipse.sapphire.ElementList;
 
 /**
  * @author Cindy Li
- *
  */
-public abstract class PortletRowLayoutEditPart extends BaseGraphicalEditPart
-{
-    public static final int DEFAULT_COLUMN_HEIGHT = -1;
+public abstract class PortletRowLayoutEditPart extends BaseGraphicalEditPart {
 
-    protected Panel panel;
+	public static final int DEFAULT_COLUMN_HEIGHT = -1;
 
-    protected void configurePanel( Panel panel )
-    {
-        GridLayout gridLayout = new GridLayout( 1, false );
-        gridLayout.marginHeight = 0;
-        gridLayout.marginWidth = 0;
-        gridLayout.verticalSpacing = 0;
+	public int getContainerWidth() {
 
-        panel.setLayoutManager( gridLayout );
-        panel.setBorder( new MarginBorder( getMargin() ) );
-    }
+		/**
+		 * XXX to be continued, temporarily fix NullPointerException for parent
+		 * column
+		 */
+		if (panel != null) {
+			Dimension size = panel.getSize();
 
-    @Override
-    protected IFigure createFigure()
-    {
-        panel = createPanel();
-        configurePanel( panel );
+			return size.width - (getMargin() * 2);
+		}
 
-        return panel;
-    }
+		return 0;
+	}
 
-    protected Panel createPanel()
-    {
-        return new Panel();
-    }
+	public abstract int getMargin();
 
-    protected CanAddPortletLayouts getCastedModel()
-    {
-        return (CanAddPortletLayouts) getModel();
-    }
+	public int getPreferredColumnHeight() {
+		int retval = DEFAULT_COLUMN_HEIGHT;
 
-    public int getContainerWidth()
-    {
-        if( panel != null ) //XXX to be continued, temporarily fix NullPointerException for parent column
-        {
-            return panel.getSize().width - ( getMargin() * 2 );
-        }
+		int numRows = getRowPartsCount();
 
-        return 0;
-    }
+		if (numRows > 1) {
+			Rectangle partBounds = getFigure().getBounds();
 
-    public abstract int getMargin();
+			if (partBounds.height > 0) {
+				int partHeight = partBounds.height;
 
-    protected ElementList<PortletLayoutElement> getModelChildren()
-    {
-        return getCastedModel().getPortletLayouts(); // return a list of rows
-    }
+				int rowsHeight = partHeight - (getMargin() * 2);
 
-    public int getPreferredColumnHeight()
-    {
-        int retval = DEFAULT_COLUMN_HEIGHT;
+				int totalColumnsHeight = rowsHeight - (getRowPartsCount() * PortletLayoutEditPart.COLUMN_SPACING * 2);
 
-        int numRows = getRowPartsCount();
+				int computedColumnHeight = totalColumnsHeight / numRows;
 
-        if( numRows > 1 )
-        {
-            Rectangle partBounds = getFigure().getBounds();
+				retval = computedColumnHeight;
+			}
+		}
 
-            if( partBounds.height > 0 )
-            {
-                int partHeight = partBounds.height;
-                int rowsHeight = partHeight - ( getMargin() * 2 );
-                int totalColumnsHeight = rowsHeight - ( getRowPartsCount() * PortletLayoutEditPart.COLUMN_SPACING * 2 );
-                int computedColumnHeight = totalColumnsHeight / numRows;
+		return retval;
+	}
 
-                retval = computedColumnHeight;
-            }
-        }
+	@Override
+	public void refresh() {
+		super.refresh();
 
-        return retval;
-    }
+		if (getChildren() != null) {
+			refreshVisuals();
+		}
+	}
 
-    protected int getRowPartsCount()
-    {
-        return getChildren().size();
-    }
+	protected void configurePanel(Panel panel) {
+		GridLayout gridLayout = new GridLayout(1, false);
 
-    @Override
-    public void refresh()
-    {
-        super.refresh();
+		gridLayout.marginHeight = 0;
+		gridLayout.marginWidth = 0;
+		gridLayout.verticalSpacing = 0;
 
-        if( getChildren() != null )
-        {
-            refreshVisuals();
-        }
-    }
+		panel.setLayoutManager(gridLayout);
 
-    @Override
-    protected void refreshVisuals()
-    {
-        super.refreshVisuals();
-        List children = getChildren();
+		panel.setBorder(new MarginBorder(getMargin()));
+	}
 
-        for( Object child : children )
-        {
-            if( child instanceof AbstractEditPart )
-            {
-                ( (AbstractEditPart) child ).refresh();
-            }
-        }
-    }
+	@Override
+	protected IFigure createFigure() {
+		panel = createPanel();
+
+		configurePanel(panel);
+
+		return panel;
+	}
+
+	protected Panel createPanel() {
+		return new Panel();
+	}
+
+	protected CanAddPortletLayouts getCastedModel() {
+		return (CanAddPortletLayouts)getModel();
+	}
+
+	protected ElementList<PortletLayoutElement> getModelChildren() {
+		return getCastedModel().getPortletLayouts(); // return a list of rows
+	}
+
+	protected int getRowPartsCount() {
+		return getChildren().size();
+	}
+
+	@Override
+	protected void refreshVisuals() {
+		super.refreshVisuals();
+
+		List<?> children = getChildren();
+
+		for (Object child : children) {
+			if (child instanceof AbstractEditPart) {
+				AbstractEditPart editPart = (AbstractEditPart)child;
+
+				editPart.refresh();
+			}
+		}
+	}
+
+	protected Panel panel;
 
 }

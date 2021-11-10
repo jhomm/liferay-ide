@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,10 +10,11 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
+
 package com.liferay.ide.project.core.model.internal;
 
+import com.liferay.ide.core.util.ListUtil;
 import com.liferay.ide.sdk.core.ISDKListener;
 import com.liferay.ide.sdk.core.SDK;
 import com.liferay.ide.sdk.core.SDKManager;
@@ -27,87 +28,81 @@ import org.eclipse.sapphire.PossibleValuesService;
 import org.eclipse.sapphire.Value;
 import org.eclipse.sapphire.modeling.Status;
 
-
 /**
  * @author Gregory Amerson
  */
-public class PluginsSDKNamePossibleValuesService extends PossibleValuesService implements ISDKListener
-{
+public class PluginsSDKNamePossibleValuesService extends PossibleValuesService implements ISDKListener {
 
-    @Override
-    protected void compute( Set<String> values )
-    {
-        SDK[] validSDKs = SDKManager.getInstance().getSDKs();
+	@Override
+	public void dispose() {
+		SDKManager sdkManager = SDKManager.getInstance();
 
-        if( validSDKs.length > 0 )
-        {
-            for( SDK validSDK : validSDKs )
-            {
-                values.add( validSDK.getName() );
-            }
-        }
-    }
+		sdkManager.removeSDKListener(this);
 
-    @Override
-    public void dispose()
-    {
-        SDKManager.getInstance().removeSDKListener( this );
+		super.dispose();
+	}
 
-        super.dispose();
-    }
+	@Override
+	public boolean ordered() {
+		return true;
+	}
 
-    @Override
-    protected void initPossibleValuesService()
-    {
-        super.initPossibleValuesService();
+	@Override
+	public Status problem(Value<?> value) {
+		if (PluginsSDKNameDefaultValueService.NONE.equals(value.text())) {
+			return Status.createOkStatus();
+		}
 
-        SDKManager.getInstance().addSDKListener( this );
-    }
+		return super.problem(value);
+	}
 
-    @Override
-    public boolean ordered()
-    {
-        return true;
-    }
+	public void sdksAdded(SDK[] sdk) {
+		_refreshSafe();
+	}
 
-    @Override
-    public Status problem( Value<?> value )
-    {
-        if( PluginsSDKNameDefaultValueService.NONE.equals( value.text() ) )
-        {
-            return Status.createOkStatus();
-        }
+	public void sdksChanged(SDK[] sdk) {
+		_refreshSafe();
+	}
 
-        return super.problem( value );
-    }
+	public void sdksRemoved(SDK[] sdk) {
+		_refreshSafe();
+	}
 
-    public void sdksAdded( SDK[] sdk )
-    {
-        refreshSafe();
-    }
+	@Override
+	protected void compute(Set<String> values) {
+		SDKManager sdkManager = SDKManager.getInstance();
 
-    public void sdksChanged( SDK[] sdk )
-    {
-        refreshSafe();
-    }
+		SDK[] validSDKs = sdkManager.getSDKs();
 
-    public void sdksRemoved( SDK[] sdk )
-    {
-        refreshSafe();
-    }
+		if (ListUtil.isNotEmpty(validSDKs)) {
+			for (SDK validSDK : validSDKs) {
+				values.add(validSDK.getName());
+			}
+		}
+	}
 
-    private void refreshSafe()
-    {
-        new Job("refreshing")
-        {
-            @Override
-            protected IStatus run( IProgressMonitor monitor )
-            {
-                refresh();
+	@Override
+	protected void initPossibleValuesService() {
+		super.initPossibleValuesService();
 
-                return org.eclipse.core.runtime.Status.OK_STATUS;
-            }
-        }.schedule();
-    }
+		SDKManager sdkManager = SDKManager.getInstance();
+
+		sdkManager.addSDKListener(this);
+	}
+
+	private void _refreshSafe() {
+		new Job(
+			"refreshing"
+		) {
+
+			@Override
+			protected IStatus run(IProgressMonitor monitor) {
+				refresh();
+
+				return org.eclipse.core.runtime.Status.OK_STATUS;
+			}
+
+		}.schedule();
+	}
 
 }

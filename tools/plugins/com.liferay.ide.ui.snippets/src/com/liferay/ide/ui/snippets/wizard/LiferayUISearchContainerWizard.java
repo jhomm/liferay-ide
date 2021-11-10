@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,8 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.ui.snippets.wizard;
 
@@ -19,35 +18,33 @@ import org.eclipse.osgi.util.NLS;
 import org.eclipse.ui.IEditorPart;
 
 /**
- * @author Greg Amerson
+ * @author Gregory Amerson
  */
-public class LiferayUISearchContainerWizard extends AbstractModelWizard
-{
+public class LiferayUISearchContainerWizard extends AbstractModelWizard {
 
-    public LiferayUISearchContainerWizard( IEditorPart fEditorPart )
-    {
-        super( fEditorPart );
-        setWindowTitle( Msgs.insertSearchContainer );
-    }
+	public LiferayUISearchContainerWizard(IEditorPart fEditorPart) {
+		super(fEditorPart);
 
-    @Override
-    protected AbstractModelWizardPage createModelWizardPage( IEditorPart editorPart )
-    {
-        return new LiferayUISearchContainerWizardPage( "liferayUISearchContainerWizardPage", editorPart ); //$NON-NLS-1$
-    }
+		setWindowTitle(Msgs.insertSearchContainer);
+	}
 
-    public String getModelClass()
-    {
-        return wizardPage.getModelClass();
-    }
+	public String getModelClass() {
+		return wizardPage.getModelClass();
+	}
 
-    private static class Msgs extends NLS
-    {
-        public static String insertSearchContainer;
+	@Override
+	protected AbstractModelWizardPage createModelWizardPage(IEditorPart editorPart) {
+		return new LiferayUISearchContainerWizardPage("liferayUISearchContainerWizardPage", editorPart);
+	}
 
-        static
-        {
-            initializeMessages( LiferayUISearchContainerWizard.class.getName(), Msgs.class );
-        }
-    }
+	private static class Msgs extends NLS {
+
+		public static String insertSearchContainer;
+
+		static {
+			initializeMessages(LiferayUISearchContainerWizard.class.getName(), Msgs.class);
+		}
+
+	}
+
 }

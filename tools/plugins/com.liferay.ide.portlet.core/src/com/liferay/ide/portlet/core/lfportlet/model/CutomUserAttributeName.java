@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,7 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *******************************************************************************/
+ */
 
 package com.liferay.ide.portlet.core.lfportlet.model;
 
@@ -24,18 +24,16 @@ import org.eclipse.sapphire.modeling.xml.annotations.XmlBinding;
 /**
  * @author Simon Jiang
  */
-public interface CutomUserAttributeName extends Element
-{
+public interface CutomUserAttributeName extends Element {
 
-    ElementType TYPE = new ElementType( CutomUserAttributeName.class );
+	public ElementType TYPE = new ElementType(CutomUserAttributeName.class);
 
-    // *** CustomAttributeName ***
+	public Value<String> getValue();
 
-    @Label( standard = "Custom Attribute Name" )
-    @XmlBinding( path = "" )
-    ValueProperty PROP_VALUE = new ValueProperty( TYPE, "Value" );
+	public void setValue(String value);
 
-    Value<String> getValue();
-    void setValue( String value );
+	@Label(standard = "Custom Attribute Name")
+	@XmlBinding(path = "")
+	public ValueProperty PROP_VALUE = new ValueProperty(TYPE, "Value");
 
 }

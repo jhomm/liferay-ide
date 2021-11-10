@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,20 +10,25 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- * Contributors:
- *               Kamesh Sampath - initial implementation
- *******************************************************************************/
+ */
 
 package com.liferay.ide.portlet.core.model.internal;
 
-import static com.liferay.ide.core.model.internal.GenericResourceBundlePathService.RB_FILE_EXTENSION;
+import com.liferay.ide.core.model.internal.GenericResourceBundlePathService;
+import com.liferay.ide.core.util.CoreUtil;
+import com.liferay.ide.core.util.FileUtil;
+import com.liferay.ide.core.util.SapphireContentAccessor;
+import com.liferay.ide.core.util.SapphireUtil;
+import com.liferay.ide.portlet.core.model.Portlet;
+import com.liferay.ide.portlet.core.model.SupportedLocales;
+import com.liferay.ide.portlet.core.util.PortletUtil;
 
 import org.apache.commons.lang.StringEscapeUtils;
+
 import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IWorkspaceRoot;
-import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.IClasspathEntry;
 import org.eclipse.osgi.util.NLS;
@@ -36,128 +41,124 @@ import org.eclipse.sapphire.modeling.Path;
 import org.eclipse.sapphire.modeling.Status;
 import org.eclipse.sapphire.services.ValidationService;
 
-import com.liferay.ide.core.util.CoreUtil;
-import com.liferay.ide.portlet.core.model.Portlet;
-import com.liferay.ide.portlet.core.model.SupportedLocales;
-import com.liferay.ide.portlet.core.util.PortletUtil;
-
 /**
  * @author Kamesh Sampath
  * @author Kuo Zhang
  */
-public class LocaleBundleValidationService extends ValidationService
-{
+public class LocaleBundleValidationService extends ValidationService implements SapphireContentAccessor {
 
-    private FilteredListener<PropertyContentEvent> listener;
-    
-    /*
-     * IDE-1132 ,Add a listener to Property ResourceBundle, so LocaleBundle can be validated once ResourceBundle
-     * gets changed.
-     */
-    protected void initValidationService()
-    {
-        this.listener = new FilteredListener<PropertyContentEvent>()
-        {
+	public Status compute() {
+		Element modelElement = context(Element.class);
 
-            protected void handleTypedEvent( final PropertyContentEvent event )
-            {
-                if( !context( SupportedLocales.class ).disposed() )
-                {
-                    refresh();
-                }
-            }
-        };
+		if (!modelElement.disposed() && (modelElement instanceof SupportedLocales)) {
+			IProject project = modelElement.adapt(IProject.class);
 
-        context( SupportedLocales.class ).nearest( Portlet.class ).getResourceBundle().attach( this.listener );
-    }
+			IClasspathEntry[] cpEntries = CoreUtil.getClasspathEntries(project);
 
+			if (cpEntries == null) {
+				return Status.createOkStatus();
+			}
 
-    public void forceRefresh()
-    {
-        if( !context( SupportedLocales.class ).disposed() )
-        {
-            refresh();
-        }
-    }
+			String locale = getText(modelElement.property(context(ValueProperty.class)), false);
 
-    public Status compute()
-    {
-        final Element modelElement = context( Element.class );
+			if (locale == null) {
+				return Status.createErrorStatus(Resources.localeMustNotEmpty);
+			}
 
-        if( ! modelElement.disposed() && modelElement instanceof SupportedLocales )
-        {
-            final IProject project = modelElement.adapt( IProject.class );
-            final Portlet portlet = modelElement.nearest( Portlet.class );
-            final IWorkspaceRoot wroot = ResourcesPlugin.getWorkspace().getRoot();
-            final IClasspathEntry[] cpEntries = CoreUtil.getClasspathEntries( project );
+			Portlet portlet = modelElement.nearest(Portlet.class);
 
-            if( cpEntries != null )
-            {
-                final String locale = modelElement.property( context( ValueProperty.class ) ).text( false );
-                final Value<Path> resourceBundle = portlet.getResourceBundle();
+			IWorkspaceRoot wroot = CoreUtil.getWorkspaceRoot();
 
-                if( locale == null )
-                {
-                    return Status.createErrorStatus( Resources.localeMustNotEmpty );
-                }
-                else
-                {
-                    final String bundleName = resourceBundle.text();
+			Value<Path> resourceBundle = portlet.getResourceBundle();
 
-                    if( resourceBundle != null && bundleName != null )
-                    {
-                        final String localeString = PortletUtil.localeString( locale );
-                        final String ioFileName =
-                            PortletUtil.convertJavaToIoFileName( bundleName, RB_FILE_EXTENSION, localeString );
+			String bundleName = resourceBundle.text();
 
-                        for( IClasspathEntry iClasspathEntry : cpEntries )
-                        {
-                            if( IClasspathEntry.CPE_SOURCE == iClasspathEntry.getEntryKind() )
-                            {
-                                IPath entryPath = wroot.getFolder( iClasspathEntry.getPath() ).getLocation();
-                                entryPath = entryPath.append( ioFileName );
-                                IFile resourceBundleFile = wroot.getFileForLocation( entryPath );
-                                if( resourceBundleFile != null && resourceBundleFile.exists() )
-                                {
-                                    return Status.createOkStatus();
-                                }
-                                else
-                                {
-                                    return Status.createWarningStatus( Resources.bind(
-                                        StringEscapeUtils.unescapeJava( Resources.noResourceBundle ), new Object[] {
-                                            locale, bundleName, localeString } ) );
-                                }
+			if ((resourceBundle != null) && (bundleName != null)) {
+				String localeString = PortletUtil.localeString(locale);
 
-                            }
-                        }
-                    }
-                }
-            }
-        }
+				String ioFileName = PortletUtil.convertJavaToIoFileName(
+					bundleName, GenericResourceBundlePathService.RB_FILE_EXTENSION, localeString);
 
-        return Status.createOkStatus();
-    }
+				for (IClasspathEntry iClasspathEntry : cpEntries) {
+					if (IClasspathEntry.CPE_SOURCE == iClasspathEntry.getEntryKind()) {
+						IFolder folder = wroot.getFolder(iClasspathEntry.getPath());
 
-    @Override
-    public void dispose()
-    {
-        try
-        {
-            context( SupportedLocales.class ).nearest( Portlet.class ).getResourceBundle().detach( this.listener );
-        }
-        catch( Exception ex )
-        {
-        }
-    }
+						IPath entryPath = folder.getLocation();
 
-    private static final class Resources extends NLS
-    {
-        public static String localeMustNotEmpty;
-        public static String noResourceBundle;
+						entryPath = entryPath.append(ioFileName);
 
-        static
-        {
-            initializeMessages( LocaleBundleValidationService.class.getName(), Resources.class );
-        }
-    }
+						IFile resourceBundleFile = wroot.getFileForLocation(entryPath);
+
+						if (FileUtil.exists(resourceBundleFile)) {
+							return Status.createOkStatus();
+						}
+
+						Object[] objects = {locale, bundleName, localeString};
+
+						return Status.createWarningStatus(
+							Resources.bind(StringEscapeUtils.unescapeJava(Resources.noResourceBundle), objects));
+					}
+				}
+			}
+		}
+
+		return Status.createOkStatus();
+	}
+
+	@Override
+	public void dispose() {
+		try {
+			SupportedLocales supportedLocales = context(SupportedLocales.class);
+
+			Portlet portlet = supportedLocales.nearest(Portlet.class);
+
+			SapphireUtil.detachListener(portlet.getResourceBundle(), _listener);
+		}
+		catch (Exception ex) {
+		}
+	}
+
+	public void forceRefresh() {
+		SupportedLocales supportedLocales = context(SupportedLocales.class);
+
+		if (!supportedLocales.disposed()) {
+			refresh();
+		}
+	}
+
+	/**
+	 * IDE-1132 ,Add a listener to Property ResourceBundle, so LocaleBundle can be
+	 * validated once ResourceBundle gets changed.
+	 */
+	protected void initValidationService() {
+		SupportedLocales supportedLocales = context(SupportedLocales.class);
+
+		_listener = new FilteredListener<PropertyContentEvent>() {
+
+			protected void handleTypedEvent(PropertyContentEvent event) {
+				if (!supportedLocales.disposed()) {
+					refresh();
+				}
+			}
+
+		};
+
+		Portlet portlet = supportedLocales.nearest(Portlet.class);
+
+		SapphireUtil.attachListener(portlet.getResourceBundle(), _listener);
+	}
+
+	private FilteredListener<PropertyContentEvent> _listener;
+
+	private static final class Resources extends NLS {
+
+		public static String localeMustNotEmpty;
+		public static String noResourceBundle;
+
+		static {
+			initializeMessages(LocaleBundleValidationService.class.getName(), Resources.class);
+		}
+
+	}
+
 }

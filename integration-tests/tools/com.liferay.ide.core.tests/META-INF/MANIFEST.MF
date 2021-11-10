@@ -1,0 +1,13 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Liferay IDE Core Tests
+Bundle-SymbolicName: com.liferay.ide.core.tests
+Bundle-Version: 4.0.0.qualifier
+Bundle-Vendor: Liferay, Inc.
+Require-Bundle: com.liferay.ide.core,
+ com.liferay.ide.test.core.base,
+ org.eclipse.osgi,
+ org.junit
+Bundle-RequiredExecutionEnvironment: JavaSE-1.8
+Bundle-ActivationPolicy: lazy
+Export-Package: com.liferay.ide.core.tests

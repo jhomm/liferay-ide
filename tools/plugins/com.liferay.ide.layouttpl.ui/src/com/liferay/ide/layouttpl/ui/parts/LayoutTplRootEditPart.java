@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,8 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.layouttpl.ui.parts;
 
@@ -31,110 +30,90 @@ import org.eclipse.gef.tools.MarqueeDragTracker;
 /**
  * @author Gregory Amerson
  */
-public class LayoutTplRootEditPart extends SimpleRootEditPart implements LayerConstants, LayerManager
-{
+public class LayoutTplRootEditPart extends SimpleRootEditPart implements LayerConstants, LayerManager {
 
-    class FeedbackLayer extends Layer
-    {
+	public LayoutTplRootEditPart() {
+	}
 
-        FeedbackLayer()
-        {
-            setEnabled( false );
-        }
+	public IFigure getContentPane() {
+		return getLayer(PRIMARY_LAYER);
+	}
 
-        /**
-         * @see org.eclipse.draw2d.Figure#getPreferredSize(int, int)
-         */
-        public Dimension getPreferredSize( int wHint, int hHint )
-        {
-            Rectangle rect = new Rectangle();
-            for( int i = 0; i < getChildren().size(); i++ )
-            {
-                rect.union( ( (IFigure) getChildren().get( i ) ).getBounds() );
-            }
-            return rect.getSize();
-        }
+	public DragTracker getDragTracker(Request req) {
 
-    }
+		/**
+		 * The root will only be asked for a drag tracker if for some reason the
+		 * contents editpart says it is neither selector nor opaque.
+		 */
+		return new MarqueeDragTracker();
+	}
 
-    private LayeredPane layers;
+	public IFigure getLayer(Object key) {
 
-    public LayoutTplRootEditPart()
-    {
-        super();
-    }
+		/**
+		 * if (innerLayers == null) return null; IFigure layer =
+		 * printableLayers.getLayer(key); if (layer != null) return layer;
+		 */
+		return _layers.getLayer(key);
+	}
 
-    protected IFigure createFigure()
-    {
-        layers = new LayeredPane();
-        createLayers( layers );
+	public Object getModel() {
+		return LayerManager.ID;
+	}
 
-        return layers;
-    }
+	protected IFigure createFigure() {
+		_layers = new LayeredPane();
 
-    protected void createLayers( LayeredPane layeredPane )
-    {
-        // layeredPane.add(getScaledLayers(), SCALABLE_LAYERS);
-        // layeredPane.add(getPrintableLayers(), PRINTABLE_LAYERS);
-        Layer layer = new Layer();
-        layer.setLayoutManager( new StackLayout() );
-        layeredPane.add( layer, PRIMARY_LAYER );
+		createLayers(_layers);
 
-        layeredPane.add( new Layer()
-        {
+		return _layers;
+	}
 
-            public Dimension getPreferredSize( int wHint, int hHint )
-            {
-                return new Dimension();
-            }
-        }, HANDLE_LAYER );
-        layeredPane.add( new FeedbackLayer(), FEEDBACK_LAYER );
-    }
+	protected void createLayers(LayeredPane layeredPane) {
 
-    public IFigure getContentPane()
-    {
-        return getLayer( PRIMARY_LAYER );
-    }
+		/**
+		 * layeredPane.add(getScaledLayers(), SCALABLE_LAYERS);
+		 * layeredPane.add(getPrintableLayers(), PRINTABLE_LAYERS);
+		 */
+		Layer layer = new Layer();
 
-    /**
-     * Should not be called, but returns a MarqeeDragTracker for good measure.
-     * 
-     * @see org.eclipse.gef.EditPart#getDragTracker(org.eclipse.gef.Request)
-     */
-    public DragTracker getDragTracker( Request req )
-    {
-        /*
-         * The root will only be asked for a drag tracker if for some reason the contents editpart says it is neither
-         * selector nor opaque.
-         */
-        return new MarqueeDragTracker();
-    }
+		layer.setLayoutManager(new StackLayout());
 
-    /**
-     * Returns the layer indicated by the key. Searches all layered panes.
-     * 
-     * @see LayerManager#getLayer(Object)
-     */
-    public IFigure getLayer( Object key )
-    {
-        // if (innerLayers == null)
-        // return null;
-        // IFigure layer = printableLayers.getLayer(key);
-        // if (layer != null)
-        // return layer;
+		layeredPane.add(layer, PRIMARY_LAYER);
 
-        return layers.getLayer( key );
-    }
+		Layer handleLayer = new Layer() {
 
-    /**
-     * The root editpart does not have a real model. The LayerManager ID is returned so that this editpart gets
-     * registered using that key.
-     * 
-     * @see org.eclipse.gef.EditPart#getModel()
-     */
-    public Object getModel()
-    {
-        return LayerManager.ID;
-    }
+			public Dimension getPreferredSize(int wHint, int hHint) {
+				return new Dimension();
+			}
+
+		};
+
+		layeredPane.add(handleLayer, HANDLE_LAYER);
+
+		layeredPane.add(new FeedbackLayer(), FEEDBACK_LAYER);
+	}
+
+	private LayeredPane _layers;
+
+	private class FeedbackLayer extends Layer {
+
+		public FeedbackLayer() {
+			setEnabled(false);
+		}
+
+		public Dimension getPreferredSize(int wHint, int hHint) {
+			Rectangle rect = new Rectangle();
+
+			for (int i = 0; i < getChildren().size(); i++) {
+				IFigure figureChildren = (IFigure)getChildren().get(i);
+
+				rect.union(figureChildren.getBounds());
+			}
+
+			return rect.getSize();
+		}
+
+	}
 
 }

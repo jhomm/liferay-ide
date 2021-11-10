@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,80 +10,85 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
+
 package com.liferay.ide.project.ui.action;
 
 import com.liferay.ide.core.util.CoreUtil;
+import com.liferay.ide.core.util.SapphireContentAccessor;
 import com.liferay.ide.project.core.model.NewLiferayPluginProjectOp;
 import com.liferay.ide.project.core.model.NewLiferayProfile;
 import com.liferay.ide.project.ui.wizard.NewLiferayPluginProjectWizard;
 
+import org.eclipse.sapphire.Element;
+import org.eclipse.sapphire.ElementList;
 import org.eclipse.sapphire.ui.Presentation;
+import org.eclipse.sapphire.ui.SapphirePart;
 import org.eclipse.sapphire.ui.def.DefinitionLoader;
 import org.eclipse.sapphire.ui.forms.PropertyEditorActionHandler;
 import org.eclipse.sapphire.ui.forms.swt.SapphireDialog;
 import org.eclipse.sapphire.ui.forms.swt.SwtPresentation;
 
-
 /**
  * @author Gregory Amerson
  */
-public class NewLiferayProfileActionHandler extends PropertyEditorActionHandler
-{
+public class NewLiferayProfileActionHandler extends PropertyEditorActionHandler implements SapphireContentAccessor {
 
-    @Override
-    protected Object run( Presentation context )
-    {
-        if( context instanceof SwtPresentation )
-        {
-            final SwtPresentation swt = (SwtPresentation) context;
+	@Override
+	protected Object run(Presentation context) {
+		if (context instanceof SwtPresentation) {
+			SwtPresentation swt = (SwtPresentation)context;
 
-            final NewLiferayPluginProjectOp op = op( context );
+			NewLiferayPluginProjectOp op = _op(context);
 
-            final NewLiferayProfile newLiferayProfile = op.getNewLiferayProfiles().insert();
+			ElementList<NewLiferayProfile> profiles = op.getNewLiferayProfiles();
 
-            final SapphireDialog dialog =
-                new SapphireDialog( swt.shell(), newLiferayProfile, DefinitionLoader.sdef(
-                    NewLiferayPluginProjectWizard.class ).dialog( "NewLiferayProfile" ) );
+			NewLiferayProfile newLiferayProfile = profiles.insert();
 
-            dialog.setBlockOnOpen( true );
-            final int result = dialog.open();
+			DefinitionLoader loader = DefinitionLoader.sdef(NewLiferayPluginProjectWizard.class);
 
-            if( result == SapphireDialog.OK )
-            {
-                addToActiveProfiles( op, newLiferayProfile );
-            }
-            else
-            {
-                op.getNewLiferayProfiles().remove( newLiferayProfile );
-            }
-        }
+			SapphireDialog dialog = new SapphireDialog(
+				swt.shell(), newLiferayProfile, loader.dialog("NewLiferayProfile"));
 
-        return null;
-    }
+			dialog.setBlockOnOpen(true);
 
-    public static void addToActiveProfiles( final NewLiferayPluginProjectOp op, final NewLiferayProfile newLiferayProfile )
-    {
-        // should append to current list
-        final String activeProfilesValue = op.getActiveProfilesValue().content();
+			int result = dialog.open();
 
-        final StringBuilder sb = new StringBuilder();
+			if (result == SapphireDialog.OK) {
+				_addToActiveProfiles(op, newLiferayProfile);
+			}
+			else {
+				profiles.remove(newLiferayProfile);
+			}
+		}
 
-        if( ! CoreUtil.isNullOrEmpty( activeProfilesValue ) )
-        {
-            sb.append( activeProfilesValue );
-            sb.append( ',' );
-        }
+		return null;
+	}
 
-        sb.append( newLiferayProfile.getId().content() );
+	private void _addToActiveProfiles(final NewLiferayPluginProjectOp op, final NewLiferayProfile newLiferayProfile) {
 
-        op.setActiveProfilesValue( sb.toString() );
-    }
+		// should append to current list
 
-    private NewLiferayPluginProjectOp op( Presentation context )
-    {
-        return context.part().getLocalModelElement().nearest( NewLiferayPluginProjectOp.class );
-    }
+		String activeProfilesValue = get(op.getActiveProfilesValue());
+
+		StringBuilder sb = new StringBuilder();
+
+		if (CoreUtil.isNotNullOrEmpty(activeProfilesValue)) {
+			sb.append(activeProfilesValue);
+			sb.append(',');
+		}
+
+		sb.append(get(newLiferayProfile.getId()));
+
+		op.setActiveProfilesValue(sb.toString());
+	}
+
+	private NewLiferayPluginProjectOp _op(Presentation context) {
+		SapphirePart sapphirePart = context.part();
+
+		Element localModelElement = sapphirePart.getLocalModelElement();
+
+		return localModelElement.nearest(NewLiferayPluginProjectOp.class);
+	}
 
 }

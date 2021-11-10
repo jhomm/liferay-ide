@@ -43,25 +43,28 @@ public class NewLiferayWebPluginProjectTests extends ProjectCoreBase
     @Override
     protected IPath getLiferayPluginsSdkDir()
     {
-        return ProjectCore.getDefault().getStateLocation().append( "liferay-plugins-sdk-7.0" );
+        return ProjectCore.getDefault().getStateLocation().append(
+            "com.liferay.portal.plugins.sdk-1.0.16-withdependencies" );
     }
 
     @Override
     protected IPath getLiferayPluginsSDKZip()
     {
-        return getLiferayBundlesPath().append( "liferay-plugins-sdk-7.0-ce-m5-20150515112305685.zip" );
+        return getLiferayBundlesPath().append(
+            "com.liferay.portal.plugins.sdk-1.0.16-withdependencies.zip" );
     }
 
     @Override
     protected String getLiferayPluginsSdkZipFolder()
     {
-        return "liferay-plugins-sdk-7.0/";
+        return "com.liferay.portal.plugins.sdk-1.0.16-withdependencies/";
     }
 
     @Test
     public void testNewWebAntProject() throws Exception
     {
-        if( shouldSkipBundleTests() ) return;
+        if( shouldSkipBundleTests() )
+            return;
 
         final String projectName = "test-web-project-sdk";
         final NewLiferayPluginProjectOp op = newProjectOp( projectName );

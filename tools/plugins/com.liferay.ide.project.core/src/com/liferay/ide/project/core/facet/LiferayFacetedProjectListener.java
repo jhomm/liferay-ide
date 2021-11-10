@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,13 +10,11 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- * Contributors:
- * 		Gregory Amerson - initial implementation and ongoing maintenance
- *******************************************************************************/
+ */
 
 package com.liferay.ide.project.core.facet;
 
+import com.liferay.ide.core.util.FileUtil;
 import com.liferay.ide.project.core.ProjectCore;
 
 import java.util.HashSet;
@@ -31,8 +29,6 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.wst.common.project.facet.core.IFacetedProject;
-import org.eclipse.wst.common.project.facet.core.IFacetedProject.Action;
-import org.eclipse.wst.common.project.facet.core.IFacetedProject.Action.Type;
 import org.eclipse.wst.common.project.facet.core.IProjectFacet;
 import org.eclipse.wst.common.project.facet.core.events.IFacetedProjectEvent;
 import org.eclipse.wst.common.project.facet.core.events.IFacetedProjectListener;
@@ -41,99 +37,97 @@ import org.eclipse.wst.common.project.facet.core.events.IProjectFacetActionEvent
 /**
  * @author Gregory Amerson
  */
-public class LiferayFacetedProjectListener implements IFacetedProjectListener
-{
+public class LiferayFacetedProjectListener implements IFacetedProjectListener {
 
-    final static String JSDT_FACET = "wst.jsdt.web"; //$NON-NLS-1$
+	public static final String JSDT_FACET = "wst.jsdt.web";
 
-    public void handleEvent( IFacetedProjectEvent event )
-    {
-        if( event.getType() == IFacetedProjectEvent.Type.POST_INSTALL )
-        {
-            final IProjectFacetActionEvent actionEvent = (IProjectFacetActionEvent) event;
+	public void handleEvent(IFacetedProjectEvent event) {
+		if (event.getType() != IFacetedProjectEvent.Type.POST_INSTALL) {
+			return;
+		}
 
-            if( JSDT_FACET.equals( actionEvent.getProjectFacet().getId() ) )
-            {
-                Job uninstall = new WorkspaceJob( "uninstall jsdt facet" ) //$NON-NLS-1$
-                {
+		IProjectFacetActionEvent actionEvent = (IProjectFacetActionEvent)event;
 
-                    @Override
-                    public IStatus runInWorkspace( IProgressMonitor monitor ) throws CoreException
-                    {
-                        // first try to remove jsdt from fixed facet list
-                        try
-                        {
-                            IFacetedProject fProject = actionEvent.getProject();
+		IProjectFacet projectFacet = actionEvent.getProjectFacet();
 
-                            Set<IProjectFacet> fixedFacets = fProject.getFixedProjectFacets();
+		if (!JSDT_FACET.equals(projectFacet.getId())) {
+			return;
+		}
 
-                            Set<IProjectFacet> updatedFacets = new HashSet<IProjectFacet>();
+		Job uninstall = new WorkspaceJob("uninstall jsdt facet") {
 
-                            for( IProjectFacet f : fixedFacets )
-                            {
-                                if( !JSDT_FACET.equals( f.getId() ) )
-                                {
-                                    updatedFacets.add( f );
-                                }
-                            }
+			@Override
+			public IStatus runInWorkspace(IProgressMonitor monitor) throws CoreException {
 
-                            fProject.setFixedProjectFacets( updatedFacets );
-                        }
-                        catch( Exception e )
-                        {
-                            ProjectCore.logError( "Unable to removed fixed jsdt facet", e ); //$NON-NLS-1$
-                        }
+				// first try to remove jsdt from fixed facet list
 
-                        // next uninstall the jsdt facet
-                        try
-                        {
-                            Set<Action> actions = new HashSet<Action>();
+				try {
+					IFacetedProject fProject = actionEvent.getProject();
 
-                            Type type = Type.valueOf( "uninstall" ); //$NON-NLS-1$
+					Set<IProjectFacet> fixedFacets = fProject.getFixedProjectFacets();
 
-                            Action uninstallJsdt = new Action( type, actionEvent.getProjectFacetVersion(), null );
+					Set<IProjectFacet> updatedFacets = new HashSet<>();
 
-                            actions.add( uninstallJsdt );
+					for (IProjectFacet f : fixedFacets) {
+						if (!JSDT_FACET.equals(f.getId())) {
+							updatedFacets.add(f);
+						}
+					}
 
-                            actionEvent.getProject().modify( actions, monitor );
+					fProject.setFixedProjectFacets(updatedFacets);
+				}
+				catch (Exception e) {
+					ProjectCore.logError("Unable to removed fixed jsdt facet", e);
+				}
 
-                            // try to remove unneeded jsdt files
+				// next uninstall the jsdt facet
 
-                            final IProject project = actionEvent.getProject().getProject();
+				try {
+					Set<IFacetedProject.Action> actions = new HashSet<>();
 
-                            IFile jsdtscope = project.getFile( ".settings/.jsdtscope" ); //$NON-NLS-1$
+					IFacetedProject.Action.Type type = IFacetedProject.Action.Type.valueOf("uninstall");
 
-                            if( jsdtscope.exists() )
-                            {
-                                jsdtscope.delete( true, monitor );
-                            }
+					IFacetedProject.Action uninstallJsdt = new IFacetedProject.Action(
+						type, actionEvent.getProjectFacetVersion(), null);
 
-                            IFile container = project.getFile( ".settings/org.eclipse.wst.jsdt.ui.superType.container" ); //$NON-NLS-1$
+					actions.add(uninstallJsdt);
 
-                            if( container.exists() )
-                            {
-                                container.delete( true, monitor );
-                            }
+					IFacetedProject facetedProject = actionEvent.getProject();
 
-                            IFile name = project.getFile( ".settings/org.eclipse.wst.jsdt.ui.superType.name" ); //$NON-NLS-1$
+					facetedProject.modify(actions, monitor);
 
-                            if( name.exists() )
-                            {
-                                name.delete( true, monitor );
-                            }
-                        }
-                        catch( CoreException e )
-                        {
-                            ProjectCore.logError( "Unable to uninstall jsdt facet", e ); //$NON-NLS-1$
-                        }
+					// try to remove unneeded jsdt files
 
-                        return Status.OK_STATUS;
-                    }
-                };
+					IProject project = facetedProject.getProject();
 
-                uninstall.schedule();
-            }
-        }
-    }
+					IFile jsdtscope = project.getFile(".settings/.jsdtscope");
+
+					if (FileUtil.exists(jsdtscope)) {
+						jsdtscope.delete(true, monitor);
+					}
+
+					IFile container = project.getFile(".settings/org.eclipse.wst.jsdt.ui.superType.container");
+
+					if (FileUtil.exists(container)) {
+						container.delete(true, monitor);
+					}
+
+					IFile name = project.getFile(".settings/org.eclipse.wst.jsdt.ui.superType.name");
+
+					if (FileUtil.exists(name)) {
+						name.delete(true, monitor);
+					}
+				}
+				catch (CoreException ce) {
+					ProjectCore.logError("Unable to uninstall jsdt facet", ce);
+				}
+
+				return Status.OK_STATUS;
+			}
+
+		};
+
+		uninstall.schedule();
+	}
 
 }

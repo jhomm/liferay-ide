@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,99 +10,112 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.xml.search.ui;
 
 import com.liferay.ide.core.ILiferayPortal;
 import com.liferay.ide.core.ILiferayProject;
+import com.liferay.ide.core.util.FileUtil;
+import com.liferay.ide.core.util.ListUtil;
+import com.liferay.ide.server.core.LiferayServerCore;
+import com.liferay.ide.server.core.portal.PortalBundle;
 
-import java.io.IOException;
+import java.io.File;
 import java.io.InputStream;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
-import java.util.WeakHashMap;
 import java.util.jar.JarFile;
-import java.util.zip.ZipEntry;
+import java.util.stream.Stream;
 
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.wst.server.core.IRuntime;
+import org.eclipse.wst.server.core.ServerCore;
 
 /**
  * @author Terry Jia
  */
-public class PortalLanguagePropertiesCacheUtil
-{
+public class PortalLanguagePropertiesCacheUtil {
 
-    private static final WeakHashMap<IPath, Properties> languagePortalMap = new WeakHashMap<IPath, Properties>();
+	public static Properties getPortalLanguageProperties(ILiferayProject project) {
+		if (project == null) {
+			return new Properties();
+		}
 
-    public static Properties getPortalLanguageProperties( ILiferayProject project )
-    {
-        if( project == null )
-        {
-            return new Properties();
-        }
+		Properties retval = null;
 
-        Properties retval = null;
+		try {
+			ILiferayPortal portal = project.adapt(ILiferayPortal.class);
 
-        JarFile jar = null;
+			if (portal == null) {
+				IRuntime[] runtimes = ServerCore.getRuntimes();
 
-        InputStream in = null;
+				if (ListUtil.isNotEmpty(runtimes)) {
+					for (IRuntime runtime : runtimes) {
+						PortalBundle portalBundle = LiferayServerCore.newPortalBundle(runtime.getLocation());
 
-        try
-        {
-            final ILiferayPortal portal = project.adapt( ILiferayPortal.class );
+						if (portalBundle != null) {
+							portal = portalBundle;
 
-            if( portal == null )
-            {
-                return retval;
-            }
+							// find the first liferay 7 portal
 
-            final IPath appServerPortalDir = portal.getAppServerPortalDir();
+							break;
+						}
+					}
+				}
 
-            retval = languagePortalMap.get( appServerPortalDir );
+				if (portal == null) {
+					return retval;
+				}
+			}
 
-            if( retval == null )
-            {
-                if( appServerPortalDir != null && appServerPortalDir.toFile().exists() )
-                {
-                    jar = new JarFile( appServerPortalDir.append( "WEB-INF/lib/portal-impl.jar" ).toFile() );
-                    final ZipEntry lang = jar.getEntry( "content/Language.properties" );
+			IPath appServerPortalDir = portal.getAppServerPortalDir();
 
-                    retval = new Properties();
+			retval = _languagePortalMap.get(appServerPortalDir);
 
-                    in = jar.getInputStream( lang );
+			if (retval == null) {
+				if (FileUtil.exists(appServerPortalDir)) {
+					String[] implJarFolders = {"lib", "shielded-container-lib"};
 
-                    retval.load( in );
-                }
+					File implJar = Stream.of(
+						implJarFolders
+					).map(
+						libFolder -> appServerPortalDir.append("/WEB-INF/" + libFolder + "/portal-impl.jar")
+					).map(
+						jarPath -> jarPath.toFile()
+					).filter(
+						file -> Objects.nonNull(file)
+					).filter(
+						file -> FileUtil.exists(file)
+					).findFirst(
+					).orElse(
+						null
+					);
 
-                languagePortalMap.put( appServerPortalDir, retval );
-            }
-        }
-        catch( Exception e )
-        {
-            LiferayXMLSearchUI.logError( "Unable to find portal language properties", e );
-        }
-        finally
-        {
-            try
-            {
-                if( in != null )
-                {
-                    in.close();
-                }
+					if (Objects.nonNull(implJar)) {
+						try (JarFile jar = new JarFile(implJar);
+							InputStream inputStream = jar.getInputStream(jar.getEntry("content/Language.properties"))) {
 
-                if( jar != null )
-                {
-                    jar.close();
-                }
-            }
-            catch( IOException e )
-            {
-                // no errors this is best effort
-            }
-        }
+							retval = new Properties();
 
-        return retval;
-    }
+							retval.load(inputStream);
+						}
+					}
+				}
+
+				_languagePortalMap.put(appServerPortalDir, retval);
+			}
+		}
+		catch (Exception e) {
+			LiferayXMLSearchUI.logError("Unable to find portal language properties", e);
+		}
+
+		return retval;
+	}
+
+	private static final Map<IPath, Properties> _languagePortalMap = new HashMap<>();
 
 }

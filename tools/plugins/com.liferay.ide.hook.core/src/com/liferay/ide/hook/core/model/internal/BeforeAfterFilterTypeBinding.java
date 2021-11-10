@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,16 +10,14 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- * Contributors:
- *      Gregory Amerson - initial implementation and ongoing maintenance
- *******************************************************************************/
+ */
 
 package com.liferay.ide.hook.core.model.internal;
 
 import com.liferay.ide.hook.core.model.BeforeAfterFilterType;
 
 import org.eclipse.sapphire.Property;
+import org.eclipse.sapphire.PropertyDef;
 import org.eclipse.sapphire.modeling.annotations.DefaultValue;
 import org.eclipse.sapphire.modeling.xml.XmlElement;
 import org.eclipse.sapphire.modeling.xml.XmlValueBindingImpl;
@@ -27,82 +25,74 @@ import org.eclipse.sapphire.modeling.xml.XmlValueBindingImpl;
 /**
  * @author Gregory Amerson
  */
-public class BeforeAfterFilterTypeBinding extends XmlValueBindingImpl
-{
+public class BeforeAfterFilterTypeBinding extends XmlValueBindingImpl {
 
-    private String defaultValueText;
-    private String localValue;
+	@Override
+	public void init(Property property) {
+		super.init(property);
 
-    @Override
-    public void init( Property property )
-    {
-        super.init( property );
+		PropertyDef propertyDef = property.definition();
 
-        DefaultValue defaultValue = property.definition().getAnnotation( DefaultValue.class );
+		DefaultValue defaultValue = propertyDef.getAnnotation(DefaultValue.class);
 
-        this.defaultValueText = defaultValue.text();
-    }
+		_defaultValueText = defaultValue.text();
+	}
 
-    @Override
-    public String read()
-    {
-        // check for existence of before-filter or after-filter elements, if neither exist, then return default value
+	@Override
+	public String read() {
 
-        XmlElement xmlElement = xml();
+		// check for existence of before-filter or after-filter elements, if neither
+		// exist, then return default value
 
-        XmlElement beforeFilterElement =
-            xmlElement.getChildElement( BeforeAfterFilterType.BEFORE_FILTER.getText(), false );
+		XmlElement xmlElement = xml();
 
-        if( beforeFilterElement != null )
-        {
-            return BeforeAfterFilterType.BEFORE_FILTER.getText();
-        }
+		XmlElement beforeFilterElement = xmlElement.getChildElement(
+			BeforeAfterFilterType.BEFORE_FILTER.getText(), false);
 
-        XmlElement afterFilterElement =
-            xmlElement.getChildElement( BeforeAfterFilterType.AFTER_FILTER.getText(), false );
+		if (beforeFilterElement != null) {
+			return BeforeAfterFilterType.BEFORE_FILTER.getText();
+		}
 
-        if( afterFilterElement != null )
-        {
-            return BeforeAfterFilterType.AFTER_FILTER.getText();
-        }
+		XmlElement afterFilterElement = xmlElement.getChildElement(BeforeAfterFilterType.AFTER_FILTER.getText(), false);
 
-        if( this.localValue != null )
-        {
-            return this.localValue;
-        }
+		if (afterFilterElement != null) {
+			return BeforeAfterFilterType.AFTER_FILTER.getText();
+		}
 
-        return this.defaultValueText;
-    }
+		if (_localValue != null) {
+			return _localValue;
+		}
 
-    @Override
-    public void write( String value )
-    {
-        XmlElement xmlElement = xml();
+		return _defaultValueText;
+	}
 
-        XmlElement filterElement = xmlElement.getChildElement( BeforeAfterFilterType.BEFORE_FILTER.getText(), false );
+	@Override
+	public void write(String value) {
+		XmlElement xmlElement = xml();
 
-        if( filterElement == null )
-        {
-            filterElement = xmlElement.getChildElement( BeforeAfterFilterType.AFTER_FILTER.getText(), false );
-        }
+		XmlElement filterElement = xmlElement.getChildElement(BeforeAfterFilterType.BEFORE_FILTER.getText(), false);
 
-        String existingFilterValue = null;
+		if (filterElement == null) {
+			filterElement = xmlElement.getChildElement(BeforeAfterFilterType.AFTER_FILTER.getText(), false);
+		}
 
-        if( filterElement != null )
-        {
-            existingFilterValue = filterElement.getText();
+		String existingFilterValue = null;
 
-            filterElement.remove();
+		if (filterElement != null) {
+			existingFilterValue = filterElement.getText();
 
-            XmlElement newElement = xmlElement.getChildElement( value, true );
+			filterElement.remove();
 
-            newElement.setText( existingFilterValue );
-        }
-        else
-        {
-            this.localValue = value;
-        }
+			XmlElement newElement = xmlElement.getChildElement(value, true);
 
-    }
+			newElement.setText(existingFilterValue);
+		}
+		else {
+			_localValue = value;
+		}
+	}
+
+	private String _defaultValueText;
+	private String _localValue;
 
 }

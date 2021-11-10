@@ -12,12 +12,12 @@
  * details.
  *
  *******************************************************************************/
+
 package com.liferay.ide.project.core.tests;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
-import com.liferay.ide.core.util.CoreUtil;
 import com.liferay.ide.core.util.ZipUtil;
 import com.liferay.ide.project.core.PluginClasspathContainerInitializer;
 import com.liferay.ide.project.core.ProjectCore;
@@ -34,7 +34,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.core.resources.IProject;
-import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.NullProgressMonitor;
@@ -49,30 +48,16 @@ import org.junit.Test;
  * @author Simon Jiang
  */
 
-
 public class ImportPluginsSDKProjectTests extends ProjectCoreBase
 {
+
     @AfterClass
-    public static void removePluginsSDK()
+    public static void removePluginsSDK() throws Exception
     {
-        IProject[] projects = CoreUtil.getAllProjects();
-        for( IProject iProject : projects )
-        {
-            if ( iProject != null && iProject.isAccessible() && iProject.exists())
-            {
-                try
-                {
-                    iProject.delete( true, true, new NullProgressMonitor() );
-                }
-                catch( CoreException e )
-                {
-                    e.printStackTrace();
-                }
-            }
-        }
+        deleteAllWorkspaceProjects();
     }
 
-    private boolean isLiferayRuntimePluginClassPath(List<IClasspathEntry> entries, final String entryPath)
+    private boolean isLiferayRuntimePluginClassPath( List<IClasspathEntry> entries, final String entryPath )
     {
         boolean retval = false;
         for( Iterator<IClasspathEntry> iterator = entries.iterator(); iterator.hasNext(); )
@@ -83,7 +68,7 @@ public class ImportPluginsSDKProjectTests extends ProjectCoreBase
             {
                 for( String path : entry.getPath().segments() )
                 {
-                    if ( path.equals( entryPath ))
+                    if( path.equals( entryPath ) )
                     {
                         retval = true;
                         break;
@@ -97,21 +82,22 @@ public class ImportPluginsSDKProjectTests extends ProjectCoreBase
     @Override
     protected IPath getLiferayPluginsSdkDir()
     {
-        return ProjectCore.getDefault().getStateLocation().append( "liferay-plugins-sdk-7.0" );
+        return ProjectCore.getDefault().getStateLocation().append(
+            "com.liferay.portal.plugins.sdk-1.0.16-withdependencies" );
     }
 
     @Override
     protected IPath getLiferayPluginsSDKZip()
     {
-        return getLiferayBundlesPath().append( "liferay-plugins-sdk-7.0-ce-m5-20150515112305685.zip" );
+        return getLiferayBundlesPath().append(
+            "com.liferay.portal.plugins.sdk-1.0.16-withdependencies.zip" );
     }
 
     @Override
     protected String getLiferayPluginsSdkZipFolder()
     {
-        return "liferay-plugins-sdk-7.0/";
+        return "com.liferay.portal.plugins.sdk-1.0.16-withdependencies/";
     }
-
 
     private IPath importProject( String pluginType, String name ) throws Exception
     {
@@ -135,8 +121,11 @@ public class ImportPluginsSDKProjectTests extends ProjectCoreBase
     @Test
     public void testSDKSetting() throws Exception
     {
+        if( shouldSkipBundleTests() )
+            return;
+
         SDK sdk = SDKUtil.getWorkspaceSDK();
-        Map<String, Object> sdkProperties = sdk.getBuildProperties();
+        Map<String, Object> sdkProperties = sdk.getBuildProperties( true );
 
         assertNotNull( sdkProperties.get( "app.server.type" ) );
         assertNotNull( sdkProperties.get( "app.server.dir" ) );
@@ -147,16 +136,27 @@ public class ImportPluginsSDKProjectTests extends ProjectCoreBase
 
         assertEquals( sdkProperties.get( "app.server.type" ), "tomcat" );
         assertEquals( sdkProperties.get( "app.server.dir" ), getLiferayRuntimeDir().toPortableString() );
-        assertEquals( sdkProperties.get( "app.server.deploy.dir" ), getLiferayRuntimeDir().append( "webapps" ).toPortableString() );
-        assertEquals( sdkProperties.get( "app.server.lib.global.dir" ), getLiferayRuntimeDir().append( "lib/ext" ).toPortableString() );
-        assertEquals( sdkProperties.get( "app.server.parent.dir" ), getLiferayRuntimeDir().removeLastSegments( 1 ).toPortableString() );
-        assertEquals( sdkProperties.get( "app.server.portal.dir" ), getLiferayRuntimeDir().append( "webapps/ROOT" ).toPortableString() );
+        assertEquals(
+            sdkProperties.get( "app.server.deploy.dir" ),
+            getLiferayRuntimeDir().append( "webapps" ).toPortableString() );
+        assertEquals(
+            sdkProperties.get( "app.server.lib.global.dir" ),
+            getLiferayRuntimeDir().append( "lib/ext" ).toPortableString() );
+        assertEquals(
+            sdkProperties.get( "app.server.parent.dir" ),
+            getLiferayRuntimeDir().removeLastSegments( 1 ).toPortableString() );
+        assertEquals(
+            sdkProperties.get( "app.server.portal.dir" ),
+            getLiferayRuntimeDir().append( "webapps/ROOT" ).toPortableString() );
 
     }
 
     @Test
     public void testImportBasicHookProject() throws Exception
     {
+        if( shouldSkipBundleTests() )
+            return;
+
         final IPath projectPath = importProject( "hooks", "Import-IDE3.0-hook" );
         IProject hookProjectForIDE3 = ProjectImportUtil.importProject( projectPath, new NullProgressMonitor(), null );
 
@@ -166,7 +166,7 @@ public class ImportPluginsSDKProjectTests extends ProjectCoreBase
         IClasspathEntry[] rawClasspath = javaProject.getRawClasspath();
         List<IClasspathEntry> rawClasspaths = Arrays.asList( rawClasspath );
         final boolean hasPluginClasspathDependencyContainer =
-                        isLiferayRuntimePluginClassPath(rawClasspaths, SDKClasspathContainer.ID);
+            isLiferayRuntimePluginClassPath( rawClasspaths, SDKClasspathContainer.ID );
 
         assertEquals( hasPluginClasspathDependencyContainer, true );
     }
@@ -174,8 +174,12 @@ public class ImportPluginsSDKProjectTests extends ProjectCoreBase
     @Test
     public void testImportConfiguredPortletProject() throws Exception
     {
+        if( shouldSkipBundleTests() )
+            return;
+
         final IPath projectPath = importProject( "portlets", "Import-Old-Configured-portlet" );
-        IProject portletProjectForIDE3 = ProjectImportUtil.importProject( projectPath, new NullProgressMonitor(), null );
+        IProject portletProjectForIDE3 =
+            ProjectImportUtil.importProject( projectPath, new NullProgressMonitor(), null );
 
         assertNotNull( portletProjectForIDE3 );
 
@@ -184,11 +188,11 @@ public class ImportPluginsSDKProjectTests extends ProjectCoreBase
         List<IClasspathEntry> rawClasspaths = Arrays.asList( rawClasspath );
 
         final boolean hasOldPluginClasspathContainer =
-                        isLiferayRuntimePluginClassPath(rawClasspaths, PluginClasspathContainerInitializer.ID);
+            isLiferayRuntimePluginClassPath( rawClasspaths, PluginClasspathContainerInitializer.ID );
         final boolean hasPluginClasspathDependencyContainer =
-                        isLiferayRuntimePluginClassPath(rawClasspaths, SDKClasspathContainer.ID);
-        final boolean hasOldRuntimeClasspathContainer =
-                        isLiferayRuntimePluginClassPath(rawClasspaths, "com.liferay.studio.server.tomcat.runtimeClasspathProvider");
+            isLiferayRuntimePluginClassPath( rawClasspaths, SDKClasspathContainer.ID );
+        final boolean hasOldRuntimeClasspathContainer = isLiferayRuntimePluginClassPath(
+            rawClasspaths, "com.liferay.studio.server.tomcat.runtimeClasspathProvider" );
 
         assertEquals( hasOldPluginClasspathContainer, false );
         assertEquals( hasOldRuntimeClasspathContainer, false );

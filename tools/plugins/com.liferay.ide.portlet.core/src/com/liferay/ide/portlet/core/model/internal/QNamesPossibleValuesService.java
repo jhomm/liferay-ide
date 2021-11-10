@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,13 +10,11 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- * Contributors:
- *               Kamesh Sampath - initial implementation
- *******************************************************************************/
+ */
 
 package com.liferay.ide.portlet.core.model.internal;
 
+import com.liferay.ide.core.util.SapphireContentAccessor;
 import com.liferay.ide.portlet.core.model.EventDefinition;
 import com.liferay.ide.portlet.core.model.EventDefinitionRef;
 import com.liferay.ide.portlet.core.model.PortletApp;
@@ -34,63 +32,49 @@ import org.eclipse.sapphire.PossibleValuesService;
 /**
  * @author Kamesh Sampath
  */
-public class QNamesPossibleValuesService extends PossibleValuesService
-{
+public class QNamesPossibleValuesService extends PossibleValuesService implements SapphireContentAccessor {
 
-    /*
-     * (non-Javadoc)
-     * @see org.eclipse.sapphire.modeling.PossibleValuesService#fillPossibleValues(java.util.SortedSet)
-     */
-    @Override
-    protected void compute( Set<String> values )
-    {
-        Element Element = context( Element.class );
-        // values.add( param( "0" ) );
-        PortletApp portletApp = context( Element.class ).nearest( PortletApp.class );
+	@Override
+	protected void compute(Set<String> values) {
+		Element element = context(Element.class);
 
-        if( Element instanceof EventDefinitionRef )
-        {
-            ElementList<EventDefinition> eventDefs = portletApp.getEventDefinitions();
+		PortletApp portletApp = element.nearest(PortletApp.class);
 
-            for( EventDefinition eventDefinition : eventDefs )
-            {
-                if( eventDefinition.getNamespaceURI().content() != null &&
-                    eventDefinition.getLocalPart().content() != null )
-                {
-                    values.add( getQName(
-                        eventDefinition.getNamespaceURI().content( false ),
-                        eventDefinition.getLocalPart().content() ) );
-                }
-            }
-        }
-        else if( Element instanceof SupportedPublicRenderParameter )
-        {
-            ElementList<PublicRenderParameter> publicRenderParameters = portletApp.getPublicRenderParameters();
+		if (element instanceof EventDefinitionRef) {
+			ElementList<EventDefinition> eventDefs = portletApp.getEventDefinitions();
 
-            for( PublicRenderParameter publicRenderParam : publicRenderParameters )
-            {
-                if( publicRenderParam.getNamespaceURI().content() != null &&
-                    publicRenderParam.getLocalPart().content() != null )
-                {
-                    values.add( getQName(
-                        publicRenderParam.getNamespaceURI().content( false ),
-                        publicRenderParam.getLocalPart().content() ) );
-                }
-            }
-        }
-    }
+			for (EventDefinition eventDefinition : eventDefs) {
+				String nsURI = get(eventDefinition.getNamespaceURI());
+				String localPart = get(eventDefinition.getLocalPart());
 
-    /**
-     * @param nsURI
-     * @param localPart
-     * @return
-     */
-    private String getQName( String nsURI, String localPart )
-    {
-        QName qName = null;
+				if ((nsURI != null) && (localPart != null)) {
+					String qname = _getQName(
+						get(eventDefinition.getNamespaceURI(), false), get(eventDefinition.getLocalPart()));
 
-        qName = new QName( nsURI, localPart );
-        return qName.toString();
-    }
+					values.add(qname);
+				}
+			}
+		}
+		else if (element instanceof SupportedPublicRenderParameter) {
+			ElementList<PublicRenderParameter> publicRenderParameters = portletApp.getPublicRenderParameters();
+
+			for (PublicRenderParameter publicRenderParam : publicRenderParameters) {
+				if ((get(publicRenderParam.getNamespaceURI()) != null) &&
+					(get(publicRenderParam.getLocalPart()) != null)) {
+
+					String qname = _getQName(
+						get(publicRenderParam.getNamespaceURI(), false), get(publicRenderParam.getLocalPart()));
+
+					values.add(qname);
+				}
+			}
+		}
+	}
+
+	private String _getQName(String nsURI, String localPart) {
+		return new QName(
+			nsURI, localPart
+		).toString();
+	}
 
 }

@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,8 +10,8 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
+
 package com.liferay.ide.maven.ui.action;
 
 import com.liferay.ide.maven.core.ILiferayMavenConstants;
@@ -19,22 +19,18 @@ import com.liferay.ide.maven.core.ILiferayMavenConstants;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.IProgressMonitor;
 
-
 /**
  * @author Gregory Amerson
  */
-public class BuildExtGoalAction extends MavenGoalAction
-{
+public class BuildExtGoalAction extends MavenGoalAction {
 
-    @Override
-    protected String getMavenGoals()
-    {
-        return "package " + ILiferayMavenConstants.PLUGIN_GOAL_BUILD_EXT;
-    }
+	@Override
+	protected String getMavenGoals() {
+		return "package " + ILiferayMavenConstants.PLUGIN_GOAL_BUILD_EXT;
+	}
 
-    @Override
-    protected void updateProject( IProject p, IProgressMonitor monitor )
-    {
-    }
+	@Override
+	protected void updateProject(IProject p, IProgressMonitor monitor) {
+	}
 
 }

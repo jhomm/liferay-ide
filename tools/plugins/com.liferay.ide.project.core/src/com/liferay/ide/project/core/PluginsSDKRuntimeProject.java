@@ -1,6 +1,6 @@
-/*******************************************************************************
- *
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
+ *
  * This library is free software; you can redistribute it and/or modify it under
  * the terms of the GNU Lesser General Public License as published by the Free
  * Software Foundation; either version 2.1 of the License, or (at your option)
@@ -10,25 +10,29 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
+
 package com.liferay.ide.project.core;
 
 import com.liferay.ide.core.ILiferayPortal;
+import com.liferay.ide.core.IProjectBuilder;
 import com.liferay.ide.core.IWebProject;
-import com.liferay.ide.core.util.CoreUtil;
 import com.liferay.ide.core.util.FileUtil;
+import com.liferay.ide.core.util.ListUtil;
+import com.liferay.ide.core.util.StringUtil;
 import com.liferay.ide.project.core.util.ProjectUtil;
 import com.liferay.ide.sdk.core.SDK;
 import com.liferay.ide.sdk.core.SDKManager;
 import com.liferay.ide.sdk.core.SDKUtil;
 import com.liferay.ide.server.core.ILiferayRuntime;
 import com.liferay.ide.server.remote.IRemoteServerPublisher;
-import com.liferay.ide.server.util.ServerUtil;
+
+import java.io.IOException;
+import java.io.InputStream;
 
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.Map;
+import java.util.Objects;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
@@ -37,163 +41,154 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
+
 import org.w3c.dom.Document;
+import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-
 
 /**
  * @author Gregory Amerson
  * @author Simon Jiang
  */
-public class PluginsSDKRuntimeProject extends FlexibleProject implements IWebProject
-{
+public class PluginsSDKRuntimeProject extends FlexibleProject implements IWebProject {
 
-    private ILiferayRuntime liferayRuntime;
+	public PluginsSDKRuntimeProject(IProject project, ILiferayRuntime liferayRuntime) {
+		super(project);
 
-    public PluginsSDKRuntimeProject( IProject project, ILiferayRuntime liferayRuntime )
-    {
-        super( project );
+		_liferayRuntime = liferayRuntime;
+	}
 
-        this.liferayRuntime = liferayRuntime;
-    }
+	@Override
+	public <T> T adapt(Class<T> adapterType) {
+		T adapter = super.adapt(adapterType);
 
-    public <T> T adapt( Class<T> adapterType )
-    {
-        T adapter = super.adapt( adapterType );
+		if (adapter != null) {
+			return adapter;
+		}
 
-        if( adapter != null )
-        {
-            return adapter;
-        }
+		if (IProjectBuilder.class.equals(adapterType)) {
+			SDK sdk = getSDK();
 
-        if( IProjectBuilder.class.equals( adapterType ) )
-        {
-            final SDK sdk = getSDK();
+			if (sdk != null) {
+				IProjectBuilder projectBuilder = new SDKProjectBuilder(getProject(), sdk);
 
-            if( sdk != null )
-            {
-                final IProjectBuilder projectBuilder = new SDKProjectBuilder( getProject(), sdk );
+				return adapterType.cast(projectBuilder);
+			}
+		}
+		else if (IRemoteServerPublisher.class.equals(adapterType)) {
+			SDK sdk = getSDK();
 
-                return adapterType.cast( projectBuilder );
-            }
-        }
-        else if( IRemoteServerPublisher.class.equals( adapterType ) )
-        {
-            final SDK sdk = getSDK();
+			if (sdk != null) {
+				IRemoteServerPublisher remotePublisher = new SDKProjectRemoteServerPublisher(getProject(), sdk);
 
-            if( sdk != null )
-            {
-                final IRemoteServerPublisher remotePublisher = new SDKProjectRemoteServerPublisher( getProject(), sdk );
+				return adapterType.cast(remotePublisher);
+			}
+		}
+		else if (ILiferayPortal.class.equals(adapterType)) {
+			ILiferayPortal portal = new PluginsSDKPortal(_liferayRuntime);
 
-                return adapterType.cast( remotePublisher );
-            }
-        }
-        else if( ILiferayPortal.class.equals( adapterType ) )
-        {
-            final ILiferayPortal portal = new PluginsSDKPortal( this.liferayRuntime );
+			return adapterType.cast(portal);
+		}
 
-            return adapterType.cast( portal );
-        }
+		return null;
+	}
 
-        return null;
-    }
+	@Override
+	public IPath getLibraryPath(String fileName) {
+		IPath[] libs = getUserLibs();
 
-    public IPath getLibraryPath( String filename )
-    {
-        final IPath[] libs = getUserLibs();
+		if (ListUtil.isEmpty(libs)) {
+			return null;
+		}
 
-        if( ! CoreUtil.isNullOrEmpty( libs ) )
-        {
-            for( IPath lib : libs )
-            {
-                if( lib.lastSegment().startsWith( filename ) )
-                {
-                    return lib;
-                }
-            }
-        }
+		for (IPath lib : libs) {
+			if (StringUtil.startsWith(lib.lastSegment(), fileName)) {
+				return lib;
+			}
+		}
 
-        return null;
-    }
+		return null;
+	}
 
-    public String getProperty( final String key, final String defaultValue )
-    {
-        String retval = defaultValue;
+	public Collection<IFile> getOutputs(boolean build, IProgressMonitor monitor) throws CoreException {
+		Collection<IFile> outputs = new HashSet<>();
 
-        if( ( "theme.type".equals( key ) || "theme.parent".equals( key ) ) && ProjectUtil.isThemeProject( getProject() ) )
-        {
-            try
-            {
-                Document buildXmlDoc = FileUtil.readXML( getProject().getFile( "build.xml" ).getContents(), null, null );
+		if (build) {
+			getProject().build(IncrementalProjectBuilder.INCREMENTAL_BUILD, monitor);
 
-                NodeList properties = buildXmlDoc.getElementsByTagName( "property" ); //$NON-NLS-1$
+			SDK sdk = SDKUtil.getSDK(getProject());
 
-                for( int i = 0; i < properties.getLength(); i++ )
-                {
-                    final Node item = properties.item( i );
-                    Node name = item.getAttributes().getNamedItem( "name" ); //$NON-NLS-1$
+			IStatus warStatus = sdk.war(getProject(), null, true, monitor);
 
-                    if( name != null && key.equals( name.getNodeValue() ) )
-                    {
-                        Node value = item.getAttributes().getNamedItem( "value" ); //$NON-NLS-1$
+			if (warStatus.isOK()) {
+			}
+		}
 
-                        retval = value.getNodeValue();
-                        break;
-                    }
-                }
-            }
-            catch( CoreException e )
-            {
-                ProjectCore.logError( "Unable to get property " + key, e );
-            }
-        }
+		return outputs;
+	}
 
-        return retval;
-    }
+	@Override
+	public String getProperty(String key, String defaultValue) {
+		if (!ProjectUtil.isThemeProject(getProject())) {
+			return defaultValue;
+		}
 
-    protected SDK getSDK()
-    {
-        SDK retval = null;
+		if (Objects.equals("theme.type", key) || Objects.equals("theme.parent", key)) {
+			IFile buildXmlFile = getProject().getFile("build.xml");
 
-        // try to determine SDK based on project location
-        IPath sdkLocation = getProject().getRawLocation().removeLastSegments( 2 );
+			try (InputStream inputStream = buildXmlFile.getContents()) {
+				Document buildXmlDoc = FileUtil.readXML(inputStream, null, null);
 
-        retval = SDKManager.getInstance().getSDK( sdkLocation );
+				NodeList properties = buildXmlDoc.getElementsByTagName("property");
 
-        if( retval == null )
-        {
-            retval = SDKUtil.createSDKFromLocation( sdkLocation );
-            SDKManager.getInstance().addSDK( retval );
-        }
+				for (int i = 0; i < properties.getLength(); i++) {
+					Node item = properties.item(i);
 
-        return retval;
-    }
+					NamedNodeMap namedNodeMap = item.getAttributes();
 
-    public IPath[] getUserLibs()
-    {
-        return this.liferayRuntime.getUserLibs();
-    }
+					Node name = namedNodeMap.getNamedItem("name");
 
-    public Collection<IFile> getOutputs( boolean build, IProgressMonitor monitor ) throws CoreException
-    {
-        final Collection<IFile> outputs = new HashSet<IFile>();
+					if ((name != null) && key.equals(name.getNodeValue())) {
+						Node value = namedNodeMap.getNamedItem("value");
 
-        if( build )
-        {
-            this.getProject().build( IncrementalProjectBuilder.INCREMENTAL_BUILD, monitor );
+						return value.getNodeValue();
+					}
+				}
+			}
+			catch (CoreException | IOException e) {
+				ProjectCore.logError("Unable to get property " + key, e);
+			}
+		}
 
-            final SDK sdk = SDKUtil.getSDK( this.getProject() );
+		return defaultValue;
+	}
 
-            final IStatus warStatus = sdk.war( this.getProject(), null, true, monitor );
+	public IPath[] getUserLibs() {
+		return _liferayRuntime.getUserLibs();
+	}
 
-            if( warStatus.isOK() )
-            {
+	protected SDK getSDK() {
 
-            }
-        }
+		// try to determine SDK based on project location
 
-        return outputs;
-    }
+		IPath path = getProject().getRawLocation();
+
+		IPath sdkLocation = path.removeLastSegments(2);
+
+		SDKManager sdkManager = SDKManager.getInstance();
+
+		SDK retval = sdkManager.getSDK(sdkLocation);
+
+		if (retval == null) {
+			retval = SDKUtil.createSDKFromLocation(sdkLocation);
+
+			sdkManager.addSDK(retval);
+		}
+
+		return retval;
+	}
+
+	private ILiferayRuntime _liferayRuntime;
 
 }

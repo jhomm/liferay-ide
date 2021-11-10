@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,8 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.hook.core.model.internal;
 
@@ -20,6 +19,7 @@ import static com.liferay.ide.core.util.CoreUtil.empty;
 import com.liferay.ide.core.ILiferayPortal;
 import com.liferay.ide.core.ILiferayProject;
 import com.liferay.ide.core.LiferayCore;
+import com.liferay.ide.core.util.FileUtil;
 import com.liferay.ide.hook.core.model.Hook;
 import com.liferay.ide.hook.core.model.StrutsAction;
 
@@ -29,67 +29,72 @@ import java.util.TreeSet;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.sapphire.PossibleValuesService;
+import org.eclipse.sapphire.Value;
+import org.eclipse.sapphire.services.ServiceContext;
 
 /**
  * @author Gregory Amerson
  */
-public class StrutsActionPathPossibleValuesService extends PossibleValuesService
-{
+public class StrutsActionPathPossibleValuesService extends PossibleValuesService {
 
-    private IPath portalDir;
-    private TreeSet<String> possibleValues;
+	@Override
+	protected void compute(Set<String> values) {
+		if (FileUtil.exists(_portalDir)) {
+			if (_possibleValues == null) {
+				IPath strutsConfigPath = _portalDir.append("WEB-INF/struts-config.xml");
 
-    @Override
-    protected void compute( Set<String> values )
-    {
-        if( this.portalDir != null && this.portalDir.toFile().exists() )
-        {
-            if( this.possibleValues == null )
-            {
-                final IPath strutsConfigPath = this.portalDir.append( "WEB-INF/struts-config.xml" );
-                final StrutsActionPathPossibleValuesCacheService cacheService =
-                    this.context().service( StrutsActionPathPossibleValuesCacheService.class );
+				ServiceContext serviceContext = context();
 
-                this.possibleValues = cacheService.getPossibleValuesForPath( strutsConfigPath );
-            }
+				StrutsActionPathPossibleValuesCacheService cacheService = serviceContext.service(
+					StrutsActionPathPossibleValuesCacheService.class);
 
-            values.addAll( this.possibleValues );
+				_possibleValues = cacheService.getPossibleValuesForPath(strutsConfigPath);
+			}
 
-            // add the value that is current set by the user
-            String actionPath = context( StrutsAction.class ).getStrutsActionPath().content( false );
+			values.addAll(_possibleValues);
 
-            if( !empty( actionPath ) )
-            {
-                values.add( actionPath );
-            }
-        }
-    }
+			// add the value that is current set by the user
 
-    @Override
-    protected void initPossibleValuesService()
-    {
-        super.initPossibleValuesService();
+			StrutsAction strutsAction = context(StrutsAction.class);
 
-        final ILiferayProject liferayProject = LiferayCore.create( project() );
+			Value<String> strutsActionPathValue = strutsAction.getStrutsActionPath();
 
-        if( liferayProject != null )
-        {
-            final ILiferayPortal portal = liferayProject.adapt( ILiferayPortal.class );
+			String actionPath = strutsActionPathValue.content(false);
 
-            if( portal != null )
-            {
-                this.portalDir = portal.getAppServerPortalDir();
-            }
-        }
-    }
+			if (!empty(actionPath)) {
+				values.add(actionPath);
+			}
+		}
+	}
 
-    protected Hook hook()
-    {
-        return this.context().find( Hook.class );
-    }
+	protected Hook hook() {
+		ServiceContext serviceContext = context();
 
-    protected IProject project()
-    {
-        return this.hook().adapt( IProject.class );
-    }
+		return serviceContext.find(Hook.class);
+	}
+
+	@Override
+	protected void initPossibleValuesService() {
+		super.initPossibleValuesService();
+
+		ILiferayProject liferayProject = LiferayCore.create(ILiferayProject.class, project());
+
+		if (liferayProject != null) {
+			ILiferayPortal portal = liferayProject.adapt(ILiferayPortal.class);
+
+			if (portal != null) {
+				_portalDir = portal.getAppServerPortalDir();
+			}
+		}
+	}
+
+	protected IProject project() {
+		Hook hook = hook();
+
+		return hook.adapt(IProject.class);
+	}
+
+	private IPath _portalDir;
+	private TreeSet<String> _possibleValues;
+
 }

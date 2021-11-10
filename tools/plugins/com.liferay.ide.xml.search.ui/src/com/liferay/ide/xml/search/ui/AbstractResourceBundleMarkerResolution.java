@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,12 +10,12 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.xml.search.ui;
 
 import com.liferay.ide.core.util.CoreUtil;
+import com.liferay.ide.core.util.StringUtil;
 import com.liferay.ide.server.util.ComponentUtil;
 import com.liferay.ide.xml.search.ui.validators.LiferayBaseValidator;
 
@@ -33,97 +33,82 @@ import org.eclipse.ui.views.markers.internal.Util;
 /**
  * @author Terry Jia
  */
-@SuppressWarnings( "restriction" )
-public abstract class AbstractResourceBundleMarkerResolution extends CommonWorkbenchMarkerResolution
-{
+@SuppressWarnings("restriction")
+public abstract class AbstractResourceBundleMarkerResolution extends CommonWorkbenchMarkerResolution {
 
-    public AbstractResourceBundleMarkerResolution( IMarker marker )
-    {
-        super( marker );
-    }
+	public AbstractResourceBundleMarkerResolution(IMarker marker) {
+		super(marker);
+	}
 
-    public IMarker[] findOtherMarkers( IMarker[] markers )
-    {
-        final List<IMarker> otherMarkers = new ArrayList<IMarker>();
+	public IMarker[] findOtherMarkers(IMarker[] markers) {
+		List<IMarker> otherMarkers = new ArrayList<>();
 
-        for( IMarker marker : markers )
-        {
-            if( marker != null && ( !marker.equals( this.marker ) ) &&
-                XMLSearchConstants.RESOURCE_BUNDLE_QUERY_ID.equals( marker.getAttribute(
-                    LiferayBaseValidator.MARKER_QUERY_ID, "" ) ) )
-            {
-                otherMarkers.add( marker );
-            }
-        }
+		for (IMarker marker : markers) {
+			if ((marker != null) && !marker.equals(this.marker) &&
+				XMLSearchConstants.RESOURCE_BUNDLE_QUERY_ID.equals(
+					marker.getAttribute(LiferayBaseValidator.MARKER_QUERY_ID, ""))) {
 
-        return otherMarkers.toArray( new IMarker[0] );
-    }
+				otherMarkers.add(marker);
+			}
+		}
 
-    public String getDescription()
-    {
-        return getLabel();
-    }
+		return otherMarkers.toArray(new IMarker[0]);
+	}
 
-    protected String getResourceKey( IMarker marker )
-    {
-        if( marker == null )
-        {
-            return "";
-        }
+	public String getDescription() {
+		return getLabel();
+	}
 
-        return marker.getAttribute( XMLSearchConstants.TEXT_CONTENT, "" );
-    }
+	public void run(IMarker[] markers, IProgressMonitor monitor) {
+		Set<IFile> files = new HashSet<>();
 
-    protected String getDefaultResourceValue( String resourceKey )
-    {
-        if( CoreUtil.isNullOrEmpty( resourceKey ) )
-        {
-            return "";
-        }
+		for (IMarker marker : markers) {
+			monitor.subTask(Util.getProperty(IMarker.MESSAGE, marker));
 
-        final String[] words = resourceKey.split( "-" );
+			resolve(marker);
 
-        final StringBuffer sb = new StringBuffer();
+			IResource resource = marker.getResource();
 
-        for( int i = 0; i < words.length; i++ )
-        {
-            String word = words[i];
+			if ((resource instanceof IFile) && !files.contains(resource)) {
+				files.add((IFile)resource);
+			}
+		}
 
-            if( i == 0 )
-            {
-                word = word.replaceFirst( word.substring( 0, 1 ), word.substring( 0, 1 ).toUpperCase() );
-            }
+		for (IFile file : files) {
+			ComponentUtil.validateFile(file, monitor);
+		}
+	}
 
-            sb.append( word );
+	protected String getDefaultResourceValue(String resourceKey) {
+		if (CoreUtil.isNullOrEmpty(resourceKey)) {
+			return "";
+		}
 
-            sb.append( " " );
-        }
+		String[] words = resourceKey.split("-");
 
-        return sb.toString().trim();
-    }
+		StringBuffer sb = new StringBuffer();
 
-    public void run( IMarker[] markers, IProgressMonitor monitor )
-    {
-        final Set<IFile> files = new HashSet<IFile>();
+		for (int i = 0; i < words.length; i++) {
+			String word = words[i];
 
-        for( int i = 0; i < markers.length; i++ )
-        {
-            monitor.subTask( Util.getProperty( IMarker.MESSAGE, markers[i] ) );
+			if (i == 0) {
+				word = word.replaceFirst(word.substring(0, 1), StringUtil.toUpperCase(word.substring(0, 1)));
+			}
 
-            resolve( markers[i] );
+			sb.append(word);
 
-            final IResource resource = markers[i].getResource();
+			sb.append(" ");
+		}
 
-            if( resource instanceof IFile && ( !files.contains( resource ) ) )
-            {
-                files.add( (IFile) resource );
-            }
-        }
+		return StringUtil.trim(sb);
+	}
 
-        for( IFile file : files )
-        {
-            ComponentUtil.validateFile( file, monitor );
-        }
-    }
+	protected String getResourceKey(IMarker marker) {
+		if (marker == null) {
+			return "";
+		}
+
+		return marker.getAttribute(XMLSearchConstants.TEXT_CONTENT, "");
+	}
 
 }

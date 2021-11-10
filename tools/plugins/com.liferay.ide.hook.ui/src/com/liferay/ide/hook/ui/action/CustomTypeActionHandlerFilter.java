@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,12 +10,13 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- * Contributors:
- * 		Gregory Amerson - initial implementation and ongoing maintenance
- *******************************************************************************/
+ */
 
 package com.liferay.ide.hook.ui.action;
+
+import com.liferay.ide.core.util.StringUtil;
+
+import java.util.Objects;
 
 import org.eclipse.sapphire.ui.SapphireActionHandler;
 import org.eclipse.sapphire.ui.SapphireActionHandlerFilter;
@@ -23,13 +24,17 @@ import org.eclipse.sapphire.ui.SapphireActionHandlerFilter;
 /**
  * @author Gregory Amerson
  */
-public class CustomTypeActionHandlerFilter extends SapphireActionHandlerFilter
-{
+public class CustomTypeActionHandlerFilter extends SapphireActionHandlerFilter {
 
-    @Override
-    public boolean check( SapphireActionHandler handler )
-    {
-        return !( handler.getId().contains( "Sapphire.Create.Java" ) || "Sapphire.Browse.Java.Type".equals( handler.getId() ) ); //$NON-NLS-1$ //$NON-NLS-2$
-    }
+	@Override
+	public boolean check(SapphireActionHandler handler) {
+		if (!(StringUtil.contains(handler.getId(), "Sapphire.Create.Java") ||
+			  Objects.equals(handler.getId(), "Sapphire.Browse.Java.Type"))) {
+
+			return true;
+		}
+
+		return false;
+	}
 
 }

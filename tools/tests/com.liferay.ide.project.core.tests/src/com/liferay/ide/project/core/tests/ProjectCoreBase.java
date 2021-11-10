@@ -15,18 +15,27 @@
 package com.liferay.ide.project.core.tests;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import com.liferay.ide.core.util.CoreUtil;
 import com.liferay.ide.core.util.FileUtil;
+import com.liferay.ide.core.util.JobUtil;
+import com.liferay.ide.core.util.StringPool;
 import com.liferay.ide.core.util.ZipUtil;
 import com.liferay.ide.project.core.ProjectCore;
 import com.liferay.ide.project.core.ProjectRecord;
 import com.liferay.ide.project.core.model.NewLiferayPluginProjectOp;
+import com.liferay.ide.project.core.model.NewLiferayProfile;
 import com.liferay.ide.project.core.model.PluginType;
+import com.liferay.ide.project.core.model.ProfileLocation;
 import com.liferay.ide.project.core.util.ProjectImportUtil;
 import com.liferay.ide.project.core.util.ProjectUtil;
+import com.liferay.ide.project.core.workspace.NewLiferayWorkspaceOp;
+import com.liferay.ide.project.core.workspace.NewLiferayWorkspaceOpMethods;
 import com.liferay.ide.sdk.core.SDK;
+import com.liferay.ide.sdk.core.SDKCorePlugin;
 import com.liferay.ide.sdk.core.SDKManager;
 import com.liferay.ide.sdk.core.SDKUtil;
 import com.liferay.ide.server.core.tests.ServerCoreBase;
@@ -34,25 +43,35 @@ import com.liferay.ide.server.util.ServerUtil;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.URL;
+import java.nio.file.Files;
 import java.util.Properties;
+import java.util.stream.Stream;
 
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.commons.io.FileUtils;
 import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.IncrementalProjectBuilder;
 import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.OperationCanceledException;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.jobs.Job;
+import org.eclipse.jdt.internal.launching.StandardVMType;
+import org.eclipse.jdt.launching.IVMInstall;
+import org.eclipse.jdt.launching.IVMInstallType;
+import org.eclipse.jdt.launching.JavaRuntime;
+import org.eclipse.jdt.launching.VMStandin;
 import org.eclipse.sapphire.modeling.Status;
 import org.eclipse.sapphire.platform.ProgressMonitorBridge;
 import org.eclipse.wst.common.project.facet.core.IFacetedProject;
@@ -67,11 +86,13 @@ import org.junit.Before;
  * @author Gregory Amerson
  * @author Terry Jia
  * @author Simon Jiang
+ * @author Li Lu
  */
+@SuppressWarnings( "restriction" )
 public class ProjectCoreBase extends ServerCoreBase
 {
 
-    private static final String bundleId = "com.liferay.ide.project.core.tests";
+    private static final String BUNDLE_ID = "com.liferay.ide.project.core.tests";
 
     public static void deleteAllWorkspaceProjects() throws Exception
     {
@@ -79,13 +100,49 @@ public class ProjectCoreBase extends ServerCoreBase
         {
             if ( project != null && project.isAccessible() && project.exists())
             {
-                project.delete( true, true, new NullProgressMonitor() );
+                final NullProgressMonitor monitor = new NullProgressMonitor();
+
+                try
+                {
+                    project.refreshLocal( IResource.DEPTH_INFINITE, monitor );
+                }
+                catch( Exception e)
+                {
+                    //ignore
+                }
+
+                project.close( monitor );
+                project.delete( true, monitor );
+
+                assertFalse( project.exists() );
             }
         }
     }
 
-    @SuppressWarnings( "restriction" )
-    protected void waitForBuildAndValidation() throws Exception
+    public static void createLiferayWorkspaceProject() throws Exception {
+        NewLiferayWorkspaceOp workspaceOp = NewLiferayWorkspaceOp.TYPE.instantiate();
+
+        workspaceOp.setWorkspaceName( "test-liferay-workspace" );
+        workspaceOp.setUseDefaultLocation( true );
+        workspaceOp.setProductVersion("portal-7.3-ga6");
+        workspaceOp.setShowAllProductVersions(true);
+
+        waitForBuildAndValidation();
+
+        if( workspaceOp.validation().ok() )
+        {
+            NewLiferayWorkspaceOpMethods.execute( workspaceOp, ProgressMonitorBridge.create( new NullProgressMonitor() ) );
+        }
+
+        waitForBuildAndValidation();
+
+        IProject workspaceProject = CoreUtil.getProject( "test-liferay-workspace" );
+
+        assertTrue(workspaceProject != null);
+        assertTrue(workspaceProject.exists());
+    }
+
+    protected static void waitForBuildAndValidation() throws Exception
     {
         IWorkspaceRoot root = null;
 
@@ -96,6 +153,8 @@ public class ProjectCoreBase extends ServerCoreBase
             Job.getJobManager().join(ResourcesPlugin.FAMILY_MANUAL_BUILD, new NullProgressMonitor());
             Job.getJobManager().join(ValidatorManager.VALIDATOR_JOB_FAMILY, new NullProgressMonitor());
             Job.getJobManager().join(ResourcesPlugin.FAMILY_AUTO_BUILD, new NullProgressMonitor());
+            Job.getJobManager().join("org.eclipse.buildship.core.jobs", new NullProgressMonitor());
+            JobUtil.waitForLiferayProjectJob();
             Thread.sleep(200);
             Job.getJobManager().beginRule(root = ResourcesPlugin.getWorkspace().getRoot(), null);
         }
@@ -121,16 +180,17 @@ public class ProjectCoreBase extends ServerCoreBase
 
     protected void waitForBuildAndValidation(IProject project) throws Exception
     {
-        project.build(IncrementalProjectBuilder.CLEAN_BUILD, new NullProgressMonitor());
-        waitForBuildAndValidation();
-        project.build(IncrementalProjectBuilder.FULL_BUILD, new NullProgressMonitor());
+        project.build(IncrementalProjectBuilder.INCREMENTAL_BUILD, new NullProgressMonitor());
         waitForBuildAndValidation();
     }
 
     protected IProject createAntProject( NewLiferayPluginProjectOp op ) throws Exception
     {
+        op.setProjectProvider( "ant" );
+
         final IProject project = createProject( op );
 
+        /*
         assertEquals(
             "SDK project layout is not standard, /src folder exists.", false, project.getFolder( "src" ).exists() );
 
@@ -154,8 +214,51 @@ public class ProjectCoreBase extends ServerCoreBase
             default:
                 break;
         }
+        */
+
+        project.refreshLocal( IResource.DEPTH_INFINITE, null );
 
         return project;
+    }
+
+    public NewLiferayPluginProjectOp setMavenProfile( NewLiferayPluginProjectOp op ) throws Exception
+    {
+        NewLiferayProfile profile = op.getNewLiferayProfiles().insert();
+        profile.setId( "Liferay-v6.2-CE-(Tomcat-7)" );
+        profile.setLiferayVersion( "6.2.2" );
+        profile.setRuntimeName( getRuntimeVersion() );
+        profile.setProfileLocation( ProfileLocation.projectPom );
+
+        op.setActiveProfilesValue( "Liferay-v6.2-CE-(Tomcat-7)" );
+
+        return op;
+    }
+
+    protected IProject createMavenProject( NewLiferayPluginProjectOp op ) throws Exception
+    {
+        op.setProjectProvider( "maven" );
+
+        op = setMavenProfile( op );
+
+        IProject project = createProject( op );
+
+        switch( op.getPluginType().content() )
+        {
+            case ext:
+            case hook:
+            case portlet:
+            case web:
+                assertEquals( "java source folder src/main/webapp doesn't exist.", true, project.getFolder( "src/main/webapp" ).exists() );
+            case layouttpl:
+            case theme:
+            case servicebuilder:
+            default:
+                break;
+            }
+
+            Thread.sleep( 3000 );
+
+            return project;
     }
 
     protected IRuntime createNewRuntime( final String name ) throws Exception
@@ -233,6 +336,18 @@ public class ProjectCoreBase extends ServerCoreBase
             projectName = op.getFinalProjectName().content();
         }
 
+//        if( op.getProjectProvider().content().getShortName().equalsIgnoreCase( "maven" ) )
+//        {
+//            if( op.getPluginType().content().equals( PluginType.ext ) )
+//            {
+//                projectName = projectName + "-ext";
+//            }
+//            else if( op.getPluginType().content().equals( PluginType.servicebuilder ) )
+//            {
+//                projectName = projectName + "-portlet";
+//            }
+//        }
+
         final IProject newLiferayPluginProject = project( projectName );
 
         assertNotNull( newLiferayPluginProject );
@@ -263,10 +378,9 @@ public class ProjectCoreBase extends ServerCoreBase
 
     protected String getBundleId()
     {
-        return bundleId;
+        return BUNDLE_ID;
     }
 
-    @SuppressWarnings( "restriction" )
     protected IPath getCustomLocationBase()
     {
         final IPath customLocationBase =
@@ -278,22 +392,22 @@ public class ProjectCoreBase extends ServerCoreBase
 
     protected IPath getIvyCacheZip()
     {
-        return getLiferayBundlesPath().append( "ivy-cache.zip" );
+        return getLiferayBundlesPath().append( "ivy-cache-7.0.zip" );
     }
 
     protected IPath getLiferayPluginsSdkDir()
     {
-        return ProjectCore.getDefault().getStateLocation().append( "liferay-plugins-sdk-6.2.0" );
+        return ProjectCore.getDefault().getStateLocation().append( "liferay-plugins-sdk-6.2" );
     }
 
     protected IPath getLiferayPluginsSDKZip()
     {
-        return getLiferayBundlesPath().append( "liferay-plugins-sdk-6.2.0-ce-ga1-20131101192857659.zip" );
+        return getLiferayBundlesPath().append( "liferay-plugins-sdk-6.2-ce-ga6-20171101150212422.zip" );
     }
 
     protected String getLiferayPluginsSdkZipFolder()
     {
-        return "liferay-plugins-sdk-6.2.0/";
+        return "liferay-plugins-sdk-6.2/";
     }
 
     protected IProject getProject( String path, String projectName ) throws Exception
@@ -311,16 +425,16 @@ public class ProjectCoreBase extends ServerCoreBase
     protected IProject importProject( String path, String bundleId, String projectName ) throws Exception
     {
         final IPath sdkLocation = SDKManager.getInstance().getDefaultSDK().getLocation();
-        final IPath hooksFolder = sdkLocation.append( path );
+        final IPath projectFolder = sdkLocation.append( path );
 
-        final File hookZipFile = getProjectZip( bundleId, projectName );
+        final File projectZipFile = getProjectZip( bundleId, projectName );
 
-        ZipUtil.unzip( hookZipFile, hooksFolder.toFile() );
+        ZipUtil.unzip( projectZipFile, projectFolder.toFile() );
 
-        final IPath projectFolder = hooksFolder.append( projectName );
-        assertEquals( true, projectFolder.toFile().exists() );
+        final IPath projectPath = projectFolder.append( projectName );
+        assertEquals( true, projectPath.toFile().exists() );
 
-        final ProjectRecord projectRecord = ProjectUtil.getProjectRecordForDir( projectFolder.toOSString() );
+        final ProjectRecord projectRecord = ProjectUtil.getProjectRecordForDir( projectPath.toOSString() );
         assertNotNull( projectRecord );
 
         final IRuntime runtime = ServerCore.findRuntime( getRuntimeVersion() );
@@ -338,11 +452,11 @@ public class ProjectCoreBase extends ServerCoreBase
 
     protected File getProjectZip( String bundleId, String projectName ) throws IOException
     {
-        final URL hookZipUrl =
+        final URL projectZipUrl =
             Platform.getBundle( bundleId ).getEntry( "projects/" + projectName + ".zip" );
 
-        final File hookZipFile = new File( FileLocator.toFileURL( hookZipUrl ).getFile() );
-        return hookZipFile;
+        final File projectZipFile = new File( FileLocator.toFileURL( projectZipUrl ).getFile() );
+        return projectZipFile;
     }
 
     protected NewLiferayPluginProjectOp newProjectOp( final String projectName ) throws Exception
@@ -350,7 +464,41 @@ public class ProjectCoreBase extends ServerCoreBase
         final NewLiferayPluginProjectOp op = NewLiferayPluginProjectOp.TYPE.instantiate();
         op.setProjectName( projectName + "-" + getRuntimeVersion() );
 
+        IVMInstall vmInstall = JavaRuntime.getDefaultVMInstall();
+
+        if( vmInstall == null )
+        {
+            throw new CoreException( SDKCorePlugin.createErrorStatus( "Could not get default VM install" ) );
+        }
+
         return op;
+    }
+
+    private void ensureDefaultVMInstallExists() throws CoreException
+    {
+        IVMInstall vmInstall = JavaRuntime.getDefaultVMInstall();
+
+        if( vmInstall != null )
+        {
+            return;
+        }
+
+        final IVMInstallType vmInstallType = JavaRuntime.getVMInstallType( StandardVMType.ID_STANDARD_VM_TYPE );
+        String id = null;
+
+        do
+        {
+            id = String.valueOf( System .currentTimeMillis() );
+        }
+        while( vmInstallType.findVMInstall( id ) != null );
+
+        VMStandin newVm = new VMStandin( vmInstallType, id );
+        newVm.setName( "Default-VM" );
+        String jrePath = System.getProperty( "java.home" );
+        File installLocation = new File( jrePath );
+        newVm.setInstallLocation( installLocation );
+        IVMInstall realVm = newVm.convertToRealVM();
+        JavaRuntime.setDefaultVMInstall( realVm, new NullProgressMonitor() );
     }
 
     private void persistAppServerProperties() throws FileNotFoundException, IOException, ConfigurationException
@@ -367,22 +515,25 @@ public class ProjectCoreBase extends ServerCoreBase
         String userName = System.getProperty( "user.name" ); //$NON-NLS-1$
         File userBuildFile = loc.append( "build." + userName + ".properties" ).toFile(); //$NON-NLS-1$ //$NON-NLS-2$
 
-        if( userBuildFile.exists() )
+        try(OutputStream fileOutput = Files.newOutputStream( userBuildFile.toPath() ))
         {
-            PropertiesConfiguration propsConfig = new PropertiesConfiguration( userBuildFile );
-            for( Object key : initProps.keySet() )
+            if( userBuildFile.exists() )
             {
-                propsConfig.setProperty( (String) key, initProps.get( key ) );
-            }
-            propsConfig.setHeader( "" );
-            propsConfig.save( userBuildFile );
+                PropertiesConfiguration propsConfig = new PropertiesConfiguration( userBuildFile );
+                for( Object key : initProps.keySet() )
+                {
+                    propsConfig.setProperty( (String) key, initProps.get( key ) );
+                }
+                propsConfig.setHeader( "" );
+                propsConfig.save( fileOutput );
 
-        }
-        else
-        {
-            Properties props = new Properties();
-            props.putAll( initProps );
-            props.store( new FileOutputStream( userBuildFile ), "" );
+            }
+            else
+            {
+                Properties props = new Properties();
+                props.putAll( initProps );
+                props.store( fileOutput, StringPool.EMPTY );
+            }
         }
     }
 
@@ -401,6 +552,13 @@ public class ProjectCoreBase extends ServerCoreBase
     public void setupPluginsSDK() throws Exception
     {
         if( shouldSkipBundleTests() ) return;
+
+        final SDK existingSdk = SDKManager.getInstance().getSDK( getLiferayPluginsSdkDir() );
+
+        if( existingSdk == null )
+        {
+            FileUtil.deleteDir( getLiferayPluginsSdkDir().toFile(), true );
+        }
 
         final File liferayPluginsSdkDirFile = getLiferayPluginsSdkDir().toFile();
 
@@ -447,8 +605,6 @@ public class ProjectCoreBase extends ServerCoreBase
 
         SDK sdk = null;
 
-        final SDK existingSdk = SDKManager.getInstance().getSDK( getLiferayPluginsSdkDir() );
-
         if( existingSdk == null )
         {
             sdk = SDKUtil.createSDKFromLocation( getLiferayPluginsSdkDir() );
@@ -483,15 +639,26 @@ public class ProjectCoreBase extends ServerCoreBase
             assertEquals( "Unable to delete pre-existing customBaseDir", false, customBaseDir.exists() );
         }
 
-        persistAppServerProperties();
-
         SDK workspaceSdk = SDKUtil.getWorkspaceSDK();
+
         if ( workspaceSdk == null)
         {
+            persistAppServerProperties();
+
+            IStatus validationStatus = sdk.validate( true );
+
+            StringBuilder sb = new StringBuilder();
+
+            Stream.of(validationStatus.getChildren()).map(IStatus::getMessage).forEach(sb::append);
+
+            PrintDirectoryTree.print(sdk.getLocation().toFile(), sb);
+
+            assertTrue(sb.toString(), validationStatus.isOK());
+
             SDKUtil.openAsProject( sdk );
         }
 
-
+        ensureDefaultVMInstallExists();
     }
 
     @Override

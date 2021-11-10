@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,10 +10,11 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *******************************************************************************/
+ */
 
 package com.liferay.ide.xml.search.ui.markerResolutions;
 
+import com.liferay.ide.core.util.MarkerUtil;
 import com.liferay.ide.project.core.ValidationPreferences;
 import com.liferay.ide.server.util.ComponentUtil;
 import com.liferay.ide.xml.search.ui.LiferayXMLSearchUI;
@@ -28,56 +29,56 @@ import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.ui.IMarkerResolution2;
 
+import org.osgi.framework.Bundle;
 
 /**
  * @author Kuo Zhang
  */
-public class DecreaseProjectScopeXmlValidationLevel implements IMarkerResolution2
-{
+public class DecreaseProjectScopeXmlValidationLevel implements IMarkerResolution2 {
 
-    private final static String MESSAGE = "Disable this type of validation in current project";
+	public DecreaseProjectScopeXmlValidationLevel() {
+	}
 
-    public DecreaseProjectScopeXmlValidationLevel()
-    {
-    }
+	@Override
+	public String getDescription() {
+		return _MESSAGE;
+	}
 
-    @Override
-    public String getDescription()
-    {
-        return MESSAGE;
-    }
+	@Override
+	public Image getImage() {
+		LiferayXMLSearchUI plugin = LiferayXMLSearchUI.getDefault();
 
-    @Override
-    public Image getImage()
-    {
-        final URL url = LiferayXMLSearchUI.getDefault().getBundle().getEntry( "/icons/arrow_down.png" );
-        return ImageDescriptor.createFromURL( url ).createImage();
-    }
+		Bundle bundle = plugin.getBundle();
 
-    @Override
-    public String getLabel()
-    {
-        return MESSAGE;
-    }
+		URL url = bundle.getEntry("/icons/arrow_down.png");
 
-    @Override
-    public void run( IMarker marker )
-    {
-        String liferayPluginValidationType =
-            marker.getAttribute( XMLSearchConstants.LIFERAY_PLUGIN_VALIDATION_TYPE, null );
+		ImageDescriptor imageDescriptor = ImageDescriptor.createFromURL(url);
 
-        if( liferayPluginValidationType == null )
-        {
-            liferayPluginValidationType =
-                marker.getAttribute( XMLSearchConstants.LIFERAY_PLUGIN_VALIDATION_TYPE_OLD, null );
-        }
+		return imageDescriptor.createImage();
+	}
 
-        if( liferayPluginValidationType != null )
-        {
-            ValidationPreferences.setProjectScopeValidationLevel(
-                marker.getResource().getProject(), liferayPluginValidationType, -1 );
-            ComponentUtil.validateFile( (IFile) marker.getResource(), new NullProgressMonitor() );
-        }
-    }
+	@Override
+	public String getLabel() {
+		return _MESSAGE;
+	}
+
+	@Override
+	public void run(IMarker marker) {
+		String liferayPluginValidationType = marker.getAttribute(
+			XMLSearchConstants.LIFERAY_PLUGIN_VALIDATION_TYPE, null);
+
+		if (liferayPluginValidationType == null) {
+			liferayPluginValidationType = marker.getAttribute(
+				XMLSearchConstants.LIFERAY_PLUGIN_VALIDATION_TYPE_OLD, null);
+		}
+
+		if (liferayPluginValidationType != null) {
+			ValidationPreferences.setProjectScopeValidationLevel(
+				MarkerUtil.getProject(marker), liferayPluginValidationType, -1);
+			ComponentUtil.validateFile((IFile)marker.getResource(), new NullProgressMonitor());
+		}
+	}
+
+	private static final String _MESSAGE = "Disable this type of validation in current project";
 
 }

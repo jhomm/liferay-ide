@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,51 +10,30 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
+
 package com.liferay.ide.project.core.model.internal;
 
 import com.liferay.ide.core.ILiferayProjectProvider;
 import com.liferay.ide.core.LiferayCore;
-import com.liferay.ide.project.core.model.NewLiferayPluginProjectOp;
 
-import org.eclipse.sapphire.ValueProperty;
-import org.eclipse.sapphire.services.ServiceCondition;
-import org.eclipse.sapphire.services.ServiceContext;
 import org.eclipse.sapphire.services.ValueLabelService;
-
 
 /**
  * @author Gregory Amerson
+ * @author Simon Jiang
  */
-public class ProjectProviderValueLabelService extends ValueLabelService
-{
+public class ProjectProviderValueLabelService extends ValueLabelService {
 
-    @Override
-    public String provide( String value )
-    {
-        ILiferayProjectProvider provider = LiferayCore.getProvider( value );
+	@Override
+	public String provide(String value) {
+		ILiferayProjectProvider provider = LiferayCore.getProvider(value);
 
-        return provider != null ? provider.getDisplayName() : value;
-    }
+		if (provider != null) {
+			return provider.getDisplayName();
+		}
 
-    public static class Condition extends ServiceCondition
-    {
-
-        @Override
-        public boolean applicable( final ServiceContext context )
-        {
-            boolean retval = false;
-
-            final ValueProperty prop = context.find( ValueProperty.class );
-
-            if( prop != null && prop.equals( NewLiferayPluginProjectOp.PROP_PROJECT_PROVIDER ) )
-            {
-                retval = true;
-            }
-
-            return retval;
-        }
-    }
+		return value;
+	}
 
 }

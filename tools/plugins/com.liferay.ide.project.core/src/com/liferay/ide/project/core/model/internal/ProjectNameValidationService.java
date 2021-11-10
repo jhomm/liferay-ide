@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,27 +10,36 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
+
 package com.liferay.ide.project.core.model.internal;
 
 import com.liferay.ide.core.util.CoreUtil;
+import com.liferay.ide.core.util.FileUtil;
+import com.liferay.ide.core.util.SapphireContentAccessor;
+import com.liferay.ide.core.util.SapphireUtil;
+import com.liferay.ide.project.core.NewLiferayProjectProvider;
+import com.liferay.ide.project.core.ProjectCore;
 import com.liferay.ide.project.core.model.NewLiferayPluginProjectOp;
 import com.liferay.ide.project.core.model.PluginType;
-import com.liferay.ide.project.core.model.ProjectName;
 import com.liferay.ide.project.core.util.ProjectUtil;
 import com.liferay.ide.sdk.core.ISDKConstants;
+import com.liferay.ide.sdk.core.SDK;
+import com.liferay.ide.sdk.core.SDKUtil;
+
+import java.util.Objects;
 
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.sapphire.FilteredListener;
 import org.eclipse.sapphire.PropertyContentEvent;
+import org.eclipse.sapphire.PropertyDef;
 import org.eclipse.sapphire.modeling.Path;
 import org.eclipse.sapphire.modeling.Status;
 import org.eclipse.sapphire.platform.StatusBridge;
 import org.eclipse.sapphire.services.ValidationService;
-
 
 /**
  * @author Gregory Amerson
@@ -38,191 +47,227 @@ import org.eclipse.sapphire.services.ValidationService;
  * @author Terry Jia
  * @author Simon Jiang
  */
-public class ProjectNameValidationService extends ValidationService
-{
-    private static final String MAVEN_PROJECT_NAME_REGEX = "[A-Za-z0-9_\\-.]+";
+public class ProjectNameValidationService extends ValidationService implements SapphireContentAccessor {
 
-    private FilteredListener<PropertyContentEvent> listener;
+	@Override
+	public void dispose() {
+		super.dispose();
 
-    @Override
-    protected void initValidationService()
-    {
-        super.initValidationService();
+		NewLiferayPluginProjectOp op = _op();
 
-        listener = new FilteredListener<PropertyContentEvent>()
-        {
-            @Override
-            protected void handleTypedEvent( PropertyContentEvent event )
-            {
-                if( ! event.property().definition().equals( NewLiferayPluginProjectOp.PROP_FINAL_PROJECT_NAME )
-                                && ! event.property().definition().equals( NewLiferayPluginProjectOp.PROP_PROJECT_NAMES )
-                                && ! event.property().definition().equals( ProjectName.PROP_PROJECT_NAME ) )
-                {
-                    refresh();
-                }
-            }
-        };
+		op.detach(_listener, "*");
+	}
 
-        op().attach( listener, "*" ); //$NON-NLS-1$
-    }
+	@Override
+	protected Status compute() {
+		Status retval = Status.createOkStatus();
 
-    @Override
-    protected Status compute()
-    {
-        Status retval = Status.createOkStatus();
+		NewLiferayPluginProjectOp op = _op();
 
-        final NewLiferayPluginProjectOp op = op();
-        final String currentProjectName = op.getProjectName().content();
+		NewLiferayProjectProvider<NewLiferayPluginProjectOp> provider = get(op.getProjectProvider());
 
-        if( currentProjectName != null )
-        {
-            final IStatus nameStatus = CoreUtil.getWorkspace().validateName( currentProjectName, IResource.PROJECT );
+		if (Objects.equals("ant", provider.getShortName())) {
+			SDK sdk = null;
 
-            if( ! nameStatus.isOK() )
-            {
-                retval = StatusBridge.create( nameStatus );
-            }
-            else if( isInvalidProjectName( op ) )
-            {
-                retval = Status.createErrorStatus( "A project with that name already exists." );
-            }
-            else if( isAntProject( op ) && isSuffixOnly( currentProjectName ) )
-            {
-                retval = Status.createErrorStatus( "A project name cannot only be a type suffix." );
-            }
-            else if( ! hasValidDisplayName( currentProjectName) )
-            {
-                retval = Status.createErrorStatus( "The project name is invalid." );
-            }
-            else if( isMavenProject( op ) && ! isValidMavenProjectName( currentProjectName ) )
-            {
-                retval = Status.createErrorStatus( "The project name is invalid for a maven project" );
-            }
-            else
-            {
-                final Path currentProjectLocation = op.getLocation().content( true );
+			try {
+				sdk = SDKUtil.getWorkspaceSDK();
 
-                // double check to make sure this project wont overlap with existing dir
-                if( currentProjectName != null && currentProjectLocation != null )
-                {
-                    final String currentPath = currentProjectLocation.toOSString();
-                    final IPath osPath = org.eclipse.core.runtime.Path.fromOSString( currentPath );
+				if (sdk != null) {
+					IStatus sdkStatus = sdk.validate();
 
-                    final IStatus projectStatus =
-                        op.getProjectProvider().content().validateProjectLocation( currentProjectName, osPath );
+					if (!sdkStatus.isOK()) {
+						IStatus status = sdkStatus.getChildren()[0];
 
-                    if( ! projectStatus.isOK() )
-                    {
-                        retval = StatusBridge.create( projectStatus );
-                    }
-                }
-            }
-        }
+						retval = Status.createErrorStatus(status.getMessage());
+					}
+				}
+			}
+			catch (CoreException ce) {
+				retval = Status.createErrorStatus(ce);
+			}
+		}
 
-        return retval;
-    }
+		String currentProjectName = get(op.getProjectName());
 
-    @Override
-    public void dispose()
-    {
-        super.dispose();
+		if (currentProjectName != null) {
+			IStatus nameStatus = CoreUtil.validateName(currentProjectName, IResource.PROJECT);
 
-        op().detach( listener, "*" );
-    }
+			if (!nameStatus.isOK()) {
+				retval = StatusBridge.create(nameStatus);
+			}
+			else if (_isInvalidProjectName(op)) {
+				Boolean projectImported = get(op.getImportProjectStatus());
 
-    private boolean hasValidDisplayName( String currentProjectName )
-    {
-        final String currentDisplayName = ProjectUtil.convertToDisplayName( currentProjectName );
+				if (!projectImported) {
+					retval = Status.createErrorStatus("A project with that name already exists.");
+				}
+			}
+			else if (_isAntProject(op) && _isSuffixOnly(currentProjectName)) {
+				retval = Status.createErrorStatus("A project name cannot only be a type suffix.");
+			}
+			else if (!_hasValidDisplayName(currentProjectName)) {
+				retval = Status.createErrorStatus("The project name is invalid.");
+			}
+			else if (_isMavenProject(op) && !_isValidMavenProjectName(currentProjectName)) {
+				retval = Status.createErrorStatus("The project name is invalid for a maven project");
+			}
+			else {
+				Path currentProjectLocation = get(op.getLocation());
 
-        return ! CoreUtil.isNullOrEmpty( currentDisplayName );
-    }
+				// double check to make sure this project wont overlap with existing dir
 
-    private boolean isAntProject( NewLiferayPluginProjectOp op )
-    {
-        return "ant".equals( op.getProjectProvider().content().getShortName() );
-    }
+				if ((currentProjectName != null) && (currentProjectLocation != null)) {
+					String currentPath = currentProjectLocation.toOSString();
 
-    private boolean isInvalidProjectName( NewLiferayPluginProjectOp op )
-    {
-        final String projectName = op.getProjectName().content();
+					IPath osPath = org.eclipse.core.runtime.Path.fromOSString(currentPath);
 
-        if( CoreUtil.getProject( projectName ).exists() )
-        {
-            return true;
-        }
+					IStatus projectStatus = provider.validateProjectLocation(currentProjectName, osPath);
 
-        if( "ant".equals( op.getProjectProvider().content().getShortName() ) )
-        {
-            String pluginTypeValue;
+					if (!projectStatus.isOK()) {
+						retval = StatusBridge.create(projectStatus);
+					}
+				}
+			}
+		}
 
-            switch( op.getPluginType().content() )
-            {
-            case servicebuilder:
-            case portlet:
-                pluginTypeValue = ISDKConstants._PORTLET_PLUGIN_PROJECT_SUFFIX;
-                break;
+		SapphireUtil.refresh(op.getSdkLocation());
 
-            case hook:
-                pluginTypeValue = ISDKConstants._HOOK_PLUGIN_PROJECT_SUFFIX;
-                break;
+		return retval;
+	}
 
-            case ext:
-                pluginTypeValue = ISDKConstants.EXT_PLUGIN_PROJECT_SUFFIX;
-                break;
+	@Override
+	protected void initValidationService() {
+		super.initValidationService();
 
-            case layouttpl:
-                pluginTypeValue = ISDKConstants._LAYOUTTPL_PLUGIN_PROJECT_SUFFIX;
-                break;
+		_listener = new FilteredListener<PropertyContentEvent>() {
 
-            case theme:
-                pluginTypeValue = ISDKConstants._THEME_PLUGIN_PROJECT_SUFFIX;
-                break;
+			@Override
+			protected void handleTypedEvent(PropertyContentEvent event) {
+				PropertyDef def = SapphireUtil.getPropertyDef(event);
 
-            case web:
-                pluginTypeValue = ISDKConstants._WEB_PLUGIN_PROJECT_SUFFIX;
-                break;
+				if (!def.equals(NewLiferayPluginProjectOp.PROP_DISPLAY_NAME) &&
+					!def.equals(NewLiferayPluginProjectOp.PROP_FINAL_PROJECT_NAME) &&
+					!def.equals(NewLiferayPluginProjectOp.PROP_PORTLET_NAME) &&
+					!def.equals(NewLiferayPluginProjectOp.PROP_PROJECT_NAMES) &&
+					!def.equals(NewLiferayPluginProjectOp.PROP_PROJECT_NAME)) {
 
-            default:
-                pluginTypeValue = ISDKConstants._PORTLET_PLUGIN_PROJECT_SUFFIX;
-            }
+					try {
+						refresh();
+					}
+					catch (Exception e) {
+						ProjectCore.logError(e);
+					}
+				}
+			}
 
-            if( !projectName.endsWith( pluginTypeValue ) )
-            {
-                return CoreUtil.getProject( projectName + pluginTypeValue ).exists();
-            }
-        }
+		};
 
-        return false;
-    }
+		NewLiferayPluginProjectOp op = _op();
 
-    private boolean isMavenProject( NewLiferayPluginProjectOp op )
-    {
-        return "maven".equals( op.getProjectProvider().content().getShortName() );
-    }
+		op.attach(_listener, "*");
+	}
 
-    private boolean isSuffixOnly( String currentProjectName )
-    {
-        for( PluginType type : PluginType.values() )
-        {
-            if( ( ( ! type.equals( PluginType.servicebuilder ) ) && ( "-" + type.name() ).equals( currentProjectName ) ) )
-            {
-                return true;
-            }
-        }
+	private boolean _hasValidDisplayName(String currentProjectName) {
+		String currentDisplayName = ProjectUtil.convertToDisplayName(currentProjectName);
 
-        return false;
-    }
+		return !CoreUtil.isNullOrEmpty(currentDisplayName);
+	}
 
-    private boolean isValidMavenProjectName( String currentProjectName )
-    {
-        // IDE-1349, use the same logic as maven uses to validate artifactId to validate maven project name.
-        // See org.apache.maven.model.validation.DefaultModelValidator.validateId();
-        return currentProjectName.matches( MAVEN_PROJECT_NAME_REGEX );
-    }
+	private boolean _isAntProject(NewLiferayPluginProjectOp op) {
+		NewLiferayProjectProvider<NewLiferayPluginProjectOp> provider = get(op.getProjectProvider());
 
-    private NewLiferayPluginProjectOp op()
-    {
-        return context( NewLiferayPluginProjectOp.class );
-    }
+		return Objects.equals("ant", provider.getShortName());
+	}
+
+	private boolean _isInvalidProjectName(NewLiferayPluginProjectOp op) {
+		String projectName = get(op.getProjectName());
+
+		if (FileUtil.exists(CoreUtil.getProject(projectName))) {
+			return true;
+		}
+
+		if (!_isAntProject(op)) {
+			return false;
+		}
+
+		String pluginTypeValue;
+
+		switch (get(op.getPluginType())) {
+			case servicebuilder:
+			case portlet:
+				pluginTypeValue = ISDKConstants.PORTLET_PLUGIN_PROJECT_SUFFIX;
+
+				break;
+
+			case hook:
+				pluginTypeValue = ISDKConstants.HOOK_PLUGIN_PROJECT_SUFFIX;
+
+				break;
+
+			case ext:
+				pluginTypeValue = ISDKConstants.EXT_PLUGIN_PROJECT_SUFFIX;
+
+				break;
+
+			case layouttpl:
+				pluginTypeValue = ISDKConstants.LAYOUTTPL_PLUGIN_PROJECT_SUFFIX;
+
+				break;
+
+			case theme:
+				pluginTypeValue = ISDKConstants.THEME_PLUGIN_PROJECT_SUFFIX;
+
+				break;
+
+			case web:
+				pluginTypeValue = ISDKConstants.WEB_PLUGIN_PROJECT_SUFFIX;
+
+				break;
+
+			default:
+				pluginTypeValue = ISDKConstants.PORTLET_PLUGIN_PROJECT_SUFFIX;
+		}
+
+		if (!projectName.endsWith(pluginTypeValue)) {
+			return FileUtil.exists(CoreUtil.getProject(projectName + pluginTypeValue));
+		}
+
+		return false;
+	}
+
+	private boolean _isMavenProject(NewLiferayPluginProjectOp op) {
+		NewLiferayProjectProvider<NewLiferayPluginProjectOp> provider = get(op.getProjectProvider());
+
+		return Objects.equals(provider.getShortName(), "maven");
+	}
+
+	private boolean _isSuffixOnly(String currentProjectName) {
+		for (PluginType type : PluginType.values()) {
+			String name = "-" + type.name();
+
+			if (!type.equals(PluginType.servicebuilder) && name.equals(currentProjectName)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private boolean _isValidMavenProjectName(String currentProjectName) {
+
+		/**
+		 *  IDE-1349, use the same logic as maven uses to validate artifactId to validate maven project name.
+		 *  See org.apache.maven.model.validation.DefaultModelValidator.validateId();
+		 */
+		return currentProjectName.matches(_MAVEN_PROJECT_NAME_REGEX);
+	}
+
+	private NewLiferayPluginProjectOp _op() {
+		return context(NewLiferayPluginProjectOp.class);
+	}
+
+	private static final String _MAVEN_PROJECT_NAME_REGEX = "[A-Za-z0-9_\\-.]+";
+
+	private FilteredListener<PropertyContentEvent> _listener;
 
 }

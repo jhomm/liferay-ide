@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,11 +10,11 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.service.core.model.internal;
 
+import com.liferay.ide.core.util.SapphireContentAccessor;
 import com.liferay.ide.service.core.model.Column;
 
 import org.eclipse.sapphire.DisposeEvent;
@@ -25,67 +25,69 @@ import org.eclipse.sapphire.ImageData;
 import org.eclipse.sapphire.ImageService;
 import org.eclipse.sapphire.Listener;
 import org.eclipse.sapphire.PropertyEvent;
+import org.eclipse.sapphire.Result;
 
 /**
  * @author Gregory Amerson
  */
-public class ColumnImageService extends ImageService
-{
+public class ColumnImageService extends ImageService implements SapphireContentAccessor {
 
-    private static final ImageData IMG_COLUMN = ImageData.readFromClassLoader(
-        ColumnImageService.class, "images/column_16x16.gif" ).required(); //$NON-NLS-1$
+	@Override
+	public ImageData compute() {
+		ImageData imageData = _imgColumn;
 
-    private static final ImageData IMG_COLUMN_PRIMARY = ImageData.readFromClassLoader(
-        ColumnImageService.class, "images/column_primary_16x16.png" ).required(); //$NON-NLS-1$
+		Column column = context(Column.class);
 
-    private Listener listener;
+		if (get(column.isPrimary())) {
+			imageData = _imgColumnPrimary;
+		}
 
-    @Override
-    protected void initImageService()
-    {
+		return imageData;
+	}
 
-        this.listener = new FilteredListener<PropertyEvent>()
-        {
-            @Override
-            protected void handleTypedEvent( final PropertyEvent event )
-            {
-                refresh();
-            }
-        };
+	@Override
+	protected void initImageService() {
+		_listener = new FilteredListener<PropertyEvent>() {
 
-        context( Element.class ).attach( this.listener, Column.PROP_PRIMARY.name() );
+			@Override
+			protected void handleTypedEvent(PropertyEvent event) {
+				refresh();
+			}
 
-        attach
-        (
-            new Listener()
-            {
-                @Override
-                public void handle( Event event )
-                {
-                    if( event instanceof DisposeEvent )
-                    {
-                        context( Element.class ).detach( listener, Column.PROP_PRIMARY.name() );
-                    }
-                }
-            }
-        );
-    }
+		};
 
-    @Override
-    public ImageData compute()
-    {
-        ImageData imageData = null;
+		Element element = context(Element.class);
 
-        if( ( context( Column.class ) ).isPrimary().content() )
-        {
-            imageData = IMG_COLUMN_PRIMARY;
-        }
-        else
-        {
-            imageData = IMG_COLUMN;
-        }
+		element.attach(_listener, Column.PROP_PRIMARY.name());
 
-        return imageData;
-    }
+		attach(
+			new Listener() {
+
+				@Override
+				public void handle(Event event) {
+					if (event instanceof DisposeEvent) {
+						element.detach(_listener, Column.PROP_PRIMARY.name());
+					}
+				}
+
+			});
+	}
+
+	private static ImageData _imgColumn;
+	{
+		Result<ImageData> result = ImageData.readFromClassLoader(ColumnImageService.class, "images/column_16x16.gif");
+
+		_imgColumn = result.required();
+	}
+
+	private static ImageData _imgColumnPrimary;
+	{
+		Result<ImageData> result = ImageData.readFromClassLoader(
+			ColumnImageService.class, "images/column_primary_16x16.png");
+
+		_imgColumnPrimary = result.required();
+	}
+
+	private Listener _listener;
 
 }

@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,12 +10,17 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
+
 package com.liferay.ide.project.core.model.internal;
 
+import com.liferay.ide.core.util.SapphireContentAccessor;
+import com.liferay.ide.core.util.SapphireUtil;
 import com.liferay.ide.core.util.StringPool;
+import com.liferay.ide.project.core.NewLiferayProjectProvider;
 import com.liferay.ide.project.core.model.NewLiferayPluginProjectOp;
+
+import java.util.Objects;
 
 import org.eclipse.sapphire.Event;
 import org.eclipse.sapphire.FilteredListener;
@@ -26,46 +31,46 @@ import org.eclipse.sapphire.services.ValidationService;
 /**
  * @author Tao Tao
  */
-public class ActiveProfilesValidationService extends ValidationService
-{
+public class ActiveProfilesValidationService extends ValidationService implements SapphireContentAccessor {
 
-    private Listener listener = null;
+	@Override
+	protected Status compute() {
+		NewLiferayPluginProjectOp op = _op();
 
-    @Override
-    protected Status compute()
-    {
-        String activeProfileId = op().getActiveProfilesValue().content();
-        Status retval = Status.createOkStatus();
+		String activeProfileId = get(op.getActiveProfilesValue());
 
-        if( "maven".equals( op().getProjectProvider().content( true ).getShortName() ) )
-        {
-            if( activeProfileId != null && activeProfileId.contains( StringPool.SPACE ) )
-            {
-                retval = Status.createErrorStatus( "No spaces are allowed in profile id values." );
-            }
-        }
+		NewLiferayProjectProvider<NewLiferayPluginProjectOp> provider = get(op.getProjectProvider());
 
-        return retval;
-    }
+		if (Objects.equals(provider.getShortName(), "maven") && (activeProfileId != null) &&
+			activeProfileId.contains(StringPool.SPACE)) {
 
-    @Override
-    protected void initValidationService()
-    {
-        super.initValidationService();
+			return Status.createErrorStatus("No spaces are allowed in profile id values.");
+		}
 
-        this.listener = new FilteredListener<Event>()
-        {
-            protected void handleTypedEvent( Event event )
-            {
-                refresh();
-            }
-        };
+		return Status.createOkStatus();
+	}
 
-        op().getProjectProvider().attach( this.listener );
-    }
+	@Override
+	protected void initValidationService() {
+		super.initValidationService();
 
-    private NewLiferayPluginProjectOp op()
-    {
-        return context( NewLiferayPluginProjectOp.class );
-    }
+		_listener = new FilteredListener<Event>() {
+
+			protected void handleTypedEvent(Event event) {
+				refresh();
+			}
+
+		};
+
+		NewLiferayPluginProjectOp op = _op();
+
+		SapphireUtil.attachListener(op.getProjectProvider(), _listener);
+	}
+
+	private NewLiferayPluginProjectOp _op() {
+		return context(NewLiferayPluginProjectOp.class);
+	}
+
+	private Listener _listener = null;
+
 }

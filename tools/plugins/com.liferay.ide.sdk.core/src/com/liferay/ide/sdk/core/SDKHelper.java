@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,18 +10,19 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.sdk.core;
 
 import com.liferay.ide.core.LiferayRuntimeClasspathEntry;
-import com.liferay.ide.core.util.CoreUtil;
+import com.liferay.ide.core.util.FileUtil;
 import com.liferay.ide.core.util.LaunchHelper;
+import com.liferay.ide.core.util.ListUtil;
 import com.liferay.ide.core.util.RuntimeClasspathModel;
 import com.liferay.ide.core.util.StringPool;
 
 import java.io.File;
+
 import java.util.Map;
 
 import org.eclipse.ant.launching.IAntLaunchConstants;
@@ -31,6 +32,7 @@ import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.Path;
+import org.eclipse.core.runtime.Plugin;
 import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.ILaunchConfiguration;
 import org.eclipse.debug.core.ILaunchConfigurationWorkingCopy;
@@ -39,204 +41,168 @@ import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.launching.IJavaLaunchConfigurationConstants;
 
 /**
- * @author Greg Amerson
+ * @author Gregory Amerson
  */
-@SuppressWarnings( "restriction" )
-public class SDKHelper extends LaunchHelper
-{
+@SuppressWarnings("restriction")
+public class SDKHelper extends LaunchHelper {
 
-    public static final String ANT_CLASSPATH_PROVIDER = "org.eclipse.ant.ui.AntClasspathProvider"; //$NON-NLS-1$
+	public static final String ANT_CLASSPATH_PROVIDER = "org.eclipse.ant.ui.AntClasspathProvider";
 
-    public static final String ANT_LAUNCH_CONFIG_TYPE_ID = IAntLaunchConstants.ID_ANT_LAUNCH_CONFIGURATION_TYPE;
+	public static final String ANT_LAUNCH_CONFIG_TYPE_ID = IAntLaunchConstants.ID_ANT_LAUNCH_CONFIGURATION_TYPE;
 
-    protected IPath currentBuildFile;
+	public SDKHelper(SDK sdk) {
+		super(ANT_LAUNCH_CONFIG_TYPE_ID);
 
-    protected String currentTargets;
+		this.sdk = sdk;
 
-    protected SDK sdk;
+		setLaunchSync(true);
+		setLaunchInBackground(true);
+		setLaunchCaptureInConsole(true);
+		setLaunchIsPrivate(true);
+	}
 
-    private String[] additionalVMArgs;
+	public SDKHelper(SDK sdk, IProgressMonitor monitor) {
+		this(sdk);
 
-    private IProgressMonitor monitor;
+		_monitor = monitor;
+	}
 
-    public SDKHelper( SDK sdk )
-    {
-        super( ANT_LAUNCH_CONFIG_TYPE_ID );
+	public ILaunchConfiguration createLaunchConfiguration(
+			IPath buildFile, String targets, Map<String, String> properties, boolean separateJRE, String workingDir)
+		throws CoreException {
 
-        this.sdk = sdk;
+		ILaunchConfigurationWorkingCopy launchConfig = super.createLaunchConfiguration();
 
-        setLaunchSync( true );
-        setLaunchInBackground( true );
-        setLaunchCaptureInConsole( true );
-        setLaunchIsPrivate( true );
-        // this.launchTimeout = 10000;
-    }
+		launchConfig.setAttribute(IExternalToolConstants.ATTR_LOCATION, buildFile.toOSString());
 
-    public SDKHelper( SDK sdk, IProgressMonitor monitor )
-    {
-        this( sdk );
+		launchConfig.setAttribute(IExternalToolConstants.ATTR_WORKING_DIRECTORY, workingDir);
 
-        this.monitor = monitor;
-    }
+		launchConfig.setAttribute(IAntLaunchConstants.ATTR_ANT_TARGETS, targets);
 
-    public ILaunchConfiguration createLaunchConfiguration(
-        IPath buildFile, String targets, Map<String, String> properties, boolean separateJRE, String workingDir ) throws CoreException
-    {
-        ILaunchConfigurationWorkingCopy launchConfig = super.createLaunchConfiguration();
+		launchConfig.setAttribute(DebugPlugin.ATTR_CAPTURE_OUTPUT, Boolean.TRUE);
 
-        launchConfig.setAttribute( IExternalToolConstants.ATTR_LOCATION, buildFile.toOSString() );
+		SDKCorePlugin sdkCorePlugin = SDKCorePlugin.getDefault();
 
-        launchConfig.setAttribute( IExternalToolConstants.ATTR_WORKING_DIRECTORY, workingDir );
+		IPath sdkPluginLocation = sdkCorePlugin.getStateLocation();
 
-        launchConfig.setAttribute( IAntLaunchConstants.ATTR_ANT_TARGETS, targets );
+		launchConfig.setAttribute(
+			"org.eclipse.debug.ui.ATTR_CAPTURE_IN_FILE", FileUtil.toOSString(sdkPluginLocation.append("sdk.log")));
 
-        // set default for common settings
-//        CommonTab tab = new CommonTab();
-//        tab.setDefaults( launchConfig );
-//        tab.dispose();
+		launchConfig.setAttribute(DebugPlugin.ATTR_PROCESS_FACTORY_ID, "org.eclipse.ant.ui.remoteAntProcessFactory");
 
-        launchConfig.setAttribute( DebugPlugin.ATTR_CAPTURE_OUTPUT, true);
-        launchConfig.setAttribute( "org.eclipse.debug.ui.ATTR_CAPTURE_IN_FILE", //$NON-NLS-1$
-            SDKCorePlugin.getDefault().getStateLocation().append( "sdk.log" ).toOSString() ); //$NON-NLS-1$
+		launchConfig.setAttribute(IAntLaunchConstants.ATTR_ANT_PROPERTIES, properties);
+		launchConfig.setAttribute(IAntLaunchConstants.ATTR_ANT_PROPERTY_FILES, (String)null);
 
-//        launchConfig.setAttribute(
-//            IJavaLaunchConfigurationConstants.ATTR_SOURCE_PATH_PROVIDER, "org.eclipse.ant.ui.AntClasspathProvider" ); //$NON-NLS-1$
+		if (separateJRE) {
+			launchConfig.setAttribute(IAntLaunchConstants.ATTR_DEFAULT_VM_INSTALL, Boolean.TRUE);
+			launchConfig.setAttribute(
+				IJavaLaunchConfigurationConstants.ATTR_MAIN_TYPE_NAME, IAntLaunchConstants.MAIN_TYPE_NAME);
+			launchConfig.setAttribute(IJavaLaunchConfigurationConstants.ATTR_VM_ARGUMENTS, _getVMArgumentsAttr());
+		}
 
-        // launchConfig.setAttribute(IJavaLaunchConfigurationConstants.ATTR_MAIN_TYPE_NAME,
-        // "org.eclipse.ant.internal.ui.antsupport.InternalAntRunner");
+		return launchConfig;
+	}
 
-        launchConfig.setAttribute( DebugPlugin.ATTR_PROCESS_FACTORY_ID, "org.eclipse.ant.ui.remoteAntProcessFactory" ); //$NON-NLS-1$
+	@Override
+	public String getClasspathProviderAttributeValue() {
+		return SDKClasspathProvider.ID;
+	}
 
-        // IVMInstall vmInstall = getDefaultVMInstall(launchConfig);
-        // launchConfig.setAttribute(IJavaLaunchConfigurationConstants.ATTR_JRE_CONTAINER_PATH,
-        // vmInstall.getName());
-        // launchConfig.setAttribute(IJavaLaunchConfigurationConstants.ATTR_JRE_CONTAINER_PATH,
-        // vmInstall.getVMInstallType().getId());
+	@Override
+	public String getNewLaunchConfigurationName() {
+		StringBuffer buffer = new StringBuffer();
 
-        launchConfig.setAttribute( IAntLaunchConstants.ATTR_ANT_PROPERTIES, properties );
-        launchConfig.setAttribute( IAntLaunchConstants.ATTR_ANT_PROPERTY_FILES, (String) null );
+		if (this.sdk.getName() != null) {
+			buffer.append(this.sdk.getName());
+			buffer.append(' ');
+		}
 
-        if( separateJRE )
-        {
-            launchConfig.setAttribute(
-                IJavaLaunchConfigurationConstants.ATTR_MAIN_TYPE_NAME, IAntLaunchConstants.MAIN_TYPE_NAME );
-            launchConfig.setAttribute( IJavaLaunchConfigurationConstants.ATTR_VM_ARGUMENTS, getVMArgumentsAttr() );
-        }
+		if (currentBuildFile != null) {
+			buffer.append(currentBuildFile.lastSegment());
+		}
 
-        return launchConfig;
-    }
+		if (currentTargets != null) {
+			buffer.append(" [");
+			buffer.append(currentTargets);
+			buffer.append("]");
+		}
 
-    private String getVMArgumentsAttr()
-    {
-        StringBuffer args = new StringBuffer( "-Xmx768m" ); //$NON-NLS-1$
+		return buffer.toString();
+	}
 
-        if( !CoreUtil.isNullOrEmpty( additionalVMArgs ) )
-        {
-            for( String vmArg : additionalVMArgs )
-            {
-                args.append( StringPool.SPACE + vmArg );
-            }
-        }
+	public void runTarget(
+			IPath buildFile, String targets, Map<String, String> properties, boolean separateJRE, String workingDir)
+		throws CoreException {
 
-        return args.toString();
-    }
+		if (isLaunchRunning()) {
+			throw new IllegalStateException("Existing launch in progress");
+		}
 
-    @Override
-    public String getClasspathProviderAttributeValue()
-    {
-        // return ANT_CLASSPATH_PROVIDER;
-        return SDKClasspathProvider.ID;
-    }
+		currentBuildFile = buildFile;
 
-    /**
-     * Returns a unique name for a copy of the given launch configuration with the given targets. The name seed is the
-     * same as the name for a new launch configuration with " [targetList]" appended to the end.
-     *
-     * @param config
-     * @param targetAttribute
-     * @return
-     */
-    @Override
-    public String getNewLaunchConfigurationName()
-    {
-        StringBuffer buffer = new StringBuffer();
+		currentTargets = targets;
 
-        if( this.sdk.getName() != null )
-        {
-            buffer.append( this.sdk.getName() );
-            buffer.append( ' ' );
-        }
+		ILaunchConfiguration launchConfig = createLaunchConfiguration(
+			buildFile, targets, properties, separateJRE, workingDir);
 
-        if( this.currentBuildFile != null )
-        {
-            buffer.append( this.currentBuildFile.lastSegment() );
-        }
+		launch(launchConfig, ILaunchManager.RUN_MODE, _monitor);
 
-        if( this.currentTargets != null )
-        {
-            buffer.append( " [" ); //$NON-NLS-1$
-            buffer.append( this.currentTargets );
-            buffer.append( "]" ); //$NON-NLS-1$
-        }
+		currentBuildFile = null;
 
-        return buffer.toString();
-    }
+		currentTargets = null;
+	}
 
-    public void runTarget( IPath buildFile, String targets, Map<String, String> properties, boolean separateJRE, String workingDir )
-        throws CoreException
-    {
-        if( isLaunchRunning() )
-        {
-            throw new IllegalStateException( "Existing launch in progress" ); //$NON-NLS-1$
-        }
+	public void setVMArgs(String[] vmargs) {
+		_additionalVMArgs = vmargs;
+	}
 
-        this.currentBuildFile = buildFile;
+	@Override
+	protected void addUserEntries(RuntimeClasspathModel model) throws CoreException {
+		IPath[] antLibs = sdk.getAntLibraries();
 
-        this.currentTargets = targets;
+		for (IPath antLib : antLibs) {
+			if (FileUtil.exists(antLib)) {
+				model.addEntry(
+					RuntimeClasspathModel.USER,
+					new LiferayRuntimeClasspathEntry(JavaCore.newLibraryEntry(antLib.makeAbsolute(), null, null)));
+			}
+		}
 
-        ILaunchConfiguration launchConfig = createLaunchConfiguration( buildFile, targets, properties, separateJRE, workingDir );
+		// IDE-862 need to add Eclipse's own jdt.core that contains the necessary classes.
 
-        launch( launchConfig, ILaunchManager.RUN_MODE, monitor );
+		try {
+			Plugin plugin = JavaCore.getPlugin();
 
-        this.currentBuildFile = null;
+			File bundleFile = FileLocator.getBundleFile(plugin.getBundle());
 
-        this.currentTargets = null;
-    }
+			if (bundleFile.exists()) {
+				model.addEntry(
+					RuntimeClasspathModel.USER,
+					new LiferayRuntimeClasspathEntry(
+						JavaCore.newLibraryEntry(new Path(bundleFile.getAbsolutePath()), null, null)));
+			}
+		}
+		catch (Exception e) {
+		}
+	}
 
-    @Override
-    protected void addUserEntries( RuntimeClasspathModel model ) throws CoreException
-    {
-        IPath[] antLibs = sdk.getAntLibraries();
+	protected IPath currentBuildFile;
+	protected String currentTargets;
+	protected SDK sdk;
 
-        for( IPath antLib : antLibs )
-        {
-            if( antLib.toFile().exists() )
-            {
-                model.addEntry(
-                    RuntimeClasspathModel.USER,
-                    new LiferayRuntimeClasspathEntry( JavaCore.newLibraryEntry( antLib.makeAbsolute(), null, null ) ) );
-            }
-        }
+	private String _getVMArgumentsAttr() {
+		StringBuffer args = new StringBuffer("-Xmx768m");
 
-        //IDE-862 need to add Eclipse's own jdt.core that contains the necessary classes.
-        try
-        {
-            File bundleFile = FileLocator.getBundleFile( JavaCore.getPlugin().getBundle() );
+		if (ListUtil.isNotEmpty(_additionalVMArgs)) {
+			for (String vmArg : _additionalVMArgs) {
+				args.append(StringPool.SPACE + vmArg);
+			}
+		}
 
-            if( bundleFile.exists() )
-            {
-                model.addEntry(
-                    RuntimeClasspathModel.USER,
-                    new LiferayRuntimeClasspathEntry( JavaCore.newLibraryEntry( new Path( bundleFile.getAbsolutePath() ), null, null ) ) );
-            }
-        }
-        catch( Exception e )
-        {
-        }
-    }
+		return args.toString();
+	}
 
-    public void setVMArgs( String[] vmargs )
-    {
-        this.additionalVMArgs = vmargs;
-    }
+	private String[] _additionalVMArgs;
+	private IProgressMonitor _monitor;
+
 }

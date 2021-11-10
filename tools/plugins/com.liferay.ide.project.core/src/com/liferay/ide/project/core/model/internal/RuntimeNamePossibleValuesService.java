@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,83 +10,87 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
+
 package com.liferay.ide.project.core.model.internal;
 
-import com.liferay.ide.core.util.CoreUtil;
+import com.liferay.ide.core.util.ListUtil;
 import com.liferay.ide.server.util.ServerUtil;
 
+import java.util.Objects;
 import java.util.Set;
 
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.sapphire.PossibleValuesService;
 import org.eclipse.sapphire.Value;
 import org.eclipse.sapphire.modeling.Status;
 import org.eclipse.wst.server.core.IRuntime;
 import org.eclipse.wst.server.core.IRuntimeLifecycleListener;
+import org.eclipse.wst.server.core.IRuntimeType;
 import org.eclipse.wst.server.core.ServerCore;
-
 
 /**
  * @author Gregory Amerson
  */
-public class RuntimeNamePossibleValuesService extends PossibleValuesService implements IRuntimeLifecycleListener
-{
-    @Override
-    protected void initPossibleValuesService()
-    {
-        super.initPossibleValuesService();
+public class RuntimeNamePossibleValuesService extends PossibleValuesService implements IRuntimeLifecycleListener {
 
-        ServerCore.addRuntimeLifecycleListener( this );
-    }
+	@Override
+	public boolean ordered() {
+		return false;
+	}
 
-    @Override
-    protected void compute( Set<String> values )
-    {
-        IRuntime[] runtimes = ServerCore.getRuntimes();
+	@Override
+	public Status problem(Value<?> value) {
+		if (RuntimeNameDefaultValueService.NONE.equals(value.content())) {
+			return Status.createOkStatus();
+		}
 
-        if( ! CoreUtil.isNullOrEmpty( runtimes ) )
-        {
-            for( IRuntime runtime : runtimes )
-            {
-                if( ServerUtil.isLiferayRuntime( runtime ) )
-                {
-                    values.add( runtime.getName() );
-                }
-            }
-        }
-    }
+		return super.problem(value);
+	}
 
-    @Override
-    public boolean ordered()
-    {
-        return true;
-    }
+	public void runtimeAdded(IRuntime runtime) {
+		refresh();
+	}
 
-    @Override
-    public Status problem( Value<?> value )
-    {
-        if( RuntimeNameDefaultValueService.NONE.equals( value.content() ) )
-        {
-            return Status.createOkStatus();
-        }
+	public void runtimeChanged(IRuntime runtime) {
+		refresh();
+	}
 
-        return super.problem( value );
-    }
+	public void runtimeRemoved(IRuntime runtime) {
+		refresh();
+	}
 
-    public void runtimeAdded( IRuntime runtime )
-    {
-        refresh();
-    }
+	@Override
+	protected void compute(Set<String> values) {
+		IRuntime[] runtimes = ServerCore.getRuntimes();
 
-    public void runtimeChanged( IRuntime runtime )
-    {
-        refresh();
-    }
+		if (ListUtil.isEmpty(runtimes)) {
+			return;
+		}
 
-    public void runtimeRemoved( IRuntime runtime )
-    {
-        refresh();
-    }
+		for (IRuntime runtime : runtimes) {
+			IRuntimeType runtimeType = runtime.getRuntimeType();
+
+			if (!Objects.equals("com.liferay.ide.server.portal.runtime", runtimeType.getId()) &&
+				ServerUtil.isLiferayRuntime(runtime)) {
+
+				IStatus status = runtime.validate(new NullProgressMonitor());
+
+				if (status.isOK()) {
+					String runtimeName = runtime.getName();
+
+					values.add(runtimeName);
+				}
+			}
+		}
+	}
+
+	@Override
+	protected void initPossibleValuesService() {
+		super.initPossibleValuesService();
+
+		ServerCore.addRuntimeLifecycleListener(this);
+	}
 
 }

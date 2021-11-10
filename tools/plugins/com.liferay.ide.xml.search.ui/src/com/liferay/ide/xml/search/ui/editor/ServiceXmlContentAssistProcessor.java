@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,7 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *******************************************************************************/
+ */
 
 package com.liferay.ide.xml.search.ui.editor;
 
@@ -25,104 +25,94 @@ import org.eclipse.wst.xml.ui.internal.contentassist.XMLContentAssistProcessor;
 /**
  * @author Kuo Zhang
  */
-@SuppressWarnings( { "deprecation", "restriction" } )
-public class ServiceXmlContentAssistProcessor extends XMLContentAssistProcessor
-{
-    private ServiceXmlTemplateCompletinoProcessor templateProcessor;
-    private boolean templatesAdd = false;
+@SuppressWarnings({"deprecation", "restriction"})
+public class ServiceXmlContentAssistProcessor extends XMLContentAssistProcessor {
 
-    public ServiceXmlContentAssistProcessor()
-    {
-        super();
-    }
+	public ServiceXmlContentAssistProcessor() {
+	}
 
-    @Override
-    protected void addAttributeValueProposals( ContentAssistRequest contentAssistRequest )
-    {
-        XMLReferencesContentAssistUtils.addAttributeValueProposals( contentAssistRequest );
-        super.addAttributeValueProposals( contentAssistRequest );
+	@Override
+	public ICompletionProposal[] computeCompletionProposals(ITextViewer textViewer, int documentPosition) {
+		_templatesAdd = false;
 
-    }
+		return super.computeCompletionProposals(textViewer, documentPosition);
+	}
 
-    @Override
-    protected ContentAssistRequest computeEndTagOpenProposals(
-        int documentPosition, String matchString, ITextRegion completionRegion, IDOMNode nodeAtOffset, IDOMNode node )
-    {
-        ContentAssistRequest request =
-            super.computeEndTagOpenProposals( documentPosition, matchString, completionRegion, nodeAtOffset, node );
-        if( matchString.equals( "" ) )
-        {
-            doEntityProposalIfNeeded( request );
-        }
+	@Override
+	protected void addAttributeValueProposals(ContentAssistRequest contentAssistRequest) {
+		XMLReferencesContentAssistUtils.addAttributeValueProposals(contentAssistRequest);
+		super.addAttributeValueProposals(contentAssistRequest);
+	}
 
-        return request;
-    }
+	@Override
+	protected void addTagInsertionProposals(ContentAssistRequest contentAssistRequest, int childPosition) {
+		super.addTagInsertionProposals(contentAssistRequest, childPosition);
 
-    @Override
-    protected ContentAssistRequest computeContentProposals(
-        int documentPosition, String matchString, ITextRegion completionRegion, IDOMNode nodeAtOffset, IDOMNode node )
-    {
-        ContentAssistRequest request =
-            super.computeContentProposals( documentPosition, matchString, completionRegion, nodeAtOffset, node );
-        doEntityProposalIfNeeded( request );
-        return request;
-    }
+		_addTemplates(contentAssistRequest);
+	}
 
-    private void doEntityProposalIfNeeded( ContentAssistRequest contentAssistRequest )
-    {
-        XMLReferencesContentAssistUtils.addEntityProposals( this, contentAssistRequest );
-    }
+	@Override
+	protected ContentAssistRequest computeContentProposals(
+		int documentPosition, String matchString, ITextRegion completionRegion, IDOMNode nodeAtOffset, IDOMNode node) {
 
-    @Override
-    protected void addTagInsertionProposals( ContentAssistRequest contentAssistRequest, int childPosition )
-    {
-        super.addTagInsertionProposals( contentAssistRequest, childPosition );
-        addTemplates( contentAssistRequest );
-    }
+		ContentAssistRequest request = super.computeContentProposals(
+			documentPosition, matchString, completionRegion, nodeAtOffset, node);
 
-    private void addTemplates( ContentAssistRequest contentAssistRequest )
-    {
-        addTemplates( contentAssistRequest, contentAssistRequest.getReplacementBeginPosition() );
-    }
+		_entityProposalIfNeeded(request);
 
-    private void addTemplates( ContentAssistRequest contentAssistRequest, int startOffset )
-    {
-        if( contentAssistRequest == null )
-        {
-            return;
-        }
+		return request;
+	}
 
-        if( !templatesAdd )
-        {
-            templatesAdd = true;
+	@Override
+	protected ContentAssistRequest computeEndTagOpenProposals(
+		int documentPosition, String matchString, ITextRegion completionRegion, IDOMNode nodeAtOffset, IDOMNode node) {
 
-            if( getTemplateCompletionProcessor() != null )
-            {
-                ICompletionProposal[] proposals =
-                    getTemplateCompletionProcessor().computeCompletionProposals( fTextViewer, startOffset );
+		ContentAssistRequest request = super.computeEndTagOpenProposals(
+			documentPosition, matchString, completionRegion, nodeAtOffset, node);
 
-                for( int i = 0; i < proposals.length; ++i )
-                {
-                    contentAssistRequest.addProposal( proposals[i] );
-                }
-            }
-        }
-    }
+		if (matchString.equals("")) {
+			_entityProposalIfNeeded(request);
+		}
 
-    private ServiceXmlTemplateCompletinoProcessor getTemplateCompletionProcessor()
-    {
-        if( templateProcessor == null )
-        {
-            templateProcessor = new ServiceXmlTemplateCompletinoProcessor();
-        }
+		return request;
+	}
 
-        return templateProcessor;
-    }
+	private void _addTemplates(ContentAssistRequest contentAssistRequest) {
+		_addTemplates(contentAssistRequest, contentAssistRequest.getReplacementBeginPosition());
+	}
 
-    @Override
-    public ICompletionProposal[] computeCompletionProposals( ITextViewer textViewer, int documentPosition )
-    {
-        templatesAdd = false;
-        return super.computeCompletionProposals( textViewer, documentPosition );
-    }
+	private void _addTemplates(ContentAssistRequest contentAssistRequest, int startOffset) {
+		if (contentAssistRequest == null) {
+			return;
+		}
+
+		if (!_templatesAdd) {
+			_templatesAdd = true;
+
+			if (_getTemplateCompletionProcessor() != null) {
+				ICompletionProposal[] proposals = _getTemplateCompletionProcessor().computeCompletionProposals(
+					fTextViewer, startOffset);
+
+				for (int i = 0; i < proposals.length; ++i) {
+					contentAssistRequest.addProposal(proposals[i]);
+				}
+			}
+		}
+	}
+
+	private void _entityProposalIfNeeded(ContentAssistRequest contentAssistRequest) {
+		XMLReferencesContentAssistUtils.addEntityProposals(this, contentAssistRequest);
+	}
+
+	private ServiceXmlTemplateCompletinoProcessor _getTemplateCompletionProcessor() {
+		if (_templateProcessor == null) {
+			_templateProcessor = new ServiceXmlTemplateCompletinoProcessor();
+		}
+
+		return _templateProcessor;
+	}
+
+	private ServiceXmlTemplateCompletinoProcessor _templateProcessor;
+	private boolean _templatesAdd = false;
+
 }

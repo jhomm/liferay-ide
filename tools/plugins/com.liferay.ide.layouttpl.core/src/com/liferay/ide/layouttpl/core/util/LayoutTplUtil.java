@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,15 +10,15 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
+
 package com.liferay.ide.layouttpl.core.util;
 
 import com.liferay.ide.core.templates.ITemplateContext;
 import com.liferay.ide.core.templates.ITemplateOperation;
-import com.liferay.ide.core.templates.TemplatesCore;
 import com.liferay.ide.core.util.CoreUtil;
-import com.liferay.ide.layouttpl.core.LayoutTplCore;
+import com.liferay.ide.core.util.SapphireContentAccessor;
+import com.liferay.ide.core.util.StringUtil;
 import com.liferay.ide.layouttpl.core.model.LayoutTplElement;
 
 import java.util.ArrayList;
@@ -27,277 +27,157 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.collections.ArrayStack;
-import org.eclipse.core.resources.IFile;
-import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.core.runtime.NullProgressMonitor;
+
 import org.eclipse.wst.xml.core.internal.provisional.document.IDOMDocument;
 import org.eclipse.wst.xml.core.internal.provisional.document.IDOMElement;
+
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-
 
 /**
  * @author Gregory Amerson
  * @author Cindy Li
  * @author Kuo Zhang
+ * @author Joye Luo
  */
-@SuppressWarnings( "restriction" )
-public class LayoutTplUtil
-{
+@SuppressWarnings("restriction")
+public class LayoutTplUtil implements SapphireContentAccessor {
 
-    private static void createLayoutTplContext( ITemplateOperation op, LayoutTplElement layouttpl )
-    {
-        final ITemplateContext ctx = op.getContext();
+	public static void createLayoutTplContext(ITemplateOperation op, LayoutTplElement layouttpl) {
+		ITemplateContext ctx = op.getContext();
 
-        ctx.put( "root", layouttpl );
-        ctx.put( "stack", new ArrayStack() );
-    }
+		ctx.put("root", layouttpl);
+		ctx.put("stack", new ArrayStack());
+	}
 
-    public static IDOMElement[] findChildElementsByClassName( IDOMElement parentElement,
-                                                              String childElementTag,
-                                                              String className )
-    {
-        if( parentElement == null || !( parentElement.hasChildNodes() ) )
-        {
-            return null;
-        }
+	public static IDOMElement[] findChildElementsByClassName(
+		IDOMElement parentElement, String childElementTag, String className) {
 
-        List<IDOMElement> childElements = new ArrayList<IDOMElement>();
+		if ((parentElement == null) || !parentElement.hasChildNodes()) {
+			return null;
+		}
 
-        List<Element> divChildren = getChildElementsByTagName( parentElement, childElementTag );
+		List<IDOMElement> childElements = new ArrayList<>();
 
-        for( int i = 0; i < divChildren.size(); i++ )
-        {
-            IDOMElement childDivElement = (IDOMElement) divChildren.get( i );
+		List<Element> divChildren = getChildElementsByTagName(parentElement, childElementTag);
 
-            if( hasClassName( childDivElement, className ) )
-            {
-                childElements.add( childDivElement );
-            }
-        }
+		for (Element child : divChildren) {
+			IDOMElement childDivElement = (IDOMElement)child;
 
-        return childElements.toArray( new IDOMElement[0] );
-    }
+			if (hasClassName(childDivElement, className)) {
+				childElements.add(childDivElement);
+			}
+		}
 
-    public static IDOMElement findMainContentElement( IDOMDocument rootDocument )
-    {
-        if( rootDocument == null || !( rootDocument.hasChildNodes() ) )
-        {
-            return null;
-        }
+		return childElements.toArray(new IDOMElement[0]);
+	}
 
-        IDOMElement mainContentElement = null;
+	public static IDOMElement findMainContentElement(IDOMDocument rootDocument) {
+		if ((rootDocument == null) || !rootDocument.hasChildNodes()) {
+			return null;
+		}
 
-        mainContentElement = (IDOMElement) rootDocument.getElementById( "main-content" ); //$NON-NLS-1$
+		return (IDOMElement)rootDocument.getElementById("main-content");
+	}
 
-        return mainContentElement;
-    }
+	public static List<Element> getChildElementsByTagName(IDOMElement parentElement, String childElementTag) {
+		Node parentElementNode = (Node)parentElement;
 
-    public static List<Element> getChildElementsByTagName( IDOMElement parentElement, String childElementTag )
-    {
-        final NodeList childNodes = ( (Node) parentElement ).getChildNodes();
+		NodeList childNodes = parentElementNode.getChildNodes();
 
-        List<Element> childElements = new ArrayList<Element>();
+		List<Element> childElements = new ArrayList<>();
 
-        for( int i = 0; i < childNodes.getLength(); i++)
-        {
-            Node childNode = childNodes.item( i );
+		for (int i = 0; i < childNodes.getLength(); i++) {
+			Node childNode = childNodes.item(i);
 
-            if( childNode.getNodeType() == 1 && childElementTag != null )
-            {
-                Element element = (Element) childNode;
+			if ((childNode.getNodeType() == 1) && (childElementTag != null)) {
+				Element element = (Element)childNode;
 
-                if( element.getTagName().equals( childElementTag ) )
-                {
-                    childElements.add( element );
-                }
-            }
-        }
+				if (StringUtil.equals(element.getTagName(), childElementTag)) {
+					childElements.add(element);
+				}
+			}
+		}
 
-        return childElements;
-    }
+		return childElements;
+	}
 
-    public static String getRoleValue( IDOMElement mainContentElement, String defaultValue )
-    {
-        String retval = defaultValue;
-        String currentRoleValue = mainContentElement.getAttribute( "role" ); //$NON-NLS-1$
+	public static String getRoleValue(IDOMElement mainContentElement, String defaultValue) {
+		String retval = defaultValue;
+		String currentRoleValue = mainContentElement.getAttribute("role");
 
-        if( !CoreUtil.isNullOrEmpty( currentRoleValue ) )
-        {
-            retval = currentRoleValue;
-        }
+		if (CoreUtil.isNotNullOrEmpty(currentRoleValue)) {
+			retval = currentRoleValue;
+		}
 
-        return retval;
-    }
+		return retval;
+	}
 
-    public static String getTemplateSource( LayoutTplElement layouttpl )
-    {
-        final StringBuffer buffer = new StringBuffer();
+	public static int getWeightValue(IDOMElement portletColumnElement, int defaultValue) {
+		int weightValue = defaultValue;
 
-        try
-        {
-            ITemplateOperation templateOperation = null;
+		if (portletColumnElement == null) {
+			return weightValue;
+		}
 
-            if( layouttpl.getBootstrapStyle().content() )
-            {
-                templateOperation =
-                    TemplatesCore.getTemplateOperation( "com.liferay.ide.layouttpl.core.layoutTemplate.bootstrap" );
-            }
-            else
-            {
-                templateOperation =
-                    TemplatesCore.getTemplateOperation( "com.liferay.ide.layouttpl.core.layoutTemplate.legacy" );
-            }
+		String classAttr = portletColumnElement.getAttribute("class");
 
-            createLayoutTplContext( templateOperation, layouttpl );
+		if (CoreUtil.isNullOrEmpty(classAttr)) {
+			return weightValue;
+		}
 
-            templateOperation.setOutputBuffer( buffer );
-            templateOperation.execute( new NullProgressMonitor() );
-        }
-        catch( Exception ex )
-        {
-            LayoutTplCore.logError( "Error getting template source.", ex ); //$NON-NLS-1$
-        }
+		// resolve column weight of bootstrap style, portal version equal to 62
 
-        return buffer.toString();
-    }
+		Matcher matcher = _classAttributePattern.matcher(classAttr);
 
-    public static int getWeightValue( IDOMElement portletColumnElement, int defaultValue )
-    {
-        int weightValue = defaultValue;
+		if (matcher.matches()) {
+			String weightString = matcher.group(2);
 
-        if( portletColumnElement == null )
-        {
-            return weightValue;
-        }
+			if (CoreUtil.isNotNullOrEmpty(weightString)) {
+				try {
+					weightValue = Integer.parseInt(weightString);
+				}
+				catch (NumberFormatException nfe) {
+					weightValue = 0;
+				}
+			}
+		}
+		else {
+			matcher = _pattern.matcher(classAttr);
 
-        String classAttr = portletColumnElement.getAttribute( "class" ); //$NON-NLS-1$
+			if (matcher.matches()) {
+				String weightString = matcher.group(2);
 
-        if( CoreUtil.isNullOrEmpty( classAttr ) )
-        {
-            return weightValue;
-        }
+				if (CoreUtil.isNotNullOrEmpty(weightString)) {
+					try {
+						weightValue = Integer.parseInt(weightString);
+					}
+					catch (NumberFormatException nfe) {
+						weightValue = 0;
+					}
+				}
+			}
+		}
 
-        // resolve column weight of bootstrap style, portal version greater than or equal to 62
-        Matcher matcher = Pattern.compile( "(.*span)(\\d+)" ).matcher( classAttr );
+		return weightValue;
+	}
 
-        if( matcher.matches() )
-        {
-            String weightString = matcher.group( 2 );
+	public static boolean hasClassName(IDOMElement domElement, String className) {
+		boolean retval = false;
 
-            if( !CoreUtil.isNullOrEmpty( weightString ))
-            {
-                try
-                {
-                    weightValue = Integer.parseInt( weightString );
-                }
-                catch( NumberFormatException ex )
-                {
-                    weightValue = 0;
-                }
-            }
-        }
-        else
-        {
-            // old style, portal version less than 62
-            matcher = Pattern.compile( ".*aui-w([-\\d]+).*" ).matcher( classAttr );
+		if (domElement != null) {
+			String classAttr = domElement.getAttribute("class");
 
-            if( matcher.matches() )
-            {
-                String weightString = matcher.group( 1 );
+			if (!CoreUtil.isNullOrEmpty(classAttr)) {
+				retval = classAttr.contains(className);
+			}
+		}
 
-                if( !CoreUtil.isNullOrEmpty( weightString ) )
-                {
-                    try
-                    {
-                        weightValue = Integer.parseInt( weightString );
-                    }
-                    catch( NumberFormatException e )
-                    {
-                        // if we have a 1-2 then we have a fraction
-//                        int index = weightString.indexOf( '-' );
-//
-//                        if( index > 0 )
-//                        {
-//                            try
-//                            {
-//                                int numerator = Integer.parseInt( weightString.substring( 0, index ) );
-//                                int denominator =
-//                                    Integer.parseInt( weightString.substring( index + 1, weightString.length() ) );
-//                                weightValue = (int) ( (float) numerator / denominator * 100 );
-//                            }
-//                            catch( NumberFormatException ex )
-//                            {
-//                                // best effort
-//                            }
-//                        }
-                        weightValue = 0;
-                    }
-                }
+		return retval;
+	}
 
-//                int remainder = weightValue % 5;
-//
-//                if( remainder != 0 )
-//                {
-//                    if( weightValue != 33 && weightValue != 66 )
-//                    {
-//                        if( remainder < 3 )
-//                        {
-//                            weightValue -= remainder;
-//                        }
-//                        else
-//                        {
-//                            weightValue += remainder;
-//                        }
-//                    }
-//                }
-            }
-        }
+	private static final Pattern _classAttributePattern = Pattern.compile("(.*span)(\\d+)");
+	private static final Pattern _pattern = Pattern.compile(".*col-(xs|sm|md|lg)-(\\d+).*");
 
-        return weightValue;
-    }
-
-    public static boolean hasClassName( IDOMElement domElement, String className )
-    {
-        boolean retval = false;
-
-        if( domElement != null )
-        {
-            String classAttr = domElement.getAttribute( "class" ); //$NON-NLS-1$
-
-            if( !CoreUtil.isNullOrEmpty( classAttr ) )
-            {
-                retval = classAttr.contains( className );
-            }
-        }
-
-        return retval;
-    }
-
-    public static void saveToFile( LayoutTplElement diagramElement, IFile file, IProgressMonitor monitor )
-    {
-        try
-        {
-            ITemplateOperation op = null;
-
-            if( diagramElement.getBootstrapStyle().content() )
-            {
-                op = TemplatesCore.getTemplateOperation( "com.liferay.ide.layouttpl.core.layoutTemplate.bootstrap" );
-            }
-            else
-            {
-                op = TemplatesCore.getTemplateOperation( "com.liferay.ide.layouttpl.core.layoutTemplate.legacy" );
-            }
-
-            createLayoutTplContext( op, diagramElement );
-
-            op.setOutputFile( file );
-            op.execute( monitor );
-        }
-        catch( Exception e )
-        {
-            LayoutTplCore.logError( e );
-        }
-    }
 }

@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,10 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- * Contributors:
- *    Kamesh Sampath - initial implementation
- ******************************************************************************/
+ */
 
 package com.liferay.ide.portlet.core.model;
 
@@ -35,35 +32,30 @@ import org.eclipse.sapphire.modeling.xml.annotations.XmlBinding;
 /**
  * @author Kamesh Sampath
  */
-public interface EventDefinitionRef extends Element, Identifiable, Describeable
-{
+public interface EventDefinitionRef extends Describeable, Element, Identifiable {
 
-    ElementType TYPE = new ElementType( EventDefinitionRef.class );
+	public ElementType TYPE = new ElementType(EventDefinitionRef.class);
 
-    // *** Qname ***
+	public Value<String> getName();
 
-    @Label( standard = "Qname" )
-    @XmlBinding( path = "qname" )
-    @Unique
-    @Service( impl = QNamesPossibleValuesService.class, params = { @Service.Param( name = "0", value = "Q_NAME" ) } )
-    @CustomXmlValueBinding( impl = QNameTextNodeValueBinding.class, params = { "qname" } )
-    ValueProperty PROP_Q_NAME = new ValueProperty( TYPE, "Qname" ); //$NON-NLS-1$
+	public Value<String> getQname();
 
-    Value<String> getQname();
+	public void setName(String value);
 
-    void setQname( String value );
+	public void setQname(String value);
 
-    // *** Name ***
+	@Enablement(expr = "${Qname == 'Q_NAME'}")
+	@Label(standard = "Name")
+	@PossibleValues(property = "/EventDefinitions/Name")
+	@Unique
+	@XmlBinding(path = "name")
+	public ValueProperty PROP_NAME = new ValueProperty(TYPE, "Name");
 
-    @Label( standard = "Name" )
-    @XmlBinding( path = "name" )
-    @Unique
-    @Enablement( expr = "${Qname == 'Q_NAME'}" )
-    @PossibleValues( property = "/EventDefinitions/Name" )
-    ValueProperty PROP_NAME = new ValueProperty( TYPE, "Name" ); //$NON-NLS-1$
-
-    Value<String> getName();
-
-    void setName( String value );
+	@CustomXmlValueBinding(impl = QNameTextNodeValueBinding.class, params = "qname")
+	@Label(standard = "Qname")
+	@Service(impl = QNamesPossibleValuesService.class, params = {@Service.Param(name = "0", value = "Q_NAME")})
+	@Unique
+	@XmlBinding(path = "qname")
+	public ValueProperty PROP_Q_NAME = new ValueProperty(TYPE, "Qname");
 
 }

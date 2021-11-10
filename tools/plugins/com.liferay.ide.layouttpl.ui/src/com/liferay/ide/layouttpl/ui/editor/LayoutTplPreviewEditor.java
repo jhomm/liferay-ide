@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,10 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- * Contributors:
- *      Gregory Amerson - initial implementation and ongoing maintenance
- *******************************************************************************/
+ */
 
 package com.liferay.ide.layouttpl.ui.editor;
 
@@ -25,6 +22,7 @@ import java.util.EventObject;
 
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.gef.DefaultEditDomain;
+import org.eclipse.gef.EditPart;
 import org.eclipse.gef.GraphicalViewer;
 import org.eclipse.gef.ui.actions.ActionRegistry;
 import org.eclipse.gef.ui.parts.GraphicalEditor;
@@ -34,146 +32,134 @@ import org.eclipse.gef.ui.parts.SelectionSynchronizer;
 import org.eclipse.swt.events.PaintEvent;
 import org.eclipse.swt.events.PaintListener;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Control;
 import org.eclipse.ui.IEditorInput;
 
 /**
- * @author Greg Amerson
+ * @author Gregory Amerson
  * @author Cindy Li
  * @author Kuo Zhang
- * 
  */
-public class LayoutTplPreviewEditor extends GraphicalEditor
-{
-    protected LayoutTplElement modelElement;
+public class LayoutTplPreviewEditor extends GraphicalEditor {
 
-    public LayoutTplPreviewEditor( LayoutTplElement layoutTpl )
-    {
-        this.modelElement = layoutTpl;
-        setEditDomain( new DefaultEditDomain( this ) );
-    }
+	public LayoutTplPreviewEditor(LayoutTplElement layoutTpl) {
+		modelElement = layoutTpl;
 
-    @Override
-    public void commandStackChanged( EventObject event )
-    {
-        // do nothing
-    }
+		setEditDomain(new DefaultEditDomain(this));
+	}
 
-    @Override
-    protected void configureGraphicalViewer()
-    {
-        super.configureGraphicalViewer();
+	@Override
+	public void commandStackChanged(EventObject event) {
+	}
 
-        GraphicalViewer viewer = getGraphicalViewer();
+	@Override
+	public void dispose() {
+		super.dispose();
+	}
 
-        viewer.setEditPartFactory( new LayoutTplEditPartFactory() );
-        viewer.setRootEditPart( new LayoutTplRootEditPart() );
-        viewer.setKeyHandler( new GraphicalViewerKeyHandler( viewer ) );
-    }
+	@Override
+	public void doSave(IProgressMonitor monitor) {
+	}
 
-    @Override
-    protected void createActions()
-    {
-        // no actions
-    }
+	public void doSaveAs() {
+	}
 
-    protected void createGraphicalViewer( Composite parent )
-    {
-        GraphicalViewer viewer = new GraphicalViewerImpl();
-        viewer.createControl( parent );
-        setGraphicalViewer( viewer );
-        configureGraphicalViewer();
-        hookGraphicalViewer();
-        initializeGraphicalViewer();
-    }
+	@Override
+	public ActionRegistry getActionRegistry() {
+		return super.getActionRegistry();
+	}
 
-    @Override
-    public void dispose()
-    {
-        super.dispose();
-    }
+	@Override
+	public DefaultEditDomain getEditDomain() {
+		return super.getEditDomain();
+	}
 
-    @Override
-    public void doSave( IProgressMonitor monitor )
-    {
-        // do nothing
-    }
+	public LayoutTplElement getModelElement() {
+		return modelElement;
+	}
 
-    public void doSaveAs()
-    {
-        // do nothing
-    }
+	@Override
+	public SelectionSynchronizer getSelectionSynchronizer() {
+		return super.getSelectionSynchronizer();
+	}
 
-    @Override
-    public ActionRegistry getActionRegistry()
-    {
-        return super.getActionRegistry();
-    }
+	@Override
+	public boolean isDirty() {
+		return false;
+	}
 
-    @Override
-    public DefaultEditDomain getEditDomain()
-    {
-        return super.getEditDomain();
-    }
+	public boolean isSaveAsAllowed() {
+		return false;
+	}
 
-    public LayoutTplElement getModelElement()
-    {
-        return modelElement;
-    }
+	public void refreshVisualModel(LayoutTplElement layoutTpl) {
+		GraphicalViewer viewer = getGraphicalViewer();
 
-    @Override
-    public SelectionSynchronizer getSelectionSynchronizer()
-    {
-        return super.getSelectionSynchronizer();
-    }
+		if (viewer != null) {
+			viewer.setContents(layoutTpl);
 
-    protected void initializeGraphicalViewer()
-    {
-        final GraphicalViewer viewer = getGraphicalViewer();
-        viewer.setContents( getModelElement() ); // set the contents of this editor
-        refreshViewer( viewer );
-    }
+			_refreshViewer(viewer);
+		}
+	}
 
-    @Override
-    public boolean isDirty()
-    {
-        return false;
-    }
+	@Override
+	protected void configureGraphicalViewer() {
+		super.configureGraphicalViewer();
 
-    public boolean isSaveAsAllowed()
-    {
-        return false;
-    }
+		GraphicalViewer viewer = getGraphicalViewer();
 
-    private void refreshViewer( final GraphicalViewer viewer )
-    {
-        viewer.getControl().addPaintListener
-        (
-            new PaintListener()
-            {
-                public void paintControl( PaintEvent e )
-                {
-                    getGraphicalViewer().getContents().refresh();// rebuild column heights if needed
-                    viewer.getControl().removePaintListener( this );
-                }
-            }
-        );
-    }
+		viewer.setEditPartFactory(new LayoutTplEditPartFactory());
+		viewer.setRootEditPart(new LayoutTplRootEditPart());
+		viewer.setKeyHandler(new GraphicalViewerKeyHandler(viewer));
+	}
 
-    public void refreshVisualModel( LayoutTplElement layoutTpl )
-    {
-        final GraphicalViewer viewer = getGraphicalViewer();
-        if( viewer != null )
-        {
-            viewer.setContents( layoutTpl );
-            refreshViewer( viewer );
-        }
-    }
+	@Override
+	protected void createActions() {
+	}
 
-    protected void setInput( IEditorInput input )
-    {
-        super.setInput( input );
+	protected void createGraphicalViewer(Composite parent) {
+		GraphicalViewer viewer = new GraphicalViewerImpl();
 
-        setPartName( input.getName() );
-    }
+		viewer.createControl(parent);
+
+		setGraphicalViewer(viewer);
+
+		configureGraphicalViewer();
+		hookGraphicalViewer();
+		initializeGraphicalViewer();
+	}
+
+	protected void initializeGraphicalViewer() {
+		GraphicalViewer viewer = getGraphicalViewer();
+
+		viewer.setContents(getModelElement());
+
+		_refreshViewer(viewer);
+	}
+
+	protected void setInput(IEditorInput input) {
+		super.setInput(input);
+
+		setPartName(input.getName());
+	}
+
+	protected LayoutTplElement modelElement;
+
+	private void _refreshViewer(GraphicalViewer viewer) {
+		Control control = viewer.getControl();
+
+		control.addPaintListener(
+			new PaintListener() {
+
+				public void paintControl(PaintEvent e) {
+					EditPart editPage = getGraphicalViewer().getContents();
+
+					editPage.refresh();
+
+					control.removePaintListener(this);
+				}
+
+			});
+	}
 
 }

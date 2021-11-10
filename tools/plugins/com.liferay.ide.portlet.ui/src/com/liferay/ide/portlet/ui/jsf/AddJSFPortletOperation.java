@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,11 +10,11 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.portlet.ui.jsf;
 
+import com.liferay.ide.core.util.CoreUtil;
 import com.liferay.ide.core.util.FileUtil;
 import com.liferay.ide.portlet.core.jsf.INewJSFPortletClassDataModelProperties;
 import com.liferay.ide.portlet.core.jsf.JSFPortletUtil;
@@ -23,11 +23,12 @@ import com.liferay.ide.portlet.ui.wizard.AddPortletOperation;
 import com.liferay.ide.project.core.util.ProjectUtil;
 
 import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IResource;
-import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Status;
@@ -39,115 +40,110 @@ import org.eclipse.jface.text.templates.persistence.TemplateStore;
 import org.eclipse.wst.common.frameworks.datamodel.IDataModel;
 
 /**
- * @author Greg Amerson
+ * @author Gregory Amerson
  * @author Terry Jia
  */
-@SuppressWarnings( "restriction" )
-public class AddJSFPortletOperation extends AddPortletOperation implements INewJSFPortletClassDataModelProperties
-{
+@SuppressWarnings("restriction")
+public class AddJSFPortletOperation extends AddPortletOperation implements INewJSFPortletClassDataModelProperties {
 
-    public AddJSFPortletOperation( IDataModel dataModel, TemplateStore store, TemplateContextType type )
-    {
-        super( dataModel, store, type );
-    }
+	public AddJSFPortletOperation(IDataModel dataModel, TemplateStore store, TemplateContextType type) {
+		super(dataModel, store, type);
+	}
 
-    @Override
-    protected String createClass()
-    {
-        // do nothing we aren't creating a new class but instead create or append i18n.properties in the source folder
-        String sourceFolderValue = getDataModel().getStringProperty( SOURCE_FOLDER );
+	@Override
+	protected String createClass() {
 
-        IFolder sourceFolder = ResourcesPlugin.getWorkspace().getRoot().getFolder( new Path( sourceFolderValue ) );
+		// do nothing we aren't creating a new class but instead create or append
+		// i18n.properties in the source folder
 
-        IFile i18nPropertiesFile = sourceFolder.getFile( "i18n.properties" ); //$NON-NLS-1$
+		String sourceFolderValue = getDataModel().getStringProperty(SOURCE_FOLDER);
 
-        String outputToAppend =
-            getDataModel().getStringProperty( PORTLET_NAME ) + "-hello-world=Hello " + //$NON-NLS-1$
-                getDataModel().getStringProperty( DISPLAY_NAME );
+		IWorkspaceRoot workspaceRoot = CoreUtil.getWorkspaceRoot();
 
-        try
-        {
-            if( i18nPropertiesFile.exists() )
-            {
-                String propsContents = FileUtil.readContents( i18nPropertiesFile.getContents() );
+		IFolder sourceFolder = workspaceRoot.getFolder(new Path(sourceFolderValue));
 
-                String newContents = propsContents + "\n" + outputToAppend; //$NON-NLS-1$
+		IFile i18nPropertiesFile = sourceFolder.getFile("i18n.properties");
 
-                i18nPropertiesFile.setContents(
-                    new ByteArrayInputStream( newContents.getBytes( "UTF-8" ) ), IResource.FORCE, null ); //$NON-NLS-1$
-            }
-            else
-            {
-                i18nPropertiesFile.create( new ByteArrayInputStream( outputToAppend.getBytes( "UTF-8" ) ), true, null ); //$NON-NLS-1$
-            }
-        }
-        catch( Exception e )
-        {
-            PortletUIPlugin.logError( "Could not append to i18n.properties file.", e ); //$NON-NLS-1$
-        }
+		String outputToAppend =
+			getDataModel().getStringProperty(PORTLET_NAME) + "-hello-world=Hello " +
+				getDataModel().getStringProperty(DISPLAY_NAME);
 
-        return null;
-    }
+		try (InputStream inputStream = i18nPropertiesFile.getContents()) {
+			if (i18nPropertiesFile.exists()) {
+				String propsContents = FileUtil.readContents(inputStream);
 
-    @Override
-    protected IStatus createModeJSPFiles()
-    {
-        IDataModel dm = getDataModel();
+				String newContents = propsContents + "\n" + outputToAppend;
 
-        StringBuffer jsfNamespaces = new StringBuffer();
+				i18nPropertiesFile.setContents(
+					new ByteArrayInputStream(newContents.getBytes("UTF-8")), IResource.FORCE, null);
+			}
+			else {
+				try (InputStream input = new ByteArrayInputStream(outputToAppend.getBytes("UTF-8"))) {
+					i18nPropertiesFile.create(input, true, null);
+				}
+			}
+		}
+		catch (Exception e) {
+			PortletUIPlugin.logError("Could not append to i18n.properties file.", e);
+		}
 
-        if( getDataModel().getBooleanProperty( ICE_FACES ) )
-        {
-            jsfNamespaces.append( "\txmlns:ace=\"http://www.icefaces.org/icefaces/components\"\n" );
-            jsfNamespaces.append( "\txmlns:icecore=\"http://www.icefaces.org/icefaces/core\"\n" );
-        }
+		return null;
+	}
 
-        if( getDataModel().getBooleanProperty( LIFERAY_FACES_ALLOY ) )
-        {
-            jsfNamespaces.append( "\txmlns:aui=\"http://liferay.com/faces/aui\"\n" );
-        }
+	@Override
+	protected IStatus createModeJSPFiles() {
+		IDataModel dm = getDataModel();
 
-        if( getDataModel().getBooleanProperty( PRIME_FACES ) )
-        {
-            jsfNamespaces.append( "\txmlns:p=\"http://primefaces.org/ui\"\n" );
-        }
+		StringBuffer jsfNamespaces = new StringBuffer();
 
-        if( getDataModel().getBooleanProperty( RICH_FACES ) )
-        {
-            jsfNamespaces.append( "\txmlns:rich=\"http://richfaces.org/rich\"\n" );
-        }
+		if (getDataModel().getBooleanProperty(ICE_FACES)) {
+			jsfNamespaces.append("\txmlns:ace=\"http://www.icefaces.org/icefaces/components\"\n");
+			jsfNamespaces.append("\txmlns:icecore=\"http://www.icefaces.org/icefaces/core\"\n");
+		}
 
-        if( getDataModel().getBooleanProperty( STANDARD_JSF ) )
-        {
-            jsfNamespaces.append( "" );
-        }
+		if (getDataModel().getBooleanProperty(LIFERAY_FACES_ALLOY)) {
+			jsfNamespaces.append("\txmlns:aui=\"http://liferay.com/faces/aui\"\n");
+		}
 
-        TemplateContext context = new DocumentTemplateContext( portletContextType, new Document(), 0, 0 );
-        context.setVariable( "portlet_name", getDataModel().getStringProperty( PORTLET_NAME ) ); //$NON-NLS-1$
-        context.setVariable( "jsf_namespaces", jsfNamespaces.toString() );
+		if (getDataModel().getBooleanProperty(PRIME_FACES)) {
+			jsfNamespaces.append("\txmlns:p=\"http://primefaces.org/ui\"\n");
+		}
 
-        if( dm.getBooleanProperty( VIEW_MODE ) )
-        {
-            createResourceForMode( "javax.portlet.faces.defaultViewId.view", JSF_VIEW_MODE_TEMPLATE, context ); //$NON-NLS-1$
-        }
+		if (getDataModel().getBooleanProperty(RICH_FACES)) {
+			jsfNamespaces.append("\txmlns:rich=\"http://richfaces.org/rich\"\n");
+		}
 
-        if( dm.getBooleanProperty( EDIT_MODE ) )
-        {
-            createResourceForMode( "javax.portlet.faces.defaultViewId.edit", JSF_EDIT_MODE_TEMPLATE, context ); //$NON-NLS-1$
-        }
+		if (getDataModel().getBooleanProperty(STANDARD_JSF)) {
+			jsfNamespaces.append("");
+		}
 
-        if( dm.getBooleanProperty( HELP_MODE ) )
-        {
-            createResourceForMode( "javax.portlet.faces.defaultViewId.help", JSF_HELP_MODE_TEMPLATE, context ); //$NON-NLS-1$
-        }
+		TemplateContext context = new DocumentTemplateContext(portletContextType, new Document(), 0, 0);
 
-        return Status.OK_STATUS;
-    }
+		context.setVariable("portlet_name", getDataModel().getStringProperty(PORTLET_NAME));
+		context.setVariable("jsf_namespaces", jsfNamespaces.toString());
 
-    @Override
-    protected boolean shouldGenerateMetaData( IDataModel aModel )
-    {
-        return ProjectUtil.isPortletProject( getTargetProject() ) && JSFPortletUtil.isJSFProject( getTargetProject() );
-    }
+		if (dm.getBooleanProperty(VIEW_MODE)) {
+			createResourceForMode("javax.portlet.faces.defaultViewId.view", JSF_VIEW_MODE_TEMPLATE, context);
+		}
+
+		if (dm.getBooleanProperty(EDIT_MODE)) {
+			createResourceForMode("javax.portlet.faces.defaultViewId.edit", JSF_EDIT_MODE_TEMPLATE, context);
+		}
+
+		if (dm.getBooleanProperty(HELP_MODE)) {
+			createResourceForMode("javax.portlet.faces.defaultViewId.help", JSF_HELP_MODE_TEMPLATE, context);
+		}
+
+		return Status.OK_STATUS;
+	}
+
+	@Override
+	protected boolean shouldGenerateMetaData(IDataModel aModel) {
+		if (ProjectUtil.isPortletProject(getTargetProject()) && JSFPortletUtil.isJSFProject(getTargetProject())) {
+			return true;
+		}
+
+		return false;
+	}
 
 }

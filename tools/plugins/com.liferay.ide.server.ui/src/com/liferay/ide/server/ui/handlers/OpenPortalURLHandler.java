@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,8 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.server.ui.handlers;
 
@@ -33,7 +32,10 @@ import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.osgi.util.NLS;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPart;
+import org.eclipse.ui.IWorkbenchPartSite;
+import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.browser.IWebBrowser;
 import org.eclipse.ui.browser.IWorkbenchBrowserSupport;
@@ -44,133 +46,128 @@ import org.eclipse.wst.server.ui.internal.ServerUIPlugin;
 /**
  * @author Eric Min
  */
-@SuppressWarnings( "restriction" )
-public abstract class OpenPortalURLHandler extends AbstractHandler
-{
-    protected IWorkbenchPart activePart;
+@SuppressWarnings("restriction")
+public abstract class OpenPortalURLHandler extends AbstractHandler {
 
-    public Object execute( ExecutionEvent event ) throws ExecutionException
-    {
-        final ISelection selection = HandlerUtil.getCurrentSelection( event );
+	public Object execute(ExecutionEvent event) throws ExecutionException {
+		ISelection selection = HandlerUtil.getCurrentSelection(event);
 
-        if( selection instanceof IStructuredSelection )
-        {
-            final IStructuredSelection structuredSelection = (IStructuredSelection) selection;
+		if (selection instanceof IStructuredSelection) {
+			IStructuredSelection structuredSelection = (IStructuredSelection)selection;
 
-            final Object selected = structuredSelection.getFirstElement();
+			Object selected = structuredSelection.getFirstElement();
 
-            if( selected != null )
-            {
-                if( selected instanceof IServer )
-                {
-                    final ILiferayServer portalServer = getLiferayServer( selected );
+			if ((selected != null) && (selected instanceof IServer)) {
+				ILiferayServer portalServer = getLiferayServer(selected);
 
-                    new Job( Msgs.openPortalUrl )
-                    {
+				new Job(
+					Msgs.openPortalUrl
+				) {
 
-                        @Override
-                        protected IStatus run( IProgressMonitor monitor )
-                        {
-                            openPortalURL( portalServer, selected );
-                            return Status.OK_STATUS;
-                        }
+					@Override
+					protected IStatus run(IProgressMonitor monitor) {
+						openPortalURL(portalServer, selected);
 
-                    }.schedule();
-                }
-            }
-        }
+						return Status.OK_STATUS;
+					}
 
-        return null;
-    }
+				}.schedule();
+			}
+		}
 
-    protected IWorkbenchPart getActivePart()
-    {
-        return this.activePart;
-    }
+		return null;
+	}
 
-    protected Shell getActiveShell()
-    {
-        if( getActivePart() != null )
-        {
-            return getActivePart().getSite().getShell();
-        }
-        else
-        {
-            return PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell();
-        }
-    }
+	protected IWorkbenchPart getActivePart() {
+		return activePart;
+	}
 
-    protected ILiferayServer getLiferayServer( Object selected )
-    {
-        IServer iServer = null;
+	protected Shell getActiveShell() {
+		if (getActivePart() != null) {
+			IWorkbenchPart ap = getActivePart();
 
-        if( selected instanceof IServer )
-        {
-            iServer = (IServer) selected;
-        }
+			IWorkbenchPartSite site = ap.getSite();
 
-        return (ILiferayServer) iServer.loadAdapter( ILiferayServer.class, null );
+			return site.getShell();
+		}
 
-    }
+		IWorkbench workbnech = PlatformUI.getWorkbench();
 
-    protected abstract URL getPortalURL( Object selected );
+		IWorkbenchWindow activeWorkbenchWindow = workbnech.getActiveWorkbenchWindow();
 
-    protected abstract String getPortalURLTitle();
+		return activeWorkbenchWindow.getShell();
+	}
 
-    protected int getRequiredServerState()
-    {
-        return IServer.STATE_STARTED;
-    }
+	protected ILiferayServer getLiferayServer(Object selected) {
+		IServer iServer = null;
 
-    protected void openBrowser( final URL url, final String browserTitle )
-    {
-        Display.getDefault().asyncExec( new Runnable()
-        {
+		if (selected instanceof IServer) {
+			iServer = (IServer)selected;
+		}
 
-            public void run()
-            {
-                try
-                {
-                    IWorkbenchBrowserSupport browserSupport =
-                        ServerUIPlugin.getInstance().getWorkbench().getBrowserSupport();
+		return (ILiferayServer)iServer.loadAdapter(ILiferayServer.class, null);
+	}
 
-                    IWebBrowser browser =
-                        browserSupport.createBrowser( IWorkbenchBrowserSupport.LOCATION_BAR |
-                            IWorkbenchBrowserSupport.NAVIGATION_BAR, null, browserTitle, null );
+	protected abstract URL getPortalURL(Object selected);
 
-                    browser.openURL( url );
-                }
-                catch( Exception e )
-                {
-                    LiferayServerUI.logError( e );
-                }
-            }
-        } );
-    }
+	protected abstract String getPortalURLTitle();
 
-    protected void openPortalURL( ILiferayServer portalServer, Object seleted )
-    {
-        URL portalUrl = getPortalURL( seleted );
+	protected int getRequiredServerState() {
+		return IServer.STATE_STARTED;
+	}
 
-        if( portalUrl == null )
-        {
-            MessageDialog.openError( getActiveShell(), Msgs.openPortalURL, Msgs.notDeterminePortalURL );
-            return;
-        }
+	protected void openBrowser(URL url, String browserTitle) {
+		Display display = Display.getDefault();
 
-        openBrowser( portalUrl, getPortalURLTitle() );
-    }
+		display.asyncExec(
+			new Runnable() {
 
-    private static class Msgs extends NLS
-    {
+				public void run() {
+					try {
+						ServerUIPlugin serverUIPlugin = ServerUIPlugin.getInstance();
 
-        public static String notDeterminePortalURL;
-        public static String openPortalUrl;
-        public static String openPortalURL;
+						IWorkbench workbench = serverUIPlugin.getWorkbench();
 
-        static
-        {
-            initializeMessages( OpenPortalURLHandler.class.getName(), Msgs.class );
-        }
-    }
+						IWorkbenchBrowserSupport browserSupport = workbench.getBrowserSupport();
+
+						IWebBrowser browser = browserSupport.createBrowser(
+							IWorkbenchBrowserSupport.LOCATION_BAR | IWorkbenchBrowserSupport.NAVIGATION_BAR, null,
+							browserTitle, null);
+
+						browser.openURL(url);
+					}
+					catch (Exception e) {
+						LiferayServerUI.logError(e);
+					}
+				}
+
+			});
+	}
+
+	protected void openPortalURL(ILiferayServer portalServer, Object seleted) {
+		URL portalUrl = getPortalURL(seleted);
+
+		if (portalUrl == null) {
+			MessageDialog.openError(getActiveShell(), Msgs.openPortalURL, Msgs.notDeterminePortalURL);
+
+			return;
+		}
+
+		openBrowser(portalUrl, getPortalURLTitle());
+	}
+
+	protected IWorkbenchPart activePart;
+
+	private static class Msgs extends NLS {
+
+		public static String notDeterminePortalURL;
+		public static String openPortalUrl;
+		public static String openPortalURL;
+
+		static {
+			initializeMessages(OpenPortalURLHandler.class.getName(), Msgs.class);
+		}
+
+	}
+
 }

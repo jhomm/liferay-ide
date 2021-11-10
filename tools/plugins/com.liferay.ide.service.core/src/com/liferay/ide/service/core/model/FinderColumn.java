@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,76 +10,75 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.service.core.model;
 
 import org.eclipse.sapphire.Element;
 import org.eclipse.sapphire.ElementType;
 import org.eclipse.sapphire.PossibleValues;
+import org.eclipse.sapphire.Type;
 import org.eclipse.sapphire.Value;
 import org.eclipse.sapphire.ValueProperty;
 import org.eclipse.sapphire.modeling.annotations.Image;
 import org.eclipse.sapphire.modeling.annotations.Label;
 import org.eclipse.sapphire.modeling.annotations.Required;
-import org.eclipse.sapphire.modeling.annotations.Type;
 import org.eclipse.sapphire.modeling.xml.annotations.XmlBinding;
-
 
 /**
  * @author Gregory Amerson
  */
 @Image(path = "images/finder_column_16x16.png")
-public interface FinderColumn extends Element
-{
+public interface FinderColumn extends Element {
 
-    ElementType TYPE = new ElementType( FinderColumn.class );
+	public ElementType TYPE = new ElementType(FinderColumn.class);
 
-    // *** Name ***
+	public Value<String> getArrayableOperator();
 
-    @XmlBinding( path = "@name" )
-    @Label( standard = "&name" )
-    @Required
-    ValueProperty PROP_NAME = new ValueProperty( TYPE, "Name" ); //$NON-NLS-1$
+	// *** Name ***
 
-    Value<String> getName();
+	public Value<String> getComparator();
 
-    void setName( String value );
+	public Value<String> getName();
 
-    // *** CaseSensitive ***
+	public Value<Boolean> isCaseSensitive();
 
-    @Type( base = Boolean.class )
-    @Label( standard = "&case sensitive" )
-    @XmlBinding( path = "@case-sensitive" )
-    ValueProperty PROP_CASE_SENSITIVE = new ValueProperty( TYPE, "CaseSensitive" ); //$NON-NLS-1$
+	// *** CaseSensitive ***
 
-    Value<Boolean> isCaseSensitive();
+	public void setArrayableOperator(String value);
 
-    void setCaseSensitive( String value );
+	public void setCaseSensitive(Boolean value);
 
-    void setCaseSensitive( Boolean value );
+	public void setCaseSensitive(String value);
 
-    // ** Comparator ***
+	public void setComparator(String value);
 
-    @Label( standard = "comparator" )
-    @XmlBinding( path = "@comparator" )
-    @PossibleValues( values = { "=", "!=", "<", "<=", ">", ">=", "LIKE" }, invalidValueMessage = "{0} is not a valid comparator." )
-    ValueProperty PROP_COMPARATOR = new ValueProperty( TYPE, "Comparator" ); //$NON-NLS-1$
+	// ** Comparator ***
 
-    Value<String> getComparator();
+	public void setName(String value);
 
-    void setComparator( String value );
+	@Label(standard = "arrayable operator")
+	@PossibleValues(invalidValueMessage = "{0} is not a valid arryable operator.", values = {"AND", "OR"})
+	@XmlBinding(path = "@arrayable-operator")
+	public ValueProperty PROP_ARRAYABLE_OPERATOR = new ValueProperty(TYPE, "ArrayableOperator");
 
-    // ** Arrayable Operator ***
+	@Label(standard = "&case sensitive")
+	@Type(base = Boolean.class)
+	@XmlBinding(path = "@case-sensitive")
+	public ValueProperty PROP_CASE_SENSITIVE = new ValueProperty(TYPE, "CaseSensitive");
 
-    @Label( standard = "arrayable operator" )
-    @XmlBinding( path = "@arrayable-operator" )
-    @PossibleValues( values = { "AND", "OR" }, invalidValueMessage = "{0} is not a valid arryable operator." )
-    ValueProperty PROP_ARRAYABLE_OPERATOR = new ValueProperty( TYPE, "ArrayableOperator" ); //$NON-NLS-1$
+	// ** Arrayable Operator ***
 
-    Value<String> getArrayableOperator();
+	@Label(standard = "comparator")
+	@PossibleValues(
+		invalidValueMessage = "{0} is not a valid comparator.", values = {"=", "!=", "<", "<=", ">", ">=", "LIKE"}
+	)
+	@XmlBinding(path = "@comparator")
+	public ValueProperty PROP_COMPARATOR = new ValueProperty(TYPE, "Comparator");
 
-    void setArrayableOperator( String value );
+	@Label(standard = "&name")
+	@Required
+	@XmlBinding(path = "@name")
+	public ValueProperty PROP_NAME = new ValueProperty(TYPE, "Name");
 
-}
+}

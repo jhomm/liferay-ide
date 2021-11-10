@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,10 +10,11 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.portlet.ui.action;
+
+import com.liferay.ide.core.util.StringUtil;
 
 import org.eclipse.sapphire.ui.SapphireActionHandler;
 import org.eclipse.sapphire.ui.SapphireActionHandlerFilter;
@@ -21,13 +22,11 @@ import org.eclipse.sapphire.ui.SapphireActionHandlerFilter;
 /**
  * @author Simon Jiang
  */
-public class NoCreateActionHandlerFilter extends SapphireActionHandlerFilter
-{
+public class NoCreateActionHandlerFilter extends SapphireActionHandlerFilter {
 
-    @Override
-    public boolean check( SapphireActionHandler handler )
-    {
-        return !( handler.getId().contains( "Sapphire.Create.Java" ) ); //$NON-NLS-1$
-    }
+	@Override
+	public boolean check(SapphireActionHandler handler) {
+		return !StringUtil.contains(handler.getId(), "Sapphire.Create.Java");
+	}
 
 }

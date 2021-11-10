@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,25 +10,30 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
+
 package com.liferay.ide.maven.core;
 
 import com.liferay.ide.core.IWebProject;
 import com.liferay.ide.core.LiferayCore;
 import com.liferay.ide.core.util.CoreUtil;
+import com.liferay.ide.core.util.FileUtil;
 import com.liferay.ide.core.util.LaunchHelper;
+import com.liferay.ide.core.util.ListUtil;
 import com.liferay.ide.project.core.util.ProjectUtil;
 import com.liferay.ide.project.core.util.SearchFilesVisitor;
 import com.liferay.ide.server.remote.AbstractRemoteServerPublisher;
 
 import java.io.IOException;
+
 import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import org.apache.maven.model.Build;
 import org.apache.maven.project.MavenProject;
+
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
@@ -41,204 +46,222 @@ import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.ILaunchConfigurationType;
 import org.eclipse.debug.core.ILaunchConfigurationWorkingCopy;
 import org.eclipse.debug.core.ILaunchManager;
+import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.launching.IJavaLaunchConfigurationConstants;
 import org.eclipse.m2e.core.project.IMavenProjectFacade;
 import org.eclipse.m2e.core.project.ResolverConfiguration;
+import org.eclipse.wst.server.core.model.IModuleResource;
 import org.eclipse.wst.server.core.model.IModuleResourceDelta;
 
 /**
  * @author Simon Jiang
  * @author Gregory Amerson
  */
-public class MavenProjectRemoteServerPublisher extends AbstractRemoteServerPublisher
-{
-    private final String ATTR_GOALS = "M2_GOALS";
-    private final String ATTR_POM_DIR = IJavaLaunchConfigurationConstants.ATTR_WORKING_DIRECTORY;
-    private final String ATTR_PROFILES = "M2_PROFILES";
-    private final String ATTR_SKIP_TESTS = "M2_SKIP_TESTS";
-    private final String ATTR_UPDATE_SNAPSHOTS = "M2_UPDATE_SNAPSHOTS";
-    private final String ATTR_WORKSPACE_RESOLUTION = "M2_WORKSPACE_RESOLUTION";
-    private final String LAUNCH_CONFIGURATION_TYPE_ID = "org.eclipse.m2e.Maven2LaunchConfigurationType";
+public class MavenProjectRemoteServerPublisher extends AbstractRemoteServerPublisher {
 
-    public MavenProjectRemoteServerPublisher( IProject project )
-    {
-        super( project );
-    }
+	public MavenProjectRemoteServerPublisher(IProject project) {
+		super(project);
+	}
 
-    private boolean execMavenLaunch(
-        final IProject project, final String goal, final IMavenProjectFacade facade, IProgressMonitor monitor )
-        throws CoreException
-    {
-        final ILaunchManager launchManager = DebugPlugin.getDefault().getLaunchManager();
-        final ILaunchConfigurationType launchConfigurationType =
-            launchManager.getLaunchConfigurationType( LAUNCH_CONFIGURATION_TYPE_ID );
-        final IPath basedirLocation = project.getLocation();
-        final String newName = launchManager.generateLaunchConfigurationName( basedirLocation.lastSegment() );
+	@Override
+	public void processResourceDeltas(
+			IModuleResourceDelta[] deltas, ZipOutputStream zip, Map<ZipEntry, String> deleteEntries,
+			String deletePrefix, String deltaPrefix, boolean adjustGMTOffset)
+		throws CoreException, IOException {
 
-        final ILaunchConfigurationWorkingCopy workingCopy = launchConfigurationType.newInstance( null, newName );
-        workingCopy.setAttribute(
-            IJavaLaunchConfigurationConstants.ATTR_VM_ARGUMENTS, "-Dmaven.multiModuleProjectDirectory" );
-        workingCopy.setAttribute( ATTR_POM_DIR, basedirLocation.toString() );
-        workingCopy.setAttribute( ATTR_GOALS, goal );
-        workingCopy.setAttribute( ATTR_UPDATE_SNAPSHOTS, true );
-        workingCopy.setAttribute( ATTR_WORKSPACE_RESOLUTION, true );
-        workingCopy.setAttribute( ATTR_SKIP_TESTS, true );
+		for (IModuleResourceDelta delta : deltas) {
+			IModuleResource moduleResource = delta.getModuleResource();
 
-        if( facade != null )
-        {
-            final ResolverConfiguration configuration = facade.getResolverConfiguration();
+			IResource deltaResource = (IResource)moduleResource.getAdapter(IResource.class);
 
-            final String selectedProfiles = configuration.getSelectedProfiles();
+			IProject deltaProject = deltaResource.getProject();
 
-            if( selectedProfiles != null && selectedProfiles.length() > 0 )
-            {
-                workingCopy.setAttribute( ATTR_PROFILES, selectedProfiles );
-            }
+			IWebProject lrproject = LiferayCore.create(IWebProject.class, deltaProject);
 
-            new LaunchHelper().launch( workingCopy, "run", monitor );
+			if ((lrproject == null) || (lrproject.getDefaultDocrootFolder() == null)) {
+				continue;
+			}
 
-            return true;
-        }
-        else
-        {
-            return false;
-        }
-    }
+			IFolder webappRoot = lrproject.getDefaultDocrootFolder();
+			int deltaKind = delta.getKind();
+			IPath deltaFullPath = deltaResource.getFullPath();
 
-    private String getMavenDeployGoals()
-    {
-        return "package war:war";
-    }
+			boolean deltaZip = false;
+			IPath deltaPath = null;
 
-    private boolean isServiceBuilderProject( IProject project, String pluginType, MavenProject parentProject  )
-    {
-        final List<IFile> serviceXmls = ( new SearchFilesVisitor() ).searchFiles( project, "service.xml" );
+			if (FileUtil.exists(webappRoot)) {
+				IPath containerFullPath = webappRoot.getFullPath();
 
-        return serviceXmls != null && serviceXmls.size() > 0 &&
-            pluginType.equalsIgnoreCase( ILiferayMavenConstants.DEFAULT_PLUGIN_TYPE ) && parentProject != null;
-    }
+				if (containerFullPath.isPrefixOf(deltaFullPath)) {
+					deltaZip = true;
 
-    @Override
-    public void processResourceDeltas(
-        final IModuleResourceDelta[] deltas, ZipOutputStream zip, Map<ZipEntry, String> deleteEntries,
-        final String deletePrefix, final String deltaPrefix, final boolean adjustGMTOffset )
-        throws IOException, CoreException
-    {
-        for( final IModuleResourceDelta delta : deltas )
-        {
-            final IResource deltaResource = (IResource) delta.getModuleResource().getAdapter( IResource.class );
-            final IProject deltaProject = deltaResource.getProject();
-            final IWebProject lrproject = LiferayCore.create( IWebProject.class, deltaProject );
+					deltaPath = new Path(deltaPrefix + deltaFullPath.makeRelativeTo(containerFullPath));
+				}
+			}
 
-            if( lrproject == null || lrproject.getDefaultDocrootFolder() == null )
-            {
-                continue;
-            }
+			if (!deltaZip && new Path("WEB-INF").isPrefixOf(delta.getModuleRelativePath())) {
+				List<IFolder> folders = CoreUtil.getSourceFolders(JavaCore.create(deltaProject));
 
-            final IFolder webappRoot = lrproject.getDefaultDocrootFolder();
-            final int deltaKind = delta.getKind();
-            final IPath deltaFullPath = deltaResource.getFullPath();
+				for (IFolder folder : folders) {
+					IPath folderPath = folder.getFullPath();
 
-            boolean deltaZip = false;
-            IPath deltaPath = null;
+					if (folderPath.isPrefixOf(deltaFullPath)) {
+						deltaZip = true;
 
-            if( webappRoot != null && webappRoot.exists() )
-            {
-                final IPath containerFullPath = webappRoot.getFullPath();
+						break;
+					}
+				}
+			}
 
-                if ( containerFullPath.isPrefixOf( deltaFullPath ))
-                {
-                    deltaZip = true;
-                    deltaPath = new Path( deltaPrefix + deltaFullPath.makeRelativeTo( containerFullPath ) );
-                }
-            }
+			if (!deltaZip &&
+				((deltaKind == IModuleResourceDelta.ADDED) || (deltaKind == IModuleResourceDelta.CHANGED) ||
+				 (deltaKind == IModuleResourceDelta.REMOVED))) {
 
-            if ( deltaZip ==false && new Path("WEB-INF").isPrefixOf( delta.getModuleRelativePath() ))
-            {
-                final List<IFolder> folders = CoreUtil.getSourceFolders( JavaCore.create( deltaProject ) );
+				IJavaProject javaProject = JavaCore.create(deltaProject);
 
-                for( IFolder folder : folders )
-                {
-                    final IPath folderPath = folder.getFullPath();
+				IPath targetPath = javaProject.getOutputLocation();
 
-                    if ( folderPath.isPrefixOf( deltaFullPath ) )
-                    {
-                        deltaZip = true;
-                        break;
-                    }
-                }
-            }
+				deltaZip = true;
+				deltaPath = new Path(
+					"WEB-INF/classes"
+				).append(
+					deltaFullPath.makeRelativeTo(targetPath)
+				);
+			}
 
-            if( deltaZip == false && ( deltaKind == IModuleResourceDelta.ADDED ||
-                                       deltaKind == IModuleResourceDelta.CHANGED ||
-                                       deltaKind == IModuleResourceDelta.REMOVED ) )
-            {
-                final IPath targetPath = JavaCore.create( deltaProject ).getOutputLocation();
+			if (deltaZip) {
+				if ((deltaKind == IModuleResourceDelta.ADDED) || (deltaKind == IModuleResourceDelta.CHANGED)) {
+					addToZip(deltaPath, deltaResource, zip, adjustGMTOffset);
+				}
+				else if (deltaKind == IModuleResourceDelta.REMOVED) {
+					addRemoveProps(deltaPath, deltaResource, zip, deleteEntries, deletePrefix);
+				}
+				else if (deltaKind == IModuleResourceDelta.NO_CHANGE) {
+					IModuleResourceDelta[] children = delta.getAffectedChildren();
 
-                deltaZip = true;
-                deltaPath = new Path( "WEB-INF/classes" ).append( deltaFullPath.makeRelativeTo( targetPath ) );
-            }
+					processResourceDeltas(children, zip, deleteEntries, deletePrefix, deltaPrefix, adjustGMTOffset);
+				}
+			}
+		}
+	}
 
-            if ( deltaZip )
-            {
-                if( deltaKind == IModuleResourceDelta.ADDED || deltaKind == IModuleResourceDelta.CHANGED )
-                {
-                    addToZip( deltaPath, deltaResource, zip, adjustGMTOffset );
-                }
-                else if( deltaKind == IModuleResourceDelta.REMOVED )
-                {
-                    addRemoveProps( deltaPath, deltaResource, zip, deleteEntries, deletePrefix );
-                }
-                else if( deltaKind == IModuleResourceDelta.NO_CHANGE )
-                {
-                    final IModuleResourceDelta[] children = delta.getAffectedChildren();
-                    processResourceDeltas( children, zip, deleteEntries, deletePrefix, deltaPrefix, adjustGMTOffset );
-                }
-            }
-        }
-    }
+	public IPath publishModuleFull(IProgressMonitor monitor) throws CoreException {
+		IPath retval = null;
 
-    public IPath publishModuleFull( IProgressMonitor monitor ) throws CoreException
-    {
-        IPath retval = null;
+		if (_runMavenGoal(getProject(), monitor)) {
+			IMavenProjectFacade projectFacade = MavenUtil.getProjectFacade(getProject(), monitor);
 
-        if( runMavenGoal( getProject(), monitor ) )
-        {
-            final IMavenProjectFacade projectFacade = MavenUtil.getProjectFacade( getProject(), monitor );
-            final MavenProject mavenProject = projectFacade.getMavenProject( monitor );
-            final String targetFolder = mavenProject.getBuild().getDirectory();
-            final String targetWar = mavenProject.getBuild().getFinalName() + "." + mavenProject.getPackaging();
+			MavenProject mavenProject = projectFacade.getMavenProject(monitor);
 
-            retval = new Path( targetFolder ).append( targetWar );
-        }
+			Build build = mavenProject.getBuild();
 
-        return retval;
-    }
+			String targetFolder = build.getDirectory();
+			String targetWar = build.getFinalName() + "." + mavenProject.getPackaging();
 
-    private boolean runMavenGoal(
-        final IProject project, final IProgressMonitor monitor )
-        throws CoreException
-    {
-        boolean retval = false;
+			retval = new Path(
+				targetFolder
+			).append(
+				targetWar
+			);
+		}
 
-        final IMavenProjectFacade facade = MavenUtil.getProjectFacade( project, monitor );
-        final String pluginType = MavenUtil.getLiferayMavenPluginType( facade.getMavenProject( monitor ) );
-        final MavenProject parentProject = facade.getMavenProject( monitor ).getParent();
-        final String goal = getMavenDeployGoals();
+		return retval;
+	}
 
-        if( isServiceBuilderProject( project, pluginType, parentProject ) )
-        {
-            retval = execMavenLaunch(
-                ProjectUtil.getProject( parentProject.getName() ),
-                " package -am -pl " + project.getName(),
-                MavenUtil.getProjectFacade( project, monitor ), monitor );
-        }
-        else
-        {
-            retval = execMavenLaunch( project, goal, facade, monitor );
-        }
+	private boolean _execMavenLaunch(
+			IProject project, String goal, IMavenProjectFacade facade, IProgressMonitor monitor)
+		throws CoreException {
 
-        return retval;
-    }
+		DebugPlugin debugPlugin = DebugPlugin.getDefault();
+
+		ILaunchManager launchManager = debugPlugin.getLaunchManager();
+
+		ILaunchConfigurationType launchConfigurationType = launchManager.getLaunchConfigurationType(
+			_launchConfigurationTypeId);
+
+		IPath basedirLocation = project.getLocation();
+
+		String newName = launchManager.generateLaunchConfigurationName(basedirLocation.lastSegment());
+
+		ILaunchConfigurationWorkingCopy workingCopy = launchConfigurationType.newInstance(null, newName);
+
+		workingCopy.setAttribute(_attrGoals, goal);
+		workingCopy.setAttribute(_attrPomDir, basedirLocation.toString());
+		workingCopy.setAttribute(_attrSkipTests, Boolean.TRUE);
+		workingCopy.setAttribute(_attrUpdateSnapshots, Boolean.TRUE);
+		workingCopy.setAttribute(_attrWorkspaceResolution, Boolean.TRUE);
+		workingCopy.setAttribute(
+			IJavaLaunchConfigurationConstants.ATTR_VM_ARGUMENTS, "-Dmaven.multiModuleProjectDirectory");
+
+		if (facade != null) {
+			ResolverConfiguration configuration = facade.getResolverConfiguration();
+
+			String selectedProfiles = configuration.getSelectedProfiles();
+
+			if ((selectedProfiles != null) && (selectedProfiles.length() > 0)) {
+				workingCopy.setAttribute(_attrProfiles, selectedProfiles);
+			}
+
+			new LaunchHelper().launch(workingCopy, "run", monitor);
+
+			return true;
+		}
+
+		return false;
+	}
+
+	private String _getMavenDeployGoals() {
+		return "package war:war";
+	}
+
+	private boolean _isServiceBuilderProject(IProject project, String pluginType, MavenProject parentProject) {
+		List<IFile> serviceXmls = new SearchFilesVisitor().searchFiles(project, "service.xml");
+
+		if (ListUtil.isNotEmpty(serviceXmls) &&
+			pluginType.equalsIgnoreCase(ILiferayMavenConstants.DEFAULT_PLUGIN_TYPE) && (parentProject != null)) {
+
+			return true;
+		}
+
+		return false;
+	}
+
+	private boolean _runMavenGoal(IProject project, IProgressMonitor monitor) throws CoreException {
+		boolean retval = false;
+
+		IMavenProjectFacade facade = MavenUtil.getProjectFacade(project, monitor);
+
+		String pluginType = MavenUtil.getLiferayMavenPluginType(facade.getMavenProject(monitor));
+
+		if (pluginType == null) {
+			pluginType = ILiferayMavenConstants.DEFAULT_PLUGIN_TYPE;
+		}
+
+		MavenProject mavenProject = facade.getMavenProject(monitor);
+
+		MavenProject parentProject = mavenProject.getParent();
+
+		String goal = _getMavenDeployGoals();
+
+		if (_isServiceBuilderProject(project, pluginType, parentProject)) {
+			retval = _execMavenLaunch(
+				ProjectUtil.getProject(parentProject.getName()), " package -am -pl " + project.getName(),
+				MavenUtil.getProjectFacade(project, monitor), monitor);
+		}
+		else {
+			retval = _execMavenLaunch(project, goal, facade, monitor);
+		}
+
+		return retval;
+	}
+
+	private String _attrGoals = "M2_GOALS";
+	private String _attrPomDir = IJavaLaunchConfigurationConstants.ATTR_WORKING_DIRECTORY;
+	private String _attrProfiles = "M2_PROFILES";
+	private String _attrSkipTests = "M2_SKIP_TESTS";
+	private String _attrUpdateSnapshots = "M2_UPDATE_SNAPSHOTS";
+	private String _attrWorkspaceResolution = "M2_WORKSPACE_RESOLUTION";
+	private String _launchConfigurationTypeId = "org.eclipse.m2e.Maven2LaunchConfigurationType";
+
 }

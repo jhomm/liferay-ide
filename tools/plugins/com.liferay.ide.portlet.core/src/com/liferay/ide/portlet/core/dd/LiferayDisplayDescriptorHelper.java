@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,8 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.portlet.core.dd;
 
@@ -25,6 +24,7 @@ import com.liferay.ide.project.core.descriptor.RemoveSampleElementsOperation;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
@@ -33,6 +33,7 @@ import org.eclipse.core.runtime.Status;
 import org.eclipse.wst.common.frameworks.datamodel.IDataModel;
 import org.eclipse.wst.xml.core.internal.provisional.document.IDOMDocument;
 import org.eclipse.wst.xml.core.internal.provisional.format.FormatProcessorXML;
+
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -43,234 +44,218 @@ import org.w3c.dom.NodeList;
  * @author Simon Jiang
  * @author Kuo Zhang
  */
-@SuppressWarnings( "restriction" )
-public class LiferayDisplayDescriptorHelper extends LiferayDescriptorHelper
-                                            implements INewPortletClassDataModelProperties
-{
-    public static final String DESCRIPTOR_FILE = ILiferayConstants.LIFERAY_DISPLAY_XML_FILE;
+@SuppressWarnings("restriction")
+public class LiferayDisplayDescriptorHelper
+	extends LiferayDescriptorHelper implements INewPortletClassDataModelProperties {
 
-    private static final String DESCRIPTOR_TEMPLATE =
-        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE display PUBLIC \"-//Liferay//DTD Display " //$NON-NLS-1$
-        + "{0}//EN\" \"http://www.liferay.com/dtd/liferay-display_{1}.dtd\">\n\n<display>\n</display>"; //$NON-NLS-1$
+	public static final String DESCRIPTOR_FILE = ILiferayConstants.LIFERAY_DISPLAY_XML_FILE;
 
-    public LiferayDisplayDescriptorHelper()
-    {
-        super();
-    }
+	public LiferayDisplayDescriptorHelper() {
+	}
 
-    public LiferayDisplayDescriptorHelper( IProject project )
-    {
-        super( project );
-    }
+	public LiferayDisplayDescriptorHelper(IProject project) {
+		super(project);
+	}
 
-    @Override
-    protected void addDescriptorOperations()
-    {
-        addDescriptorOperation
-        (
-            new AddNewPortletOperation()
-            {
-                @Override
-                public IStatus addNewPortlet( final IDataModel model )
-                {
-                    IStatus status = Status.OK_STATUS;
+	public IStatus configureLiferayDisplayXml(String newPortletName) {
+		return new DOMModelEditOperation(
+			getDescriptorFile()
+		) {
 
-                    final IFile descriptorFile = getDescriptorFile();
+			protected IStatus doExecute(IDOMDocument document) {
+				Element rootElement = document.getDocumentElement();
 
-                    if( descriptorFile != null )
-                    {
-                        DOMModelEditOperation domModelOperation = new DOMModelEditOperation( descriptorFile )
-                        {
-                            protected void createDefaultFile()
-                            {
-                                createDefaultDescriptor( DESCRIPTOR_TEMPLATE, getDescriptorVersion() );
-                            }
+				NodeList portletNodes = rootElement.getElementsByTagName("category");
 
-                            protected IStatus doExecute( IDOMDocument document )
-                            {
-                                return doAddNewPortlet( document, model );
-                            }
-                        };
+				if (portletNodes.getLength() > 0) {
+					Element lastPortletElement = (Element)portletNodes.item(portletNodes.getLength() - 1);
 
-                        status = domModelOperation.execute();
-                    }
+					Element portletName = NodeUtil.findChildElement(lastPortletElement, "portlet");
 
-                    return status;
-                }
-            }
-        );
+					portletName.setAttribute("id", newPortletName);
+				}
 
-        addDescriptorOperation
-        (
-            new RemoveAllPortletsOperation()
-            {
-                @Override
-                public IStatus removeAllPortlets()
-                {
-                    return removeAllPortlets();
-                }
-            }
-        );
+				return Status.OK_STATUS;
+			}
 
-        addDescriptorOperation
-        (
-            new RemoveSampleElementsOperation()
-            {
-                @Override
-                public IStatus removeSampleElements()
-                {
-                    return removeAllPortlets();
-                }
-            }
-        );
-    }
+		}.execute();
+	}
 
-    public IStatus configureLiferayDisplayXml( final String newPortletName )
-    {
-        final IStatus status = new DOMModelEditOperation( getDescriptorFile() )
-        {
-            protected IStatus doExecute( IDOMDocument document )
-            {
-                final Element rootElement = document.getDocumentElement();
+	public String[] getAllPortletCategories() {
+		List<String> allPortletCategories = new ArrayList<>();
 
-                final NodeList portletNodes = rootElement.getElementsByTagName( "category" );
+		IFile descriptorFile = getDescriptorFile();
 
-                if( portletNodes.getLength() > 0 )
-                {
-                    final Element lastPortletElement = (Element) portletNodes.item( portletNodes.getLength() - 1 );
-                    final Element portletName = NodeUtil.findChildElement( lastPortletElement, "portlet" );
-                    portletName.setAttribute( "id", newPortletName );
-                }
+		if (descriptorFile != null) {
+			DOMModelOperation op = new DOMModelReadOperation(descriptorFile) {
 
-                return Status.OK_STATUS;
-            }
-        }.execute();
+				protected IStatus doExecute(IDOMDocument document) {
+					NodeList nodeList = document.getElementsByTagName("category");
 
-        return status;
-    }
+					if ((nodeList != null) && (nodeList.getLength() > 0)) {
+						for (int i = 0; i < nodeList.getLength(); i++) {
+							Element categoryElemnt = (Element)nodeList.item(i);
 
-    protected IStatus doAddNewPortlet( IDOMDocument document, final IDataModel model )
-    {
-        // <display> element
-        Element rootElement = document.getDocumentElement();
+							String categoryName = categoryElemnt.getAttribute("name");
 
-        // for the category assignment check to see if there is already a
-        // category element with that id
-        Element category = null;
+							if ((categoryName != null) && !categoryName.matches("\\s*")) {
+								allPortletCategories.add(categoryName);
+							}
+						}
+					}
 
-        String modelCategory = model.getStringProperty( CATEGORY );
+					return Status.OK_STATUS;
+				}
 
-        for( Element child : getChildElements( rootElement ) )
-        {
-            if( child.getNodeName().equals( "category" ) && modelCategory.equals( child.getAttribute( "name" ) ) ) //$NON-NLS-1$ //$NON-NLS-2$
-            {
-                category = child;
+			};
 
-                break;
-            }
-        }
+			op.execute();
+		}
 
-        Element id = null;
+		return allPortletCategories.toArray(new String[0]);
+	}
 
-        String modelId = model.getStringProperty( ID );
+	public IFile getDescriptorFile() {
+		return super.getDescriptorFile(DESCRIPTOR_FILE);
+	}
 
-        if( category != null )
-        {
-            // check to make sure we don't aleady have a portlet with our id in
-            // this category
-            for( Element child : getChildElements( category ) )
-            {
-                if( child.getNodeName().equals( "portlet" ) && modelId.equals( child.getAttribute( "id" ) ) ) //$NON-NLS-1$ //$NON-NLS-2$
-                {
-                    id = child;
+	@Override
+	protected void addDescriptorOperations() {
+		AddNewPortletOperation anpOperation = new AddNewPortletOperation() {
 
-                    break;
-                }
-            }
-        }
-        else
-        {
-            category = document.createElement( "category" ); //$NON-NLS-1$
-            category.setAttribute( "name", modelCategory ); //$NON-NLS-1$
+			@Override
+			public IStatus addNewPortlet(IDataModel model) {
+				IStatus status = Status.OK_STATUS;
 
-            rootElement.appendChild( category );
+				IFile descriptorFile = getDescriptorFile();
 
-            Node newline = document.createTextNode( System.getProperty( "line.separator" ) ); //$NON-NLS-1$
+				if (descriptorFile != null) {
+					DOMModelEditOperation domModelOperation = new DOMModelEditOperation(descriptorFile) {
 
-            rootElement.appendChild( newline );
-        }
+						protected void createDefaultFile() {
+							createDefaultDescriptor(_DESCRIPTOR_TEMPLATE, getDescriptorVersion());
+						}
 
-        if( id == null )
-        {
-            NodeUtil.appendChildElement( category, "portlet" ).setAttribute( "id", modelId ); //$NON-NLS-1$ //$NON-NLS-2$
-        }
+						protected IStatus doExecute(IDOMDocument document) {
+							return doAddNewPortlet(document, model);
+						}
 
-        // format the new node added to the model;
-        FormatProcessorXML processor = new FormatProcessorXML();
+					};
 
-        processor.formatNode( category );
+					status = domModelOperation.execute();
+				}
 
-        return Status.OK_STATUS;
-    }
+				return status;
+			}
 
-    public String[] getAllPortletCategories()
-    {
-        final List<String> allPortletCategories = new ArrayList<String>();
+		};
 
-        final IFile descriptorFile = getDescriptorFile();
+		addDescriptorOperation(anpOperation);
 
-        if( descriptorFile != null )
-        {
-            DOMModelOperation op = new DOMModelReadOperation( descriptorFile )
-            {
-                protected IStatus doExecute( IDOMDocument document )
-                {
-                    NodeList nodeList = document.getElementsByTagName( "category" ); //$NON-NLS-1$
+		RemoveAllPortletsOperation rapOperation = new RemoveAllPortletsOperation() {
 
-                    if( nodeList != null && nodeList.getLength() > 0 )
-                    {
-                        for( int i = 0; i < nodeList.getLength(); i++ )
-                        {
-                            Element categoryElemnt = (Element) nodeList.item( i );
-                            String categoryName = categoryElemnt.getAttribute( "name" );
+			@Override
+			public IStatus removeAllPortlets() {
+				return removeAllPortlets();
+			}
 
-                            if( categoryName != null && !categoryName.matches( "\\s*" ) )
-                            {
-                                allPortletCategories.add( categoryName );
-                            }
-                        }
-                    }
+		};
 
-                    return Status.OK_STATUS;
-                }
-            };
+		addDescriptorOperation(rapOperation);
 
-            op.execute();
-        }
+		RemoveSampleElementsOperation rseOperation = new RemoveSampleElementsOperation() {
 
-        return allPortletCategories.toArray( new String[0] );
-    }
+			@Override
+			public IStatus removeSampleElements() {
+				return removeAllPortlets();
+			}
 
-    public IFile getDescriptorFile()
-    {
-        return super.getDescriptorFile( DESCRIPTOR_FILE );
-    }
+		};
 
-    protected IStatus removeAllPortlets()
-    {
-        final String categoryTagName = "category";
+		addDescriptorOperation(rseOperation);
+	}
 
-        DOMModelEditOperation domModelOperation = new DOMModelEditOperation( getDescriptorFile() )
-        {
-            protected IStatus doExecute( IDOMDocument document )
-            {
-                return removeAllElements( document, categoryTagName );
-            }
-        };
+	protected IStatus doAddNewPortlet(IDOMDocument document, IDataModel model) {
 
-        IStatus status = domModelOperation.execute();
+		// <display> element
 
-        return status;
-    }
+		Element rootElement = document.getDocumentElement();
+
+		// for the category assignment check to see if there is already a
+		// category element with that id
+
+		Element category = null;
+
+		String modelCategory = model.getStringProperty(CATEGORY);
+
+		for (Element child : getChildElements(rootElement)) {
+			if (Objects.equals("category", child.getNodeName()) && modelCategory.equals(child.getAttribute("name"))) {
+				category = child;
+
+				break;
+			}
+		}
+
+		Element id = null;
+
+		String modelId = model.getStringProperty(ID);
+
+		if (category != null) {
+
+			// check to make sure we don't aleady have a portlet with our id in
+			// this category
+
+			for (Element child : getChildElements(category)) {
+				if (Objects.equals("portlet", child.getNodeName()) && modelId.equals(child.getAttribute("id"))) {
+					id = child;
+
+					break;
+				}
+			}
+		}
+		else {
+			category = document.createElement("category");
+
+			category.setAttribute("name", modelCategory);
+
+			rootElement.appendChild(category);
+
+			Node newline = document.createTextNode(System.getProperty("line.separator"));
+
+			rootElement.appendChild(newline);
+		}
+
+		if (id == null) {
+			Element element = NodeUtil.appendChildElement(category, "portlet");
+
+			element.setAttribute("id", modelId);
+		}
+
+		// format the new node added to the model;
+
+		FormatProcessorXML processor = new FormatProcessorXML();
+
+		processor.formatNode(category);
+
+		return Status.OK_STATUS;
+	}
+
+	protected IStatus removeAllPortlets() {
+		String categoryTagName = "category";
+
+		DOMModelEditOperation domModelOperation = new DOMModelEditOperation(getDescriptorFile()) {
+
+			protected IStatus doExecute(IDOMDocument document) {
+				return removeAllElements(document, categoryTagName);
+			}
+
+		};
+
+		return domModelOperation.execute();
+	}
+
+	private static final String _DESCRIPTOR_TEMPLATE =
+		"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE display PUBLIC \"-//Liferay//DTD Display {0}//EN\\\" " +
+			"\"http://www.liferay.com/dtd/liferay-display_{1}.dtd\">\n\n<display>\n</display>";
 
 }

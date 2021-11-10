@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<!DOCTYPE project>
+
+<project basedir="." default="deploy" name="test-theme-project-sdk-defaults-RUNTIMEVERSION-theme">
+	<property name="theme.parent" value="_styled" />
+
+	<import file="../build-common-theme.xml" />
+	<property name="theme.type" value="ftl" />
+</project>

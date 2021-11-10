@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,21 +10,24 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.sdk.core;
 
 import com.liferay.ide.core.LiferayCore;
-import com.liferay.ide.core.util.CoreUtil;
 import com.liferay.ide.core.util.FileUtil;
+import com.liferay.ide.core.util.ListUtil;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+
+import java.nio.file.Files;
+
 import java.util.HashSet;
 import java.util.Set;
 
+import org.eclipse.core.runtime.ILog;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
@@ -32,209 +35,189 @@ import org.eclipse.core.runtime.Plugin;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.wst.server.core.internal.IMemento;
 import org.eclipse.wst.server.core.internal.XMLMemento;
+
 import org.osgi.framework.BundleContext;
 
 /**
- * The activator class controls the plugin life cycle
- *
- * @author Greg Amerson
+ * @author Gregory Amerson
  */
-@SuppressWarnings( "restriction" )
-public class SDKCorePlugin extends Plugin
-{
+@SuppressWarnings("restriction")
+public class SDKCorePlugin extends Plugin {
 
-    // The shared instance
-    private static SDKCorePlugin plugin;
-    // The plugin ID
-    public static final String PLUGIN_ID = "com.liferay.ide.sdk.core"; //$NON-NLS-1$
+	public static final String PLUGIN_ID = "com.liferay.ide.sdk.core";
 
-    public static final String PREF_KEY_OVERWRITE_USER_BUILD_FILE = "OVERWRITE_USER_BUILD_FILE"; //$NON-NLS-1$
-    public static final String PREF_KEY_SDK_NAME = "sdk-name"; //$NON-NLS-1$
+	public static final String PREF_KEY_OVERWRITE_USER_BUILD_FILE = "OVERWRITE_USER_BUILD_FILE";
 
-    public static final String PREFERENCE_ID = "com.liferay.ide.eclipse.sdk"; //$NON-NLS-1$
+	public static final String PREF_KEY_SDK_NAME = "sdk-name";
 
-    public static IStatus createErrorStatus( String msg )
-    {
-        return LiferayCore.createErrorStatus( PLUGIN_ID, msg );
-    }
+	public static final String PREFERENCE_ID = "com.liferay.ide.eclipse.sdk";
 
-    public static IStatus createErrorStatus( String pluginId, String msg, Throwable e )
-    {
-        return new Status( IStatus.ERROR, pluginId, msg, e );
-    }
+	public static IStatus createErrorStatus(String msg) {
+		return LiferayCore.createErrorStatus(PLUGIN_ID, msg);
+	}
 
-    public static IStatus createErrorStatus( Throwable t )
-    {
-        return LiferayCore.createErrorStatus( PLUGIN_ID, t );
-    }
+	public static IStatus createErrorStatus(String pluginId, String msg) {
+		return new Status(IStatus.ERROR, pluginId, msg);
+	}
 
-    /**
-     * Returns the shared instance
-     *
-     * @return the shared instance
-     */
-    public static SDKCorePlugin getDefault()
-    {
-        return plugin;
-    }
+	public static IStatus createErrorStatus(String pluginId, String msg, Throwable e) {
+		return new Status(IStatus.ERROR, pluginId, msg, e);
+	}
 
-    public static void logError( Exception e )
-    {
-        getDefault().getLog().log( new Status( IStatus.ERROR, PLUGIN_ID, e.getMessage(), e ) );
-    }
+	public static IStatus createErrorStatus(Throwable t) {
+		return LiferayCore.createErrorStatus(PLUGIN_ID, t);
+	}
 
-    public static void logError( String msg, Throwable t )
-    {
-        getDefault().getLog().log( createErrorStatus( PLUGIN_ID, msg, t ) );
-    }
+	public static SDKCorePlugin getDefault() {
+		return _plugin;
+	}
 
-    private ISDKListener sdkListener;
+	public static void logError(Exception e) {
+		ILog log = getDefault().getLog();
 
-    /**
-     * The constructor
-     */
-    public SDKCorePlugin()
-    {
-    }
+		log.log(new Status(IStatus.ERROR, PLUGIN_ID, e.getMessage(), e));
+	}
 
-    private void addSDKToMemento( SDK sdk, IMemento memento )
-    {
-        memento.putString( "name", sdk.getName() );
-        memento.putString( "location", sdk.getLocation().toPortableString() );
-        memento.putBoolean( "default", sdk.isDefault() );
-    }
+	public static void logError(String msg, Throwable t) {
+		ILog log = getDefault().getLog();
 
-    private void copyMemento( IMemento from, IMemento to )
-    {
-        for( String name : from.getNames() )
-        {
-            to.putString( name, from.getString( name ) );
-        }
-    }
+		log.log(createErrorStatus(PLUGIN_ID, msg, t));
+	}
 
-    private synchronized void saveGlobalSDKSettings( SDK[] sdks )
-    {
-        try
-        {
-            LiferayCore.GLOBAL_SETTINGS_PATH.toFile().mkdirs();
+	public SDKCorePlugin() {
+	}
 
-            final File sdkGlobalFile = LiferayCore.GLOBAL_SETTINGS_PATH.append( "sdks.xml" ).toFile();
+	@Override
+	public void start(BundleContext context) throws Exception {
+		super.start(context);
 
-            final Set<IMemento> existing = new HashSet<IMemento>();
+		_plugin = this;
 
-            if( sdkGlobalFile.exists() )
-            {
-                try
-                {
-                    final IMemento existingMemento = XMLMemento.loadMemento( new FileInputStream( sdkGlobalFile ) );
+		_sdkListener = new ISDKListener() {
 
-                    if( existingMemento != null )
-                    {
-                        final IMemento[] children = existingMemento.getChildren( "sdk" );
+			@Override
+			public void sdksAdded(SDK[] sdks) {
+				_saveGlobalSDKSettings(sdks);
+			}
 
-                        if( ! CoreUtil.isNullOrEmpty( children ) )
-                        {
-                            for( IMemento child : children )
-                            {
-                                final IPath loc = Path.fromPortableString( child.getString( "location" ) );
+			@Override
+			public void sdksChanged(SDK[] sdks) {
+				_saveGlobalSDKSettings(sdks);
+			}
 
-                                if( loc != null && loc.toFile().exists() )
-                                {
-                                    boolean duplicate = false;
+			@Override
+			public void sdksRemoved(SDK[] sdks) {
+				_saveGlobalSDKSettings(sdks);
+			}
 
-                                    for( SDK sdk : sdks )
-                                    {
-                                        if( sdk.getLocation().toFile().equals( loc.toFile() ) )
-                                        {
-                                            duplicate = true;
-                                            break;
-                                        }
-                                    }
+		};
 
-                                    if( ! duplicate )
-                                    {
-                                        existing.add( child );
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                catch( Exception e )
-                {
-                }
-            }
+		SDKManager sdkManager = SDKManager.getInstance();
 
-            final XMLMemento sdkMementos = XMLMemento.createWriteRoot( "sdks" );
+		sdkManager.addSDKListener(_sdkListener);
+	}
 
-            for( IMemento exist : existing )
-            {
-                copyMemento( exist, sdkMementos.createChild( "sdk" ) );
-            }
+	@Override
+	public void stop(BundleContext context) throws Exception {
+		IPath sdkPluginLocation = getDefault().getStateLocation();
 
-            for( SDK sdk : sdks )
-            {
-                final IMemento memento = sdkMementos.createChild( "sdk" );
+		File createDir = FileUtil.getFile(sdkPluginLocation.append("create"));
 
-                addSDKToMemento( sdk, memento );
-            }
+		if (createDir.exists()) {
+			FileUtil.deleteDir(createDir, true);
+		}
 
-            final FileOutputStream fos = new FileOutputStream( sdkGlobalFile );
+		_plugin = null;
+		super.stop(context);
+	}
 
-            sdkMementos.save( fos );
-        }
-        catch( Exception e )
-        {
-            logError( "Unable to save global sdk settings", e );
-        }
-    }
+	private void _addSDKToMemento(SDK sdk, IMemento memento) {
+		memento.putString("name", sdk.getName());
+		memento.putString("location", FileUtil.toPortableString(sdk.getLocation()));
+		memento.putBoolean("default", sdk.isDefault());
+	}
 
-    /*
-     * (non-Javadoc)
-     * @see org.eclipse.ui.plugin.AbstractUIPlugin#start(org.osgi.framework.BundleContext )
-     */
-    public void start( BundleContext context ) throws Exception
-    {
-        super.start( context );
-        plugin = this;
+	private void _copyMemento(IMemento from, IMemento to) {
+		for (String name : from.getNames()) {
+			to.putString(name, from.getString(name));
+		}
+	}
 
-        this.sdkListener = new ISDKListener()
-        {
-            public void sdksAdded( SDK[] sdks )
-            {
-                saveGlobalSDKSettings( sdks );
-            }
+	private synchronized void _saveGlobalSDKSettings(SDK[] sdks) {
+		try {
+			IPath globalSettingsPath = LiferayCore.GLOBAL_SETTINGS_PATH;
 
-            public void sdksChanged( SDK[] sdks )
-            {
-                saveGlobalSDKSettings( sdks );
-            }
+			File settingsFile = globalSettingsPath.toFile();
 
-            public void sdksRemoved( SDK[] sdks )
-            {
-                saveGlobalSDKSettings( sdks );
-            }
-        };
+			settingsFile.mkdirs();
 
-        SDKManager.getInstance().addSDKListener( this.sdkListener );
-    }
+			File sdkGlobalFile = FileUtil.getFile(globalSettingsPath.append("sdks.xml"));
 
-    /*
-     * (non-Javadoc)
-     * @see org.eclipse.ui.plugin.AbstractUIPlugin#stop(org.osgi.framework.BundleContext )
-     */
-    public void stop( BundleContext context ) throws Exception
-    {
-        // delete tmp folder
-        File createDir = getDefault().getStateLocation().append( "create" ).toFile(); //$NON-NLS-1$
+			Set<IMemento> existing = new HashSet<>();
 
-        if( createDir.exists() )
-        {
-            FileUtil.deleteDir( createDir, true );
-        }
+			if (sdkGlobalFile.exists()) {
+				try {
+					try (InputStream newInputStream = Files.newInputStream(sdkGlobalFile.toPath())) {
+						IMemento existingMemento = XMLMemento.loadMemento(newInputStream);
 
-        plugin = null;
-        super.stop( context );
-    }
+						if (existingMemento != null) {
+							IMemento[] children = existingMemento.getChildren("sdk");
+
+							if (ListUtil.isNotEmpty(children)) {
+								for (IMemento child : children) {
+									IPath loc = Path.fromPortableString(child.getString("location"));
+
+									if (FileUtil.exists(loc)) {
+										boolean duplicate = false;
+
+										for (SDK sdk : sdks) {
+											IPath sdkLocation = sdk.getLocation();
+
+											File file = sdkLocation.toFile();
+
+											if (file.equals(loc.toFile())) {
+												duplicate = true;
+
+												break;
+											}
+										}
+
+										if (!duplicate) {
+											existing.add(child);
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+				catch (Exception e) {
+				}
+			}
+
+			XMLMemento sdkMementos = XMLMemento.createWriteRoot("sdks");
+
+			for (IMemento exist : existing) {
+				_copyMemento(exist, sdkMementos.createChild("sdk"));
+			}
+
+			for (SDK sdk : sdks) {
+				IMemento memento = sdkMementos.createChild("sdk");
+
+				_addSDKToMemento(sdk, memento);
+			}
+
+			try (OutputStream fos = Files.newOutputStream(sdkGlobalFile.toPath())) {
+				sdkMementos.save(fos);
+			}
+		}
+		catch (Exception e) {
+			logError("Unable to save global sdk settings", e);
+		}
+	}
+
+	private static SDKCorePlugin _plugin;
+
+	private ISDKListener _sdkListener;
 
 }

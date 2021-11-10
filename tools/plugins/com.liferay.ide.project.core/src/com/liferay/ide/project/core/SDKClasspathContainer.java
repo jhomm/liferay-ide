@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,8 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.project.core;
 
@@ -26,102 +25,88 @@ import org.eclipse.jdt.core.IJavaProject;
 /**
  * @author Simon.Jiang
  */
-public class SDKClasspathContainer extends PluginClasspathContainer implements IClasspathContainer
-{
-    public static final String ID = "com.liferay.ide.sdk.container";
+public class SDKClasspathContainer extends PluginClasspathContainer implements IClasspathContainer {
 
-    protected static final String[] commonJars =
-    {
-        "commons-logging.jar",  //$NON-NLS-1$
-        "log4j.jar",  //$NON-NLS-1$
-        "util-bridges.jar", //$NON-NLS-1$
-        "util-java.jar",  //$NON-NLS-1$
-        "util-taglib.jar",  //$NON-NLS-1$
-    };
+	public static final String ID = "com.liferay.ide.sdk.container";
 
-    protected IPath portalGlobalDir;
+	public SDKClasspathContainer(
+		IPath containerPath, IJavaProject project, IPath portalDir, String javadocURL, IPath sourceURL,
+		IPath portalGlobalDir, IPath bundleDir, IPath[] bundleLibDependencyPaths, IPath[] sdkDependencyPaths) {
 
-    protected IPath bundleDir;
+		super(containerPath, project, portalDir, javadocURL, sourceURL);
 
-    protected IPath[] bundleLibDependencyPath;
+		_portalGlobalDir = portalGlobalDir;
+		_bundleDir = bundleDir;
+		_bundleLibDependencyPaths = bundleLibDependencyPaths;
+		_sdkDependencyPaths = sdkDependencyPaths;
+	}
 
-    public SDKClasspathContainer(
-        IPath containerPath, IJavaProject project, IPath portalDir, String javadocURL, IPath sourceURL,
-        IPath portalGlobalDir, IPath bundleDir, IPath[] bundleLibDependencyPath )
-    {
-        super(containerPath,project,portalDir,javadocURL,sourceURL);
-        this.portalGlobalDir = portalGlobalDir;
-        this.bundleDir = bundleDir;
-        this.bundleLibDependencyPath = bundleLibDependencyPath;
-    }
+	public IPath getBundleDir() {
+		return _bundleDir;
+	}
 
-    @Override
-    public IClasspathEntry[] getClasspathEntries()
-    {
-        if( this.classpathEntries == null )
-        {
-            List<IClasspathEntry> entries = new ArrayList<IClasspathEntry>();
+	public IPath[] getBundleLibDependencyPath() {
+		return _bundleLibDependencyPaths;
+	}
 
-            for( IPath pluginJarPath : bundleLibDependencyPath )
-            {
-                IPath sourcePath = null;
+	@Override
+	public IClasspathEntry[] getClasspathEntries() {
+		if (classpathEntries != null) {
+			return classpathEntries;
+		}
 
-                if( portalSourceJars.contains( pluginJarPath.lastSegment() ) )
-                {
-                    sourcePath = getSourceLocation();
-                }
-                entries.add( createClasspathEntry( pluginJarPath, sourcePath, this.javadocURL ) );
-            }
+		List<IClasspathEntry> entries = new ArrayList<>();
 
-            if( this.portalDir != null )
-            {
-                for( String pluginJar : getPortalJars() )
-                {
-                    entries.add( createPortalJarClasspathEntry( pluginJar ) );
-                }
+		for (IPath pluginJarPath : _bundleLibDependencyPaths) {
+			IPath sourcePath = null;
 
-                for( String pluginPackageJar : getPortalDependencyJars() )
-                {
-                    entries.add( createPortalJarClasspathEntry( pluginPackageJar ) );
-                }
-            }
+			if (portalSourceJars.contains(pluginJarPath.lastSegment())) {
+				sourcePath = getSourceLocation();
+			}
 
-            this.classpathEntries = entries.toArray( new IClasspathEntry[entries.size()] );
-        }
+			entries.add(createClasspathEntry(pluginJarPath, sourcePath, javadocURL));
+		}
 
-        return this.classpathEntries;
-    }
+		if (portalDir != null) {
+			for (String pluginJar : getPortalJars()) {
+				entries.add(createPortalJarClasspathEntry(pluginJar));
+			}
 
-    @Override
-    public String getDescription()
-    {
-        return "Plugins SDK Dependencies";
-    }
+			for (String pluginPackageJar : getPortalDependencyJars()) {
+				entries.add(createPortalJarClasspathEntry(pluginPackageJar));
+			}
+		}
 
-    public IPath getPortalGlobalDir()
-    {
-        return portalGlobalDir;
-    }
+		if (_sdkDependencyPaths != null) {
+			for (IPath sdkDependencyJarPath : _sdkDependencyPaths) {
+				entries.add(createClasspathEntry(sdkDependencyJarPath, null, null));
+			}
+		}
 
-    public IPath getBundleDir()
-    {
-        return bundleDir;
-    }
+		classpathEntries = entries.toArray(new IClasspathEntry[0]);
 
-    public IPath[] getBundleLibDependencyPath()
-    {
-        return this.bundleLibDependencyPath;
-    }
+		return classpathEntries;
+	}
 
-    @Override
-    protected String[] getPortalJars()
-    {
-        return commonJars;
-    }
+	@Override
+	public String getDescription() {
+		return "Plugins SDK Dependencies";
+	}
 
-    public static boolean isPluginContainerEntry( IClasspathEntry e )
-    {
-        return e != null && e.getEntryKind() == IClasspathEntry.CPE_CONTAINER &&
-            e.getPath().segment( 0 ).equals( ID );
-    }
+	public IPath getPortalGlobalDir() {
+		return _portalGlobalDir;
+	}
+
+	@Override
+	protected String[] getPortalJars() {
+		return new String[] {
+			"commons-logging.jar", "log4j.jar", "util-bridges.jar", "util-java.jar", "util-taglib.jar"
+		};
+	}
+
+	private final IPath _bundleDir;
+	private final IPath[] _bundleLibDependencyPaths;
+	private final IPath _portalGlobalDir;
+	private final IPath[] _sdkDependencyPaths;
+
 }

@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,8 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.server.tomcat.ui;
 
@@ -21,47 +20,40 @@ import org.eclipse.wst.common.project.facet.core.runtime.IRuntime;
 import org.eclipse.wst.common.project.facet.ui.IDecorationsProvider;
 
 /**
- * @author Greg Amerson
+ * @author Gregory Amerson
  */
-@SuppressWarnings( "rawtypes" )
-public class LiferayTomcatRuntimeDecorationsProvider implements IAdapterFactory
-{
+@SuppressWarnings("rawtypes")
+public class LiferayTomcatRuntimeDecorationsProvider implements IAdapterFactory {
 
-    public class LiferayDecorationsProvider implements IDecorationsProvider
-    {
+	public Object getAdapter(Object adaptableObject, Class adapterType) {
+		if (IDecorationsProvider.class.equals(adapterType)) {
+			return new LiferayDecorationsProvider((IRuntime)adaptableObject);
+		}
 
-        // private IRuntime runtime;
+		return null;
+	}
 
-        public LiferayDecorationsProvider( IRuntime adaptableObject )
-        {
-            // runtime = adaptableObject;
-        }
+	public Class<?>[] getAdapterList() {
+		return _ADAPTER_TYPES;
+	}
 
-        public ImageDescriptor getIcon()
-        {
-            return LiferayTomcatUIPlugin.imageDescriptorFromPlugin(
-                LiferayTomcatUIPlugin.PLUGIN_ID, "icons/e16/server.png" ); //$NON-NLS-1$
-        }
+	public class LiferayDecorationsProvider implements IDecorationsProvider {
 
-    }
+		// private IRuntime runtime;
 
-    private static final Class<?>[] ADAPTER_TYPES = { IDecorationsProvider.class };
+		public LiferayDecorationsProvider(IRuntime adaptableObject) {
 
-    public Object getAdapter( Object adaptableObject, Class adapterType )
-    {
-        if( IDecorationsProvider.class.equals( adapterType ) )
-        {
-            return new LiferayDecorationsProvider( (IRuntime) adaptableObject );
-        }
-        else
-        {
-            return null;
-        }
-    }
+			// runtime = adaptableObject;
 
-    public Class<?>[] getAdapterList()
-    {
-        return ADAPTER_TYPES;
-    }
+		}
+
+		public ImageDescriptor getIcon() {
+			return LiferayTomcatUIPlugin.imageDescriptorFromPlugin(
+				LiferayTomcatUIPlugin.PLUGIN_ID, "icons/liferay_logo_16.png");
+		}
+
+	}
+
+	private static final Class<?>[] _ADAPTER_TYPES = {IDecorationsProvider.class};
 
 }

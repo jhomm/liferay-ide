@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,11 +10,11 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.project.core;
 
+import com.liferay.ide.core.util.CoreUtil;
 import com.liferay.ide.project.core.util.ProjectUtil;
 import com.liferay.ide.project.core.util.SDKPluginFacetUtil;
 import com.liferay.ide.sdk.core.SDK;
@@ -25,7 +25,6 @@ import org.eclipse.core.commands.ExecutionException;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IWorkspace;
-import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IAdaptable;
 import org.eclipse.core.runtime.IPath;
@@ -34,7 +33,6 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
-import org.eclipse.core.runtime.SubProgressMonitor;
 import org.eclipse.osgi.util.NLS;
 import org.eclipse.wst.common.componentcore.datamodel.properties.IFacetProjectCreationDataModelProperties;
 import org.eclipse.wst.common.frameworks.datamodel.AbstractDataModelOperation;
@@ -45,147 +43,138 @@ import org.eclipse.wst.common.project.facet.core.internal.FacetedProjectWorkingC
 import org.eclipse.wst.common.project.facet.core.runtime.IRuntime;
 
 /**
- * @author Greg Amerson
+ * @author Gregory Amerson
  */
-@SuppressWarnings( "restriction" )
-public class SDKProjectConvertOperation extends AbstractDataModelOperation
-    implements ISDKProjectsImportDataModelProperties
-{
-    IProject convertedProject;
+@SuppressWarnings("restriction")
+public class SDKProjectConvertOperation
+	extends AbstractDataModelOperation implements ISDKProjectsImportDataModelProperties {
 
-    public SDKProjectConvertOperation( IDataModel model )
-    {
-        super( model );
-    }
+	public SDKProjectConvertOperation(IDataModel model) {
+		super(model);
+	}
 
-    @Override
-    public IStatus execute( IProgressMonitor monitor, IAdaptable info ) throws ExecutionException
-    {
-        Object[] selectedProjects = (Object[]) getDataModel().getProperty( SELECTED_PROJECTS );
+	@Override
+	public IStatus execute(IProgressMonitor monitor, IAdaptable info) throws ExecutionException {
+		Object[] selectedProjects = (Object[])getDataModel().getProperty(SELECTED_PROJECTS);
 
-        for( int i = 0; i < selectedProjects.length; i++ )
-        {
-            if( selectedProjects[i] instanceof ProjectRecord )
-            {
-                IStatus status = convertProject( (ProjectRecord) selectedProjects[i], monitor );
+		for (Object project : selectedProjects) {
+			if (project instanceof ProjectRecord) {
+				IStatus status = convertProject((ProjectRecord)project, monitor);
 
-                if( !status.isOK() )
-                {
-                    return status;
-                }
-            }
-        }
+				if (!status.isOK()) {
+					return status;
+				}
+			}
+		}
 
-        return Status.OK_STATUS;
-    }
+		return Status.OK_STATUS;
+	}
 
-    protected IProject convertExistingProject( final ProjectRecord record, IProgressMonitor monitor )
-        throws CoreException
-    {
-        String projectName = record.getProjectName();
+	public IProject convertedProject;
 
-        final IWorkspace workspace = ResourcesPlugin.getWorkspace();
+	protected IProject convertExistingProject(ProjectRecord record, IProgressMonitor monitor) throws CoreException {
+		String projectName = record.getProjectName();
 
-        IProject project = workspace.getRoot().getProject( projectName );
+		IWorkspace workspace = CoreUtil.getWorkspace();
 
-        if( record.description == null )
-        {
-            // error case
-            record.description = workspace.newProjectDescription( projectName );
+		IProject project = CoreUtil.getProject(projectName);
 
-            IPath locationPath = new Path( record.projectSystemFile.getAbsolutePath() );
+		if (record.description == null) {
 
-            // If it is under the root use the default location
-            if( Platform.getLocation().isPrefixOf( locationPath ) )
-            {
-                record.description.setLocation( null );
-            }
-            else
-            {
-                record.description.setLocation( locationPath );
-            }
-        }
-        else
-        {
-            record.description.setName( projectName );
-        }
+			// error case
 
-        monitor.beginTask( Msgs.importingProject, 100 );
+			record.description = workspace.newProjectDescription(projectName);
 
-        project.open( IResource.FORCE, new SubProgressMonitor( monitor, 70 ) );
+			IPath locationPath = new Path(record.projectSystemFile.getAbsolutePath());
 
-        IFacetedProject fProject = ProjectFacetsManager.create( project, true, monitor );
+			// If it is under the root use the default location
 
-        FacetedProjectWorkingCopy fpwc = new FacetedProjectWorkingCopy( fProject );
+			IPath location = Platform.getLocation();
 
-        String sdkLocation = getDataModel().getStringProperty( SDK_LOCATION );
+			if (location.isPrefixOf(locationPath)) {
+				record.description.setLocation(null);
+			}
+			else {
+				record.description.setLocation(locationPath);
+			}
+		}
+		else {
+			record.description.setName(projectName);
+		}
 
-        final IRuntime runtime = (IRuntime) model.getProperty( IFacetProjectCreationDataModelProperties.FACET_RUNTIME );
+		monitor.beginTask(Msgs.importingProject, 100);
 
-        final String pluginType = ProjectUtil.guessPluginType( fpwc );
+		project.open(IResource.FORCE, CoreUtil.newSubmonitor(monitor, 70));
 
-        SDKPluginFacetUtil.configureProjectAsRuntimeProject( fpwc, runtime, pluginType, sdkLocation, record );
+		IFacetedProject fProject = ProjectFacetsManager.create(project, true, monitor);
 
-        fpwc.commitChanges( monitor );
+		FacetedProjectWorkingCopy fpwc = new FacetedProjectWorkingCopy(fProject);
 
-        monitor.done();
+		String sdkLocation = getDataModel().getStringProperty(SDK_LOCATION);
 
-        return project;
-    }
+		IRuntime runtime = (IRuntime)model.getProperty(IFacetProjectCreationDataModelProperties.FACET_RUNTIME);
 
-    protected IStatus convertProject( ProjectRecord projectRecord, IProgressMonitor monitor )
-    {
-        IProject project = null;
+		String pluginType = ProjectUtil.guessPluginType(fpwc);
 
-        if( projectRecord.project != null )
-        {
-            try
-            {
-                project = convertExistingProject( projectRecord, monitor );
-            }
-            catch( CoreException e )
-            {
-                return ProjectCore.createErrorStatus( e );
-            }
-        }
-        convertedProject = project;
+		SDKPluginFacetUtil.configureProjectAsRuntimeProject(fpwc, runtime, pluginType, sdkLocation, record);
 
-        return Status.OK_STATUS;
-    }
+		fpwc.commitChanges(monitor);
 
-    protected String getSDKName()
-    {
-        String sdkLocation = getDataModel().getStringProperty( SDK_LOCATION );
+		monitor.done();
 
-        IPath sdkLocationPath = new Path( sdkLocation );
+		return project;
+	}
 
-        SDK sdk = SDKManager.getInstance().getSDK( sdkLocationPath );
+	protected IStatus convertProject(ProjectRecord projectRecord, IProgressMonitor monitor) {
+		IProject project = null;
 
-        String sdkName = null;
+		if (projectRecord.project != null) {
+			try {
+				project = convertExistingProject(projectRecord, monitor);
+			}
+			catch (CoreException ce) {
+				return ProjectCore.createErrorStatus(ce);
+			}
+		}
 
-        if( sdk != null )
-        {
-            sdkName = sdk.getName();
-        }
-        else
-        {
-            sdk = SDKUtil.createSDKFromLocation( sdkLocationPath );
+		convertedProject = project;
 
-            SDKManager.getInstance().addSDK( sdk );
+		return Status.OK_STATUS;
+	}
 
-            sdkName = sdk.getName();
-        }
+	protected String getSDKName() {
+		String sdkLocation = getDataModel().getStringProperty(SDK_LOCATION);
 
-        return sdkName;
-    }
+		IPath sdkLocationPath = new Path(sdkLocation);
 
-    private static class Msgs extends NLS
-    {
-        public static String importingProject;
+		SDKManager sdkManager = SDKManager.getInstance();
 
-        static
-        {
-            initializeMessages( SDKProjectConvertOperation.class.getName(), Msgs.class );
-        }
-    }
+		SDK sdk = sdkManager.getSDK(sdkLocationPath);
+
+		String sdkName = null;
+
+		if (sdk != null) {
+			sdkName = sdk.getName();
+		}
+		else {
+			sdk = SDKUtil.createSDKFromLocation(sdkLocationPath);
+
+			sdkManager.addSDK(sdk);
+
+			sdkName = sdk.getName();
+		}
+
+		return sdkName;
+	}
+
+	private static class Msgs extends NLS {
+
+		public static String importingProject;
+
+		static {
+			initializeMessages(SDKProjectConvertOperation.class.getName(), Msgs.class);
+		}
+
+	}
+
 }

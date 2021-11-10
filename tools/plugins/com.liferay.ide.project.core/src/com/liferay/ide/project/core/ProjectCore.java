@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,331 +10,364 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.project.core;
 
 import com.liferay.ide.core.util.CoreUtil;
+import com.liferay.ide.core.util.FileUtil;
+import com.liferay.ide.core.util.ListUtil;
 import com.liferay.ide.project.core.descriptor.IDescriptorOperation;
 import com.liferay.ide.project.core.descriptor.LiferayDescriptorHelper;
+import com.liferay.ide.project.core.modules.IComponentTemplate;
+import com.liferay.ide.project.core.modules.LiferayComponentTemplateReader;
 
 import java.net.URL;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 
-import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResourceChangeEvent;
-import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.runtime.IConfigurationElement;
+import org.eclipse.core.runtime.IContributor;
+import org.eclipse.core.runtime.IExtensionRegistry;
+import org.eclipse.core.runtime.ILog;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Plugin;
 import org.eclipse.core.runtime.Status;
+
 import org.osgi.framework.BundleContext;
 
 /**
  * The activator class controls the plugin life cycle
  *
- * @author Greg Amerson
+ * @author Gregory Amerson
  * @author Simon Jiang
  * @author Kuo Zhang
  */
-public class ProjectCore extends Plugin
-{
+@SuppressWarnings("rawtypes")
+public class ProjectCore extends Plugin {
 
-    // The liferay project marker type
-    public static final String LIFERAY_PROJECT_MARKER_TYPE = "com.liferay.ide.project.core.LiferayProjectMarker";
+	public static final String LIFERAY_PROJECT_MARKER_TYPE = "com.liferay.ide.project.core.LiferayProjectMarker";
 
-    // The shared instance
-    private static ProjectCore plugin;
+	public static final String PLUGIN_ID = "com.liferay.ide.project.core";
 
-    // The plugin ID
-    public static final String PLUGIN_ID = "com.liferay.ide.project.core"; //$NON-NLS-1$
+	public static final String PREF_CREATE_NEW_PORLET = "create-new-portlet";
 
-    private static PluginPackageResourceListener pluginPackageResourceListener;
+	public static final String PREF_DEFAULT_JSF_MODULE_PROJECT_BUILD_TYPE_OPTION =
+		"project-jsf-module-default-build-type-option";
 
-    private static IPortletFramework[] portletFrameworks;
+	public static final String PREF_DEFAULT_JSF_MODULE_PROJECT_MAVEN_GROUPID =
+		"default-jsf-module-project-maven-groupid";
 
-    public static final String PREF_CREATE_NEW_PORLET = "create-new-portlet";
+	public static final String PREF_DEFAULT_LIFERAY_VERSION_OPTION = "default-liferay-version-option";
 
-    // The key of default project build type for creating a new liferay plug in project
-    public static final String PREF_DEFAULT_PROJECT_BUILD_TYPE_OPTION = "project-default-build-type-option";
+	public static final String PREF_DEFAULT_MODULE_FRAGMENT_PROJECT_BUILD_TYPE_OPTION =
+		"project-module-fragment-default-build-type-option";
 
-    public static final String PREF_DEFAULT_PROJECT_MAVEN_GROUPID = "default-project-maven-groupid";
+	public static final String PREF_DEFAULT_MODULE_PROJECT_BUILD_TYPE_OPTION =
+		"project-module-default-build-type-option";
 
-    public static final String PREF_INCLUDE_SAMPLE_CODE = "include-sample-code";
+	public static final String PREF_DEFAULT_MODULE_PROJECT_MAVEN_GROUPID = "default-module-project-maven-groupid";
 
-    public static final String USE_PROJECT_SETTINGS = "use-project-settings"; //$NON-NLS-1$
+	public static final String PREF_DEFAULT_PLUGIN_PROJECT_BUILD_TYPE_OPTION =
+		"project-plugin_default-build-type-option";
 
-    public static IStatus createErrorStatus( Exception e )
-    {
-        return createErrorStatus( PLUGIN_ID, e );
-    }
+	public static final String PREF_DEFAULT_PLUGIN_PROJECT_MAVEN_GROUPID = "default-plugin-project-maven-groupid";
 
-    public static IStatus createErrorStatus( String msg )
-    {
-        return createErrorStatus( PLUGIN_ID, msg );
-    }
+	// The key of default project build type for creating a new liferay plug in project
 
-    public static IStatus createErrorStatus( String pluginId, String msg )
-    {
-        return new Status( IStatus.ERROR, pluginId, msg );
-    }
+	public static final String PREF_DEFAULT_SPRING_MVC_PORTLET_PROJECT_BUILD_TYPE_OPTION =
+		"project-spring-mvc-portlet-default-build-type-option";
 
-    public static IStatus createErrorStatus( String pluginId, String msg, Throwable e )
-    {
-        return new Status( IStatus.ERROR, pluginId, msg, e );
-    }
+	public static final String PREF_DEFAULT_WORKSPACE_PROJECT_BUILD_TYPE_OPTION =
+		"project-workspace-default-build-type-option";
 
-    public static IStatus createErrorStatus( String pluginId, Throwable t )
-    {
-        return new Status( IStatus.ERROR, pluginId, t.getMessage(), t );
-    }
+	public static final String PREF_INCLUDE_SAMPLE_CODE = "include-sample-code";
 
-    public static IStatus createWarningStatus( String message )
-    {
-        return new Status( IStatus.WARNING, PLUGIN_ID, message );
-    }
+	public static final String USE_PROJECT_SETTINGS = "use-project-settings";
 
-    public static IStatus createWarningStatus( String message, String id )
-    {
-        return new Status( IStatus.WARNING, id, message );
-    }
+	public static IStatus createErrorStatus(Exception e) {
+		return createErrorStatus(PLUGIN_ID, e);
+	}
 
-    public static IStatus createWarningStatus( String message, String id, Exception e )
-    {
-        return new Status( IStatus.WARNING, id, message, e );
-    }
+	public static IStatus createErrorStatus(String msg) {
+		return createErrorStatus(PLUGIN_ID, msg);
+	}
 
-    /**
-     * Returns the shared instance
-     *
-     * @return the shared instance
-     */
-    public static ProjectCore getDefault()
-    {
-        return plugin;
-    }
+	public static IStatus createErrorStatus(String pluginId, String msg) {
+		return new Status(IStatus.ERROR, pluginId, msg);
+	}
 
-    private static LiferayDescriptorHelper[] getDescriptorHelpers( IProject project, Class<? extends IDescriptorOperation> type )
-    {
-        List<LiferayDescriptorHelper> retval = new ArrayList<LiferayDescriptorHelper>();
+	public static IStatus createErrorStatus(String pluginId, String msg, Throwable e) {
+		return new Status(IStatus.ERROR, pluginId, msg, e);
+	}
 
-        project = CoreUtil.getLiferayProject( project );
+	public static IStatus createErrorStatus(String pluginId, Throwable t) {
+		return new Status(IStatus.ERROR, pluginId, t.getMessage(), t);
+	}
 
-        if( project == null || ! project.exists() )
-        {
-            return null;
-        }
+	public static IStatus createWarningStatus(String message) {
+		return new Status(IStatus.WARNING, PLUGIN_ID, message);
+	}
 
-        final LiferayDescriptorHelper[] allHelpers = LiferayDescriptorHelperReader.getInstance().getAllHelpers();
+	public static IStatus createWarningStatus(String message, String id) {
+		return new Status(IStatus.WARNING, id, message);
+	}
 
-        for( LiferayDescriptorHelper helper : allHelpers )
-        {
-            helper.setProject( project );
+	public static IStatus createWarningStatus(String message, String id, Exception e) {
+		return new Status(IStatus.WARNING, id, message, e);
+	}
 
-            final IFile descriptorFile = helper.getDescriptorFile();
+	public static IComponentTemplate getComponentTemplate(String templateName) {
+		for (IComponentTemplate template : getComponentTemplates()) {
+			if (templateName.equals(template.getShortName())) {
+				return template;
+			}
+		}
 
-            if( descriptorFile != null && descriptorFile.exists() )
-            {
-                if( helper.getDescriptorOperation( type ) != null )
-                {
-                    retval.add( helper );
-                }
-            }
-        }
+		return null;
+	}
 
-        return retval.toArray( new LiferayDescriptorHelper[0] );
-    }
+	public static IComponentTemplate[] getComponentTemplates() {
+		if (_componentTemplateReader == null) {
+			_componentTemplateReader = new LiferayComponentTemplateReader();
+		}
 
-    public static IPortletFramework getPortletFramework( String name )
-    {
-        for( IPortletFramework framework : getPortletFrameworks() )
-        {
-            if( framework.getShortName().equals( name ) )
-            {
-                return framework;
-            }
-        }
+		return _componentTemplateReader.getComponentTemplates();
+	}
 
-        return null;
-    }
+	public static ProjectCore getDefault() {
+		return _plugin;
+	}
 
-    public static synchronized IPortletFramework[] getPortletFrameworks()
-    {
-        if( portletFrameworks == null )
-        {
-            IConfigurationElement[] elements =
-                Platform.getExtensionRegistry().getConfigurationElementsFor( IPortletFramework.EXTENSION_ID );
+	public static IPortletFramework getPortletFramework(String name) {
+		for (IPortletFramework framework : getPortletFrameworks()) {
+			if (name.equals(framework.getShortName())) {
+				return framework;
+			}
+		}
 
-            if( !CoreUtil.isNullOrEmpty( elements ) )
-            {
-                List<IPortletFramework> frameworks = new ArrayList<IPortletFramework>();
+		return null;
+	}
 
-                for( IConfigurationElement element : elements )
-                {
-                    String id = element.getAttribute( IPortletFramework.ID );
-                    String shortName = element.getAttribute( IPortletFramework.SHORT_NAME );
-                    String displayName = element.getAttribute( IPortletFramework.DISPLAY_NAME );
-                    String description = element.getAttribute( IPortletFramework.DESCRIPTION );
-                    String requiredSDKVersion =
-                        element.getAttribute( IPortletFramework.REQUIRED_SDK_VERSION );
+	public static synchronized IPortletFramework[] getPortletFrameworks() {
+		if (_portletFrameworks != null) {
+			return _portletFrameworks;
+		}
 
-                    boolean isDefault =
-                        Boolean.parseBoolean( element.getAttribute( IPortletFramework.DEFAULT ) );
+		IExtensionRegistry extensionRegistry = Platform.getExtensionRegistry();
 
-                    boolean isAdvanced =
-                        Boolean.parseBoolean( element.getAttribute( IPortletFramework.ADVANCED ) );
+		IConfigurationElement[] elements = extensionRegistry.getConfigurationElementsFor(
+			IPortletFramework.EXTENSION_ID);
 
-                    boolean isRequiresAdvanced =
-                        Boolean.parseBoolean( element.getAttribute( IPortletFramework.REQUIRES_ADVANCED ) );
+		if (ListUtil.isEmpty(elements)) {
+			return _portletFrameworks;
+		}
 
-                    URL helpUrl = null;
+		List<IPortletFramework> frameworks = new ArrayList<>();
 
-                    try
-                    {
-                        helpUrl = new URL( element.getAttribute( IPortletFramework.HELP_URL ) );
-                    }
-                    catch( Exception e1 )
-                    {
-                    }
+		for (IConfigurationElement element : elements) {
+			String id = element.getAttribute(IPortletFramework.ID);
+			String shortName = element.getAttribute(IPortletFramework.SHORT_NAME);
+			String displayName = element.getAttribute(IPortletFramework.DISPLAY_NAME);
+			String description = element.getAttribute(IPortletFramework.DESCRIPTION);
+			String requiredSDKVersion = element.getAttribute(IPortletFramework.REQUIRED_SDK_VERSION);
 
-                    try
-                    {
-                        AbstractPortletFramework framework =
-                                (AbstractPortletFramework) element.createExecutableExtension( "class" ); //$NON-NLS-1$
-                        framework.setId( id );
-                        framework.setShortName( shortName );
-                        framework.setDisplayName( displayName );
-                        framework.setDescription( description );
-                        framework.setRequiredSDKVersion( requiredSDKVersion );
-                        framework.setHelpUrl( helpUrl );
-                        framework.setDefault( isDefault );
-                        framework.setAdvanced( isAdvanced );
-                        framework.setRequiresAdvanced( isRequiresAdvanced );
-                        framework.setBundleId( element.getContributor().getName() );
+			boolean isDefault = Boolean.parseBoolean(element.getAttribute(IPortletFramework.DEFAULT));
 
-                        frameworks.add( framework );
-                    }
-                    catch( Exception e )
-                    {
-                        logError( "Could not create portlet framework.", e ); //$NON-NLS-1$
-                    }
-                }
+			boolean advanced = Boolean.parseBoolean(element.getAttribute(IPortletFramework.ADVANCED));
 
-                portletFrameworks = frameworks.toArray( new IPortletFramework[0] );
+			boolean requiresAdvanced = Boolean.parseBoolean(element.getAttribute(IPortletFramework.REQUIRES_ADVANCED));
 
-                // sort the array so that the default template is first
-                Arrays.sort(
-                    portletFrameworks, 0, portletFrameworks.length, new Comparator<IPortletFramework>()
-                    {
+			URL helpUrl = null;
 
-                        public int compare( IPortletFramework o1, IPortletFramework o2 )
-                        {
-                            if( o1.isDefault() && ( !o2.isDefault() ) )
-                            {
-                                return -1;
-                            }
-                            else if( ( !o1.isDefault() ) && o2.isDefault() )
-                            {
-                                return 1;
-                            }
+			try {
+				helpUrl = new URL(element.getAttribute(IPortletFramework.HELP_URL));
+			}
+			catch (Exception e1) {
+			}
 
-                            return o1.getShortName().compareTo( o2.getShortName() );
-                        }
+			try {
+				AbstractPortletFramework framework = (AbstractPortletFramework)element.createExecutableExtension(
+					"class");
 
-                    } );
-            }
-        }
+				framework.setId(id);
+				framework.setShortName(shortName);
+				framework.setDisplayName(displayName);
+				framework.setDescription(description);
+				framework.setRequiredSDKVersion(requiredSDKVersion);
+				framework.setHelpUrl(helpUrl);
+				framework.setDefault(isDefault);
+				framework.setAdvanced(advanced);
+				framework.setRequiresAdvanced(requiresAdvanced);
 
-        return portletFrameworks;
-    }
+				IContributor contributor = element.getContributor();
 
-    public static void logError( IStatus status )
-    {
-        getDefault().getLog().log( status );
-    }
+				framework.setBundleId(contributor.getName());
 
-    public static void logError( String msg )
-    {
-        logError( createErrorStatus( msg ) );
-    }
+				frameworks.add(framework);
+			}
+			catch (Exception e) {
+				logError("Could not create portlet framework.", e);
+			}
+		}
 
-    public static void logError( String msg, Exception e )
-    {
-        getDefault().getLog().log( createErrorStatus( PLUGIN_ID, msg, e ) );
-    }
+		_portletFrameworks = frameworks.toArray(new IPortletFramework[0]);
 
-    public static void logError( String msg, Throwable t )
-    {
-        getDefault().getLog().log( createErrorStatus( PLUGIN_ID, msg, t ) );
-    }
+		// sort the array so that the default template is first
 
-    public static void logError( Throwable t )
-    {
-        getDefault().getLog().log( new Status( IStatus.ERROR, PLUGIN_ID, t.getMessage(), t ) );
-    }
+		Arrays.sort(
+			_portletFrameworks, 0, _portletFrameworks.length,
+			new Comparator<IPortletFramework>() {
 
-    public static IStatus operate( IProject project, Class<? extends IDescriptorOperation> type, Object... params )
-    {
-        IStatus status = Status.OK_STATUS;
+				@Override
+				public int compare(IPortletFramework o1, IPortletFramework o2) {
+					if (o1.isDefault() && !o2.isDefault()) {
+						return -1;
+					}
+					else if (!o1.isDefault() && o2.isDefault()) {
+						return 1;
+					}
 
-        LiferayDescriptorHelper[] helpers = getDescriptorHelpers( project, type );
+					String shortName1 = o1.getShortName();
 
-        for( LiferayDescriptorHelper helper : helpers )
-        {
-            status = helper.getDescriptorOperation( type ).execute( params );
+					return shortName1.compareTo(o2.getShortName());
+				}
 
-            if( ! status.isOK() )
-            {
-                return status;
-            }
-        }
+			});
 
-        return status;
-    }
+		return _portletFrameworks;
+	}
 
-    /**
-     * The constructor
-     */
-    public ProjectCore()
-    {
-        pluginPackageResourceListener = new PluginPackageResourceListener();
-    }
+	public static void logError(IStatus status) {
+		ILog log = getDefault().getLog();
 
-    /*
-     * (non-Javadoc)
-     * @see org.eclipse.ui.plugin.AbstractUIPlugin#start(org.osgi.framework.BundleContext )
-     */
-    public void start( BundleContext context ) throws Exception
-    {
-        super.start( context );
+		log.log(status);
+	}
 
-        plugin = this;
+	public static void logError(String msg) {
+		logError(createErrorStatus(msg));
+	}
 
-        ResourcesPlugin.getWorkspace().addResourceChangeListener(
-            pluginPackageResourceListener, IResourceChangeEvent.POST_CHANGE );
+	public static void logError(String msg, Exception e) {
+		ILog log = getDefault().getLog();
 
-    }
+		log.log(createErrorStatus(PLUGIN_ID, msg, e));
+	}
 
-    /*
-     * (non-Javadoc)
-     * @see org.eclipse.ui.plugin.AbstractUIPlugin#stop(org.osgi.framework.BundleContext )
-     */
-    public void stop( BundleContext context ) throws Exception
-    {
-        plugin = null;
+	public static void logError(String msg, Throwable t) {
+		ILog log = getDefault().getLog();
 
-        super.stop( context );
+		log.log(createErrorStatus(PLUGIN_ID, msg, t));
+	}
 
-        if( pluginPackageResourceListener != null )
-        {
-            ResourcesPlugin.getWorkspace().removeResourceChangeListener( pluginPackageResourceListener );
-        }
-    }
+	public static void logError(Throwable t) {
+		ILog log = getDefault().getLog();
+
+		log.log(new Status(IStatus.ERROR, PLUGIN_ID, t.getMessage(), t));
+	}
+
+	public static void logWarning(String msg) {
+		logError(createWarningStatus(msg));
+	}
+
+	public static IStatus operate(IProject project, Class<? extends IDescriptorOperation> type, Object... params) {
+		IStatus status = Status.OK_STATUS;
+
+		LiferayDescriptorHelper[] helpers = _getDescriptorHelpers(project, type);
+
+		for (LiferayDescriptorHelper helper : helpers) {
+			IDescriptorOperation descriptorOperation = helper.getDescriptorOperation(type);
+
+			status = descriptorOperation.execute(params);
+
+			if (!status.isOK()) {
+				return status;
+			}
+		}
+
+		return status;
+	}
+
+	public ProjectCore() {
+		_pluginPackageResourceListener = new PluginPackageResourceListener();
+		_sdkBuildPropertiesResourceListener = new SDKBuildPropertiesResourceListener();
+		_sdkProjectDeleteListener = new SDKProjectDeleteListener();
+	}
+
+	@Override
+	public void start(BundleContext context) throws Exception {
+		super.start(context);
+
+		_plugin = this;
+
+		IWorkspace workspace = CoreUtil.getWorkspace();
+
+		workspace.addResourceChangeListener(_pluginPackageResourceListener, IResourceChangeEvent.POST_CHANGE);
+
+		workspace.addResourceChangeListener(_sdkBuildPropertiesResourceListener, IResourceChangeEvent.POST_CHANGE);
+
+		workspace.addResourceChangeListener(_sdkProjectDeleteListener, IResourceChangeEvent.PRE_DELETE);
+	}
+
+	@Override
+	public void stop(BundleContext context) throws Exception {
+		_plugin = null;
+
+		super.stop(context);
+
+		IWorkspace workspace = CoreUtil.getWorkspace();
+
+		if (_pluginPackageResourceListener != null) {
+			workspace.removeResourceChangeListener(_pluginPackageResourceListener);
+		}
+
+		if (_sdkBuildPropertiesResourceListener != null) {
+			workspace.removeResourceChangeListener(_sdkBuildPropertiesResourceListener);
+		}
+
+		if (_sdkProjectDeleteListener != null) {
+			workspace.removeResourceChangeListener(_sdkProjectDeleteListener);
+		}
+	}
+
+	private static LiferayDescriptorHelper[] _getDescriptorHelpers(
+		IProject project, Class<? extends IDescriptorOperation> type) {
+
+		project = CoreUtil.getLiferayProject(project);
+
+		if (FileUtil.notExists(project)) {
+			return null;
+		}
+
+		List<LiferayDescriptorHelper> retval = new ArrayList<>();
+
+		LiferayDescriptorHelperReader helperReader = LiferayDescriptorHelperReader.getInstance();
+
+		LiferayDescriptorHelper[] allHelpers = helperReader.getAllHelpers();
+
+		for (LiferayDescriptorHelper helper : allHelpers) {
+			helper.setProject(project);
+
+			if (FileUtil.exists(helper.getDescriptorFile()) && (helper.getDescriptorOperation(type) != null)) {
+				retval.add(helper);
+			}
+		}
+
+		return retval.toArray(new LiferayDescriptorHelper[0]);
+	}
+
+	private static LiferayComponentTemplateReader _componentTemplateReader;
+	private static ProjectCore _plugin;
+	private static PluginPackageResourceListener _pluginPackageResourceListener;
+	private static IPortletFramework[] _portletFrameworks;
+	private static SDKBuildPropertiesResourceListener _sdkBuildPropertiesResourceListener;
+	private static SDKProjectDeleteListener _sdkProjectDeleteListener;
 
 }

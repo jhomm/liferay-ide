@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,11 +10,17 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
+
 package com.liferay.ide.project.core;
 
+import com.liferay.ide.core.Artifact;
+import com.liferay.ide.core.IProjectBuilder;
 import com.liferay.ide.core.util.CoreUtil;
+import com.liferay.ide.core.util.FileUtil;
+
+import java.util.Collections;
+import java.util.List;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
@@ -25,34 +31,40 @@ import org.eclipse.core.runtime.Path;
  * @author Gregory Amerson
  * @author Simon Jiang
  */
-public abstract class AbstractProjectBuilder implements IProjectBuilder
-{
-    private IProject project;
+public abstract class AbstractProjectBuilder implements IProjectBuilder {
 
-    public AbstractProjectBuilder( IProject project )
-    {
-        this.project = project;
-    }
+	public AbstractProjectBuilder() {
+	}
 
-    public IProject getProject()
-    {
-        return this.project;
-    }
+	public AbstractProjectBuilder(IProject project) {
+		_project = project;
+	}
 
-    protected IFile getDocrootFile( String path )
-    {
-        final IFolder docroot = CoreUtil.getDefaultDocrootFolder( project );
+	@Override
+	public List<Artifact> getDependencies(String configuration) {
+		return Collections.emptyList();
+	}
 
-        if( docroot != null && docroot.exists() )
-        {
-            final IFile file = docroot.getFile( new Path( path ) );
+	public IProject getProject() {
+		return _project;
+	}
 
-            if( file.exists() )
-            {
-                return file;
-            }
-        }
+	protected IFile getDocrootFile(String path) {
+		IFolder docroot = CoreUtil.getDefaultDocrootFolder(_project);
 
-        return null;
-    }
+		if (FileUtil.notExists(docroot)) {
+			return null;
+		}
+
+		IFile file = docroot.getFile(new Path(path));
+
+		if (FileUtil.exists(file)) {
+			return file;
+		}
+
+		return null;
+	}
+
+	private IProject _project;
+
 }

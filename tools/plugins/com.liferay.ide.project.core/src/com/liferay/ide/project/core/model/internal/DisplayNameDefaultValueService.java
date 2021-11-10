@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,10 +10,12 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
+
 package com.liferay.ide.project.core.model.internal;
 
+import com.liferay.ide.core.util.SapphireContentAccessor;
+import com.liferay.ide.core.util.SapphireUtil;
 import com.liferay.ide.project.core.model.NewLiferayPluginProjectOp;
 import com.liferay.ide.project.core.util.ProjectUtil;
 
@@ -21,47 +23,51 @@ import org.eclipse.sapphire.DefaultValueService;
 import org.eclipse.sapphire.FilteredListener;
 import org.eclipse.sapphire.PropertyContentEvent;
 
-
 /**
  * @author Gregory Amerson
  */
-public class DisplayNameDefaultValueService extends DefaultValueService
-{
-    private FilteredListener<PropertyContentEvent> listener;
+public class DisplayNameDefaultValueService extends DefaultValueService implements SapphireContentAccessor {
 
-    @Override
-    protected void initDefaultValueService()
-    {
-        super.initDefaultValueService();
+	@Override
+	public void dispose() {
+		NewLiferayPluginProjectOp op = _op();
 
-        this.listener = new FilteredListener<PropertyContentEvent>()
-        {
-            @Override
-            protected void handleTypedEvent( PropertyContentEvent event )
-            {
-                refresh();
-            }
-        };
+		if ((op != null) && !op.disposed()) {
+			SapphireUtil.detachListener(op.property(NewLiferayPluginProjectOp.PROP_PROJECT_NAME), _listener);
+		}
 
-        op().property( NewLiferayPluginProjectOp.PROP_PROJECT_NAME ).attach( this.listener );
-    }
+		super.dispose();
+	}
 
-    @Override
-    protected String compute()
-    {
-        return ProjectUtil.convertToDisplayName( op().getProjectName().content() );
-    }
+	@Override
+	protected String compute() {
+		NewLiferayPluginProjectOp op = _op();
 
-    private NewLiferayPluginProjectOp op()
-    {
-        return context( NewLiferayPluginProjectOp.class );
-    }
+		return ProjectUtil.convertToDisplayName(get(op.getProjectName()));
+	}
 
-    @Override
-    public void dispose()
-    {
-        op().property( NewLiferayPluginProjectOp.PROP_PROJECT_NAME ).detach( this.listener );
+	@Override
+	protected void initDefaultValueService() {
+		super.initDefaultValueService();
 
-        super.dispose();
-    }
+		_listener = new FilteredListener<PropertyContentEvent>() {
+
+			@Override
+			protected void handleTypedEvent(PropertyContentEvent event) {
+				refresh();
+			}
+
+		};
+
+		NewLiferayPluginProjectOp op = _op();
+
+		SapphireUtil.attachListener(op.property(NewLiferayPluginProjectOp.PROP_PROJECT_NAME), _listener);
+	}
+
+	private NewLiferayPluginProjectOp _op() {
+		return context(NewLiferayPluginProjectOp.class);
+	}
+
+	private FilteredListener<PropertyContentEvent> _listener;
+
 }

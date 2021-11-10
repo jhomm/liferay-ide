@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,42 +10,49 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.server.core.portal;
 
+import com.liferay.ide.core.util.StringPool;
 import com.liferay.ide.server.core.ILiferayServer;
 
 /**
  * @author Gregory Amerson
  * @author Terry Jia
  */
-public interface PortalServer extends ILiferayServer
-{
+public interface PortalServer extends ILiferayServer {
 
-    String START = "start";
+	public int getAutoPublishTime();
 
-    String STOP = "stop";
+	public boolean getCustomLaunchSettings();
 
-    String PROPERTY_EXTERNAL_PROPERTIES = "externalProperties";
+	public boolean getDeveloperMode();
 
-    String PROPERTY_MEMORY_ARGS = "memoryArgs";
+	public String getExternalProperties();
 
-    String PROPERTY_SERVER_MODE = "serverMode";
+	public String getGogoShellPort();
 
-    String PROPERTY_LAUNCH_SETTINGS = "launchSettings";
+	public String[] getMemoryArgs();
 
-    String PROPERTY_DEVELOPER_MODE = "developerMode";
+	public String DEFAULT_HTTP_PORT = defaultPrefs.get("default.http.port", StringPool.EMPTY);
 
-    int getAutoPublishTime();
+	public String ID = "com.liferay.ide.server.portal";
 
-    boolean getDeveloperMode();
+	public String PROPERTY_CUSTOM_LAUNCH_SETTINGS = "customLaunchSettings";
 
-    String getExternalProperties();
+	public String PROPERTY_DEVELOPER_MODE = "developerMode";
 
-    boolean getLaunchSettings();
+	public String PROPERTY_EXTERNAL_PROPERTIES = "externalProperties";
 
-    String[] getMemoryArgs();
+	public String PROPERTY_GOGOSHELL_PORT = "gogoShellPort";
+
+	public String PROPERTY_MEMORY_ARGS = "memoryArgs";
+
+	public String PROPERTY_SERVER_MODE = "serverMode";
+
+	public String START = "start";
+
+	public String STOP = "stop";
 
 }

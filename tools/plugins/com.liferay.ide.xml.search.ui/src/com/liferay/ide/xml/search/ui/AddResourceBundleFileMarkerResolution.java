@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,17 +10,20 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.xml.search.ui;
 
 import com.liferay.ide.core.ILiferayProject;
 import com.liferay.ide.core.LiferayCore;
 import com.liferay.ide.core.util.CoreUtil;
+import com.liferay.ide.core.util.MarkerUtil;
+import com.liferay.ide.core.util.StringUtil;
 import com.liferay.ide.portlet.core.dd.PortletDescriptorHelper;
 
 import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+
 import java.net.URL;
 
 import org.eclipse.core.resources.IFile;
@@ -32,158 +35,157 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.graphics.Image;
 
+import org.osgi.framework.Bundle;
+
 /**
  * @author Terry Jia
  */
-public class AddResourceBundleFileMarkerResolution extends AbstractResourceBundleMarkerResolution
-{
+public class AddResourceBundleFileMarkerResolution extends AbstractResourceBundleMarkerResolution {
 
-    private String resourceBundlePackage = "content";
+	public AddResourceBundleFileMarkerResolution(IMarker marker, String portletName) {
+		super(marker);
 
-    private String resourceBundleName = "Language";
+		_portletName = portletName;
+	}
 
-    private String portletName = "";
+	public Image getImage() {
+		LiferayXMLSearchUI plugin = LiferayXMLSearchUI.getDefault();
 
-    public AddResourceBundleFileMarkerResolution( IMarker marker, String portletName )
-    {
-        super( marker );
+		Bundle bundle = plugin.getBundle();
 
-        this.portletName = portletName;
-    }
+		URL url = bundle.getEntry("/icons/resource-bundle-new.png");
 
-    private void checkResourceBundleElement( IProject project )
-    {
-        PortletDescriptorHelper portletDescriptorHelper = new PortletDescriptorHelper( project );
+		ImageDescriptor imageDescriptor = ImageDescriptor.createFromURL(url);
 
-        String[] resouceBundles = portletDescriptorHelper.getAllResourceBundles();
+		return imageDescriptor.createImage();
+	}
 
-        if( resouceBundles.length == 0 )
-        {
-            portletDescriptorHelper.addResourceBundle( resourceBundlePackage + "." + resourceBundleName, portletName );
-        }
-        else
-        {
-            for( String resouceBundle : resouceBundles )
-            {
-                if( !CoreUtil.isNullOrEmpty( resouceBundle ) )
-                {
-                    String[] paths = resouceBundle.split( "\\." );
+	@Override
+	public String getLabel() {
+		return "Create a new default resource bundle add it to " + _portletName + " portlet";
+	}
 
-                    if( paths.length > 2 )
-                    {
-                        StringBuffer sb = new StringBuffer();
+	@Override
+	protected void resolve(IMarker marker) {
+		IProject project = MarkerUtil.getProject(marker);
 
-                        for( int i = 0; i < ( paths.length - 1 ); i++ )
-                        {
-                            sb.append( paths[i] );
-                            sb.append( "/" );
-                        }
+		if ((getResourceKey(marker) == null) || (project == null)) {
+			return;
+		}
 
-                        resourceBundlePackage = sb.toString();
-                        resourceBundleName = paths[paths.length - 1];
-                    }
-                    else if( paths.length == 2 )
-                    {
-                        resourceBundlePackage = paths[0];
-                        resourceBundleName = paths[1];
-                    }
-                    else if( paths.length == 1 )
-                    {
-                        resourceBundlePackage = "";
-                        resourceBundleName = paths[0];
-                    }
+		try {
+			_checkResourceBundleElement(project);
 
-                    break;
-                }
-            }
-        }
-    }
+			ILiferayProject liferayProject = LiferayCore.create(ILiferayProject.class, project);
 
-    @Override
-    public String getLabel()
-    {
-        return "Create a new default resource bundle add it to " + portletName + " portlet";
-    }
+			if (liferayProject == null) {
+				return;
+			}
 
-    public Image getImage()
-    {
-        final URL url = LiferayXMLSearchUI.getDefault().getBundle().getEntry( "/icons/resource-bundle-new.png" );
+			IFolder resourcesFolder = liferayProject.getSourceFolder("resources");
 
-        return ImageDescriptor.createFromURL( url ).createImage();
-    }
+			IFolder folder = resourcesFolder.getFolder(_resourceBundlePackage);
 
-    @Override
-    protected void resolve( IMarker marker )
-    {
-        final IProject project = marker.getResource().getProject();
+			if (!folder.exists()) {
+				CoreUtil.makeFolders(folder);
+			}
 
-        if( getResourceKey(marker) == null || project == null )
-        {
-            return;
-        }
+			String resourceKey = getResourceKey(marker);
 
-        try
-        {
-            checkResourceBundleElement( project );
+			if (CoreUtil.isNullOrEmpty(resourceKey)) {
+				return;
+			}
 
-            final ILiferayProject liferayProject = LiferayCore.create( project );
+			IFile resourceBundle = folder.getFile(_resourceBundleName + ".properties");
 
-            if( liferayProject == null )
-            {
-                return;
-            }
+			String resourceValue = getDefaultResourceValue(resourceKey);
 
-            final IFolder folder = liferayProject.getSourceFolder( "resources" ).getFolder( resourceBundlePackage );
+			String resourcePropertyLine = resourceKey + "=" + resourceValue + "\n";
 
-            if( !folder.exists() )
-            {
-                CoreUtil.makeFolders( folder );
-            }
+			int contentOffset = 0;
 
-            final IFile resourceBundle = folder.getFile( resourceBundleName + ".properties" );
+			byte[] lineBytes = resourcePropertyLine.getBytes();
 
-            String resourceKey = getResourceKey( marker );
+			int resourcePropertyLineOffset = lineBytes.length;
 
-            if( CoreUtil.isNullOrEmpty( resourceKey ) )
-            {
-                return;
-            }
+			if (!resourceBundle.exists()) {
+				IFolder parent = (IFolder)resourceBundle.getParent();
 
-            String resourceValue = getDefaultResourceValue( resourceKey );
-            String resourcePropertyLine = resourceKey + "=" + resourceValue + "\n";
+				CoreUtil.prepareFolder(parent);
 
-            if( !resourceBundle.exists() )
-            {
-                IFolder parent = (IFolder) resourceBundle.getParent();
+				try (InputStream inputStream = new ByteArrayInputStream(resourcePropertyLine.getBytes("UTF-8"))) {
+					resourceBundle.create(inputStream, IResource.FORCE, null);
+				}
 
-                CoreUtil.prepareFolder( parent );
+				contentOffset = resourcePropertyLineOffset;
+			}
+			else {
+				String contents = CoreUtil.readStreamToString(resourceBundle.getContents());
 
-                resourceBundle.create(
-                    new ByteArrayInputStream( resourcePropertyLine.getBytes( "UTF-8" ) ), IResource.FORCE, null );
-            }
-            else
-            {
-                String contents = CoreUtil.readStreamToString( resourceBundle.getContents() );
+				StringBuffer sb = new StringBuffer();
 
-                StringBuffer sb = new StringBuffer();
+				sb.append(contents);
+				sb.append(resourcePropertyLine);
 
-                sb.append( contents );
-                sb.append( resourceKey );
-                sb.append( "=" );
-                sb.append( resourceValue );
-                sb.append( "\n" );
+				String string = StringUtil.trim(sb);
 
-                resourceBundle.setContents(
-                    new ByteArrayInputStream( sb.toString().getBytes( "UTF-8" ) ), IResource.FORCE,
-                    new NullProgressMonitor() );
-            }
+				byte[] bytes = string.getBytes("UTF-8");
 
-            openEditor( resourceBundle );
-        }
-        catch( Exception e )
-        {
-            LiferayXMLSearchUI.logError( e );
-        }
-    }
+				contentOffset = bytes.length;
+
+				try (InputStream inputStream = new ByteArrayInputStream(bytes)) {
+					resourceBundle.setContents(inputStream, IResource.FORCE, new NullProgressMonitor());
+				}
+			}
+
+			openEditor(resourceBundle, contentOffset - resourcePropertyLineOffset, contentOffset - 1);
+		}
+		catch (Exception e) {
+			LiferayXMLSearchUI.logError(e);
+		}
+	}
+
+	private void _checkResourceBundleElement(IProject project) {
+		PortletDescriptorHelper portletDescriptorHelper = new PortletDescriptorHelper(project);
+
+		String[] resouceBundles = portletDescriptorHelper.getAllResourceBundles();
+
+		if (resouceBundles.length == 0) {
+			portletDescriptorHelper.addResourceBundle(_resourceBundlePackage + "." + _resourceBundleName, _portletName);
+		}
+		else {
+			for (String resouceBundle : resouceBundles) {
+				if (!CoreUtil.isNullOrEmpty(resouceBundle)) {
+					String[] paths = resouceBundle.split("\\.");
+
+					if (paths.length > 2) {
+						StringBuffer sb = new StringBuffer();
+
+						for (int i = 0; i < (paths.length - 1); i++) {
+							sb.append(paths[i]);
+							sb.append("/");
+						}
+
+						_resourceBundlePackage = sb.toString();
+						_resourceBundleName = paths[paths.length - 1];
+					}
+					else if (paths.length == 2) {
+						_resourceBundlePackage = paths[0];
+						_resourceBundleName = paths[1];
+					}
+					else if (paths.length == 1) {
+						_resourceBundlePackage = "";
+						_resourceBundleName = paths[0];
+					}
+
+					break;
+				}
+			}
+		}
+	}
+
+	private String _portletName = "";
+	private String _resourceBundleName = "Language";
+	private String _resourceBundlePackage = "content";
 
 }

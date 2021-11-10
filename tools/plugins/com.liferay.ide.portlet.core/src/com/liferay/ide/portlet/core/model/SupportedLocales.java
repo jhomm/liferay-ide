@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,10 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- * Contributors:
- *               Kamesh Sampath - initial implementation
- *******************************************************************************/
+ */
 
 package com.liferay.ide.portlet.core.model;
 
@@ -36,30 +33,20 @@ import org.eclipse.sapphire.modeling.xml.annotations.XmlBinding;
 /**
  * @author Kamesh Sampath
  */
-@Image( path = "images/elcl16/locale_16x16.gif" )
-public interface SupportedLocales extends Element
-{
+@Image(path = "images/elcl16/locale_16x16.gif")
+public interface SupportedLocales extends Element {
 
-    ElementType TYPE = new ElementType( SupportedLocales.class );
+	public ElementType TYPE = new ElementType(SupportedLocales.class);
 
-    // *** SupportedLocale ***
+	public Value<String> getSupportedLocale();
 
-    @Label( standard = "Locale" )
-    @Unique
-    @XmlBinding( path = "" )
-    @Services
-    (
-        value =
-        {
-            @Service( impl = LocalePossibleValueService.class ),
-            @Service( impl = LocaleBundleValidationService.class )
-        }
-    )
-    @CustomXmlValueBinding( impl = LocaleTextNodeValueBinding.class )
-    ValueProperty PROP_SUPPORTED_LOCALE = new ValueProperty( TYPE, "SupportedLocale" ); //$NON-NLS-1$
+	public void setSupportedLocale(String value);
 
-    Value<String> getSupportedLocale();
-
-    void setSupportedLocale( String value );
+	@CustomXmlValueBinding(impl = LocaleTextNodeValueBinding.class)
+	@Label(standard = "Locale")
+	@Services({@Service(impl = LocalePossibleValueService.class), @Service(impl = LocaleBundleValidationService.class)})
+	@Unique
+	@XmlBinding(path = "")
+	public ValueProperty PROP_SUPPORTED_LOCALE = new ValueProperty(TYPE, "SupportedLocale");
 
 }

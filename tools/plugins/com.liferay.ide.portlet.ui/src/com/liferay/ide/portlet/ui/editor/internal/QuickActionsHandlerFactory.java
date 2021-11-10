@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,11 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- * Contributors:
- *      Kamesh Sampath - initial implementation
- *      Gregory Amerson - initial implementation review and ongoing maintenance
- *******************************************************************************/
+ */
 
 package com.liferay.ide.portlet.ui.editor.internal;
 
@@ -30,170 +26,187 @@ import org.eclipse.sapphire.ElementList;
 import org.eclipse.sapphire.ElementType;
 import org.eclipse.sapphire.PropertyDef;
 import org.eclipse.sapphire.modeling.CapitalizationType;
+import org.eclipse.sapphire.ui.ISapphirePart;
 import org.eclipse.sapphire.ui.Presentation;
 import org.eclipse.sapphire.ui.SapphireAction;
 import org.eclipse.sapphire.ui.SapphireActionHandler;
 import org.eclipse.sapphire.ui.SapphireActionHandlerFactory;
 import org.eclipse.sapphire.ui.SapphireEditor;
+import org.eclipse.sapphire.ui.SapphirePart;
 import org.eclipse.sapphire.ui.def.ActionHandlerDef;
 import org.eclipse.sapphire.ui.def.ActionHandlerFactoryDef;
 import org.eclipse.sapphire.ui.forms.MasterDetailsContentNodePart;
+import org.eclipse.sapphire.ui.forms.MasterDetailsContentOutline;
 import org.eclipse.sapphire.ui.forms.MasterDetailsEditorPagePart;
 
 /**
  * @author Kamesh Sampath
  * @author Gregory Amerson
  */
-public class QuickActionsHandlerFactory extends SapphireActionHandlerFactory
-{
+public class QuickActionsHandlerFactory extends SapphireActionHandlerFactory {
 
-    private static final class Handler extends SapphireActionHandler
-    {
-        private final String strProperty;
+	/**
+	 * (non-Javadoc)
+	 *
+	 * @see SapphireActionHandlerFactory#create()
+	 */
+	@Override
+	public List<SapphireActionHandler> create() {
+		List<SapphireActionHandler> listOfHandlers = new ArrayList<>();
 
-        public Handler( String Property )
-        {
-            this.strProperty = Property;
-        }
+		for (String property : _modelProperties) {
+			if ((property != null) && "Portlets".equalsIgnoreCase(property) && _isPartInLiferayProject()) {
+				SapphireActionHandler handler = new CreateLiferayPortletActionHandler();
 
-        @Override
-        public void init( SapphireAction action, ActionHandlerDef def )
-        {
-            super.init( action, def );
-            final Element rootModel = action.getPart().getModelElement();
-            PropertyDef _property = rootModel.type().property( this.strProperty );
+				handler.init(getAction(), null);
+				handler.addImage(Portlet.TYPE.image());
+				handler.setLabel(_getActionLabel(Msgs.portlets));
 
-            String labelText = _property.getLabel( false, CapitalizationType.FIRST_WORD_ONLY, true );
-            String actionLabel = getActionLabel( labelText );
-            setLabel( actionLabel );
+				listOfHandlers.add(handler);
+			}
+			else {
+				listOfHandlers.add(new Handler(property));
+			}
+		}
 
-            ElementType propModelElementType = _property.getType();
-            addImage( propModelElementType.image() );
-        }
+		// System.out.println( "QuickActionsHandlerFactory.created" +
+		// listOfHandlers.size() + " handlers " );
 
-        /*
-         * (non-Javadoc)
-         * @see org.eclipse.sapphire.ui.SapphireActionHandler#run(org.eclipse.sapphire.ui.SapphireRenderingContext)
-         */
-        @Override
-        protected Object run( Presentation context )
-        {
-            final Element rootModel = context.part().getModelElement();
-            final PropertyDef _property = rootModel.type().property( this.strProperty );
-            final Object obj = rootModel.property( _property );
-            Element mElement = null;
+		return listOfHandlers;
+	}
 
-            if( obj instanceof ElementList<?> )
-            {
-                ElementList<?> list = (ElementList<?>) obj;
-                mElement = list.insert();
-            }
-            else
-            {
-                throw new UnsupportedOperationException( Msgs.bind( Msgs.unsuportedOperation, this.strProperty ) );
-            }
+	@Override
+	public void init(SapphireAction action, ActionHandlerFactoryDef def) {
+		super.init(action, def);
 
-            // Select the node
-            final MasterDetailsEditorPagePart page = getPart().nearest( MasterDetailsEditorPagePart.class );
-            final MasterDetailsContentNodePart root = page.outline().getRoot();
-            final MasterDetailsContentNodePart node = root.findNode( mElement );
+		String strModelElementNames = def.getParam("MODEL_PROPERTIES");
 
-            if( node != null )
-            {
-                node.select();
-            }
+		if (strModelElementNames != null) {
+			_modelProperties = strModelElementNames.split(",");
+		}
+		else {
+			throw new IllegalStateException(NLS.bind(Msgs.message, "MODEL_PROPERTIES"));
+		}
+	}
 
-            return mElement;
-        }
-    }
+	/**
+	 * This is make a compact and singular label text
+	 */
+	private static String _getActionLabel(String labelText) {
+		if (labelText.endsWith("s")) {
+			labelText = labelText.substring(0, labelText.lastIndexOf("s"));
+		}
 
-    /**
-     * This is make a compact and singular label text
-     */
-    private static String getActionLabel( String labelText )
-    {
-        if( labelText.endsWith( "s" ) ) //$NON-NLS-1$
-        {
-            labelText = labelText.substring( 0, labelText.lastIndexOf( "s" ) ); //$NON-NLS-1$
-        }
+		if (labelText.equals(Msgs.portlet)) {
+			labelText += "...";
+		}
 
-        if( labelText.equals( Msgs.portlet ) )
-        {
-            labelText += "..."; //$NON-NLS-1$
-        }
+		return labelText;
+	}
 
-        return labelText;
-    }
+	private boolean _isPartInLiferayProject() {
+		SapphireEditor editor = getPart().nearest(SapphireEditor.class);
 
-    private String[] modelProperties;
+		if ((editor != null) && ProjectUtil.isLiferayFacetedProject(editor.getProject())) {
+			return true;
+		}
 
-    /*
-     * (non-Javadoc)
-     * @see org.eclipse.sapphire.ui.SapphireActionHandlerFactory#create()
-     */
-    @Override
-    public List<SapphireActionHandler> create()
-    {
-        List<SapphireActionHandler> listOfHandlers = new ArrayList<SapphireActionHandler>();
+		return false;
+	}
 
-        for( int i = 0; i < this.modelProperties.length; i++ )
-        {
-            String Property = this.modelProperties[i];
+	private String[] _modelProperties;
 
-            if( Property != null && "Portlets".equalsIgnoreCase( Property ) && isPartInLiferayProject() ) //$NON-NLS-1$
-            {
-                SapphireActionHandler handler = new CreateLiferayPortletActionHandler();
-                handler.init( this.getAction(), null );
-                handler.addImage( Portlet.TYPE.image() );
-                handler.setLabel( getActionLabel( Msgs.portlets ) );
+	private static final class Handler extends SapphireActionHandler {
 
-                listOfHandlers.add( handler );
-            }
-            else
-            {
-                listOfHandlers.add( new Handler( Property ) );
-            }
-        }
+		public Handler(String property) {
+			_strProperty = property;
+		}
 
-        // System.out.println( "QuickActionsHandlerFactory.created" + listOfHandlers.size() + " handlers " );
-        return listOfHandlers;
-    }
+		@Override
+		public void init(SapphireAction action, ActionHandlerDef def) {
+			super.init(action, def);
 
-    @Override
-    public void init( SapphireAction action, ActionHandlerFactoryDef def )
-    {
-        super.init( action, def );
+			ISapphirePart part = action.getPart();
 
-        String strModelElementNames = def.getParam( "MODEL_PROPERTIES" ); //$NON-NLS-1$
+			Element rootModel = part.getModelElement();
 
-        if( strModelElementNames != null )
-        {
-            this.modelProperties = strModelElementNames.split( "," ); //$NON-NLS-1$
-        }
-        else
-        {
-            throw new IllegalStateException( NLS.bind( Msgs.message, "MODEL_PROPERTIES" ) ); //$NON-NLS-1$
-        }
+			ElementType type = rootModel.type();
 
-    }
+			PropertyDef property = type.property(_strProperty);
 
-    private boolean isPartInLiferayProject()
-    {
-        SapphireEditor editor = this.getPart().nearest( SapphireEditor.class );
+			String labelText = property.getLabel(false, CapitalizationType.FIRST_WORD_ONLY, true);
 
-        return editor != null && ProjectUtil.isLiferayFacetedProject( editor.getProject() );
-    }
+			String actionLabel = _getActionLabel(labelText);
 
-    private static class Msgs extends NLS
-    {
-        public static String message;
-        public static String portlet;
-        public static String portlets;
-        public static String unsuportedOperation;
+			setLabel(actionLabel);
 
-        static
-        {
-            initializeMessages( QuickActionsHandlerFactory.class.getName(), Msgs.class );
-        }
-    }
+			ElementType propModelElementType = property.getType();
+
+			addImage(propModelElementType.image());
+		}
+
+		/**
+		 * (non-Javadoc)
+		 *
+		 * @see
+		 * SapphireActionHandler#run(org.eclipse.sapphire.ui.
+		 * SapphireRenderingContext)
+		 */
+		@Override
+		protected Object run(Presentation context) {
+			SapphirePart part = context.part();
+
+			Element rootModel = part.getModelElement();
+
+			ElementType type = rootModel.type();
+
+			PropertyDef property = type.property(_strProperty);
+
+			Object obj = rootModel.property(property);
+
+			Element mElement = null;
+
+			if (obj instanceof ElementList<?>) {
+				ElementList<?> list = (ElementList<?>)obj;
+
+				mElement = list.insert();
+			}
+			else {
+				throw new UnsupportedOperationException(Msgs.bind(Msgs.unsuportedOperation, _strProperty));
+			}
+
+			// Select the node
+
+			MasterDetailsEditorPagePart page = getPart().nearest(MasterDetailsEditorPagePart.class);
+
+			MasterDetailsContentOutline outline = page.outline();
+
+			MasterDetailsContentNodePart root = outline.getRoot();
+
+			MasterDetailsContentNodePart node = root.findNode(mElement);
+
+			if (node != null) {
+				node.select();
+			}
+
+			return mElement;
+		}
+
+		private String _strProperty;
+
+	}
+
+	private static class Msgs extends NLS {
+
+		public static String message;
+		public static String portlet;
+		public static String portlets;
+		public static String unsuportedOperation;
+
+		static {
+			initializeMessages(QuickActionsHandlerFactory.class.getName(), Msgs.class);
+		}
+
+	}
+
 }

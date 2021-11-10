@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,193 +10,197 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.server.util;
 
 import java.io.IOException;
 import java.io.Writer;
+
 import java.util.Iterator;
 import java.util.List;
 
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
-import org.apache.commons.configuration.PropertiesConfiguration.PropertiesWriter;
 import org.apache.commons.configuration.PropertiesConfigurationLayout;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.lang.StringUtils;
 
 /**
- * @author Greg Amerson
+ * @author Gregory Amerson
  */
-@SuppressWarnings( "rawtypes" )
-public class CustomPropertiesConfigLayout extends PropertiesConfigurationLayout
-{
+@SuppressWarnings("rawtypes")
+public class CustomPropertiesConfigLayout extends PropertiesConfigurationLayout {
 
-    private static final String ESCAPE = "\\"; //$NON-NLS-1$
+	public CustomPropertiesConfigLayout(PropertiesConfiguration config) {
+		super(config);
+	}
 
-    private static final char[] SEPARATORS = new char[] { '=', ':' };
+	public void save(Writer out) throws ConfigurationException {
+		try {
+			char delimiter;
 
-    /** The white space characters used as key/value separators. */
-    private static final char[] WHITE_SPACE = new char[] { ' ', '\t', '\f' };
+			if (getConfiguration().isDelimiterParsingDisabled()) {
+				delimiter = 0;
+			}
+			else {
+				delimiter = getConfiguration().getListDelimiter();
+			}
 
-    public CustomPropertiesConfigLayout( PropertiesConfiguration config )
-    {
-        super( config );
-    }
+			try (PropertiesConfiguration.PropertiesWriter writer = new CustomPropertiesWriter(out, delimiter)) {
+				if (getHeaderComment() != null) {
+					writer.writeln(getCanonicalHeaderComment(true));
+					writer.writeln(null);
+				}
 
-    public static class CustomPropertiesWriter extends PropertiesWriter
-    {
+				for (Iterator it = getKeys().iterator(); it.hasNext();) {
+					String key = (String)it.next();
 
-        private char delimiter;
+					if (getConfiguration().containsKey(key)) {
 
-        public CustomPropertiesWriter( Writer writer, char delimiter )
-        {
-            super( writer, delimiter );
+						// Output blank lines before property
 
-            this.delimiter = delimiter;
-        }
+						for (int i = 0; i < getBlancLinesBefore(key); i++) {
+							writer.writeln(null);
+						}
 
-        public void writeProperty( String key, Object value, boolean forceSingleLine ) throws IOException
-        {
-            String v;
+						// Output the comment
 
-            if( value instanceof List )
-            {
-                List values = (List) value;
-                if( forceSingleLine )
-                {
-                    v = makeSingleLineValue( values );
-                }
-                else
-                {
-                    writeProperty( key, values );
-                    return;
-                }
-            }
-            else
-            {
-                v = escapeValue( value );
-            }
+						if (getComment(key) != null) {
+							writer.writeln(getCanonicalComment(key, true));
+						}
 
-            write( escapeKey( key ) );
-            write( "=" ); //$NON-NLS-1$
-            write( v );
+						// Output the property and its value
 
-            writeln( null );
-        }
+						boolean singleLine = false;
 
-        private String escapeValue( Object value )
-        {
-            String escapedValue = StringEscapeUtils.escapeJava( String.valueOf( value ) );
-            if( delimiter != 0 )
-            {
-                escapedValue = StringUtils.replace( escapedValue, String.valueOf( delimiter ), ESCAPE + delimiter );
-            }
-            return escapedValue;
-        }
+						if ((isForceSingleLine() || isSingleLine(key)) &&
+							!getConfiguration().isDelimiterParsingDisabled()) {
 
-        private String escapeKey( String key )
-        {
-            StringBuffer newkey = new StringBuffer();
+							singleLine = true;
+						}
 
-            for( int i = 0; i < key.length(); i++ )
-            {
-                char c = key.charAt( i );
+						writer.writeProperty(key, getConfiguration().getProperty(key), singleLine);
+					}
+				}
 
-                if( ArrayUtils.contains( SEPARATORS, c ) || ArrayUtils.contains( WHITE_SPACE, c ) )
-                {
-                    // escape the separator
-                    newkey.append( '\\' );
-                    newkey.append( c );
-                }
-                else
-                {
-                    newkey.append( c );
-                }
-            }
+				writer.flush();
+			}
+		}
+		catch (IOException ioe) {
+			throw new ConfigurationException(ioe);
+		}
+	}
 
-            return newkey.toString();
-        }
+	public static class CustomPropertiesWriter extends PropertiesConfiguration.PropertiesWriter {
 
-        private String makeSingleLineValue( List values )
-        {
-            if( !values.isEmpty() )
-            {
-                Iterator it = values.iterator();
-                String lastValue = escapeValue( it.next() );
-                StringBuffer buf = new StringBuffer( lastValue );
-                while( it.hasNext() )
-                {
-                    // if the last value ended with an escape character, it has
-                    // to be escaped itself; otherwise the list delimiter will
-                    // be escaped
-                    if( lastValue.endsWith( ESCAPE ) )
-                    {
-                        buf.append( ESCAPE ).append( ESCAPE );
-                    }
-                    buf.append( delimiter );
-                    lastValue = escapeValue( it.next() );
-                    buf.append( lastValue );
-                }
-                return buf.toString();
-            }
-            else
-            {
-                return null;
-            }
-        }
+		public CustomPropertiesWriter(Writer writer, char delimiter) {
+			super(writer, delimiter);
 
-    }
+			_delimiter = delimiter;
+		}
 
-    public void save( Writer out ) throws ConfigurationException
-    {
-        try
-        {
-            char delimiter =
-                getConfiguration().isDelimiterParsingDisabled() ? 0 : getConfiguration().getListDelimiter();
-            PropertiesConfiguration.PropertiesWriter writer = new CustomPropertiesWriter( out, delimiter );
+		public void writeProperty(String key, Object value, boolean forceSingleLine) throws IOException {
+			String v;
 
-            if( getHeaderComment() != null )
-            {
-                writer.writeln( getCanonicalHeaderComment( true ) );
-                writer.writeln( null );
-            }
+			if (value instanceof List) {
+				List values = (List)value;
 
-            for( Iterator it = getKeys().iterator(); it.hasNext(); )
-            {
-                String key = (String) it.next();
-                if( getConfiguration().containsKey( key ) )
-                {
+				if (forceSingleLine) {
+					v = _makeSingleLineValue(values);
+				}
+				else {
+					writeProperty(key, values);
 
-                    // Output blank lines before property
-                    for( int i = 0; i < getBlancLinesBefore( key ); i++ )
-                    {
-                        writer.writeln( null );
-                    }
+					return;
+				}
+			}
+			else {
+				v = _escapeValue(value);
+			}
 
-                    // Output the comment
-                    if( getComment( key ) != null )
-                    {
-                        writer.writeln( getCanonicalComment( key, true ) );
-                    }
+			write(_escapeKey(key));
+			write("=");
+			write(v);
 
-                    // Output the property and its value
-                    boolean singleLine =
-                        ( isForceSingleLine() || isSingleLine( key ) ) &&
-                            !getConfiguration().isDelimiterParsingDisabled();
-                    writer.writeProperty( key, getConfiguration().getProperty( key ), singleLine );
-                }
-            }
-            
-            writer.flush();
-            writer.close();
-        }
-        catch( IOException ioex )
-        {
-            throw new ConfigurationException( ioex );
-        }
-    }
+			writeln(null);
+		}
+
+		private String _escapeKey(String key) {
+			StringBuffer newkey = new StringBuffer();
+
+			for (int i = 0; i < key.length(); i++) {
+				char c = key.charAt(i);
+
+				if (ArrayUtils.contains(_SEPARATORS, c) || ArrayUtils.contains(_WHITE_SPACE, c)) {
+
+					// escape the separator
+
+					newkey.append('\\');
+					newkey.append(c);
+				}
+				else {
+					newkey.append(c);
+				}
+			}
+
+			return newkey.toString();
+		}
+
+		private String _escapeValue(Object value) {
+			String escapedValue = StringEscapeUtils.escapeJava(String.valueOf(value));
+
+			if (_delimiter != 0) {
+				escapedValue = StringUtils.replace(escapedValue, String.valueOf(_delimiter), _ESCAPE + _delimiter);
+			}
+
+			return escapedValue;
+		}
+
+		private String _makeSingleLineValue(List values) {
+			if (!values.isEmpty()) {
+				Iterator it = values.iterator();
+
+				String lastValue = _escapeValue(it.next());
+
+				StringBuffer buf = new StringBuffer(lastValue);
+
+				while (it.hasNext()) {
+
+					/**
+					 * if the last value ended with an escape character, it has
+					 * to be escaped itself; otherwise the list delimiter will
+					 * be escaped
+					 */
+					if (lastValue.endsWith(_ESCAPE)) {
+						StringBuffer bf = buf.append(_ESCAPE);
+
+						bf.append(_ESCAPE);
+					}
+
+					buf.append(_delimiter);
+
+					lastValue = _escapeValue(it.next());
+
+					buf.append(lastValue);
+				}
+
+				return buf.toString();
+			}
+
+			return null;
+		}
+
+		private char _delimiter;
+
+	}
+
+	private static final String _ESCAPE = "\\";
+
+	private static final char[] _SEPARATORS = {'=', ':'};
+
+	//The white space characters used as key/value separators.
+	private static final char[] _WHITE_SPACE = {' ', '\t', '\f'};
+
 }

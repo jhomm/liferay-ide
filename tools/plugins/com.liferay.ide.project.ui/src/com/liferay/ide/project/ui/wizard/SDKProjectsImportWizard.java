@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,14 +10,14 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.project.ui.wizard;
 
 import com.liferay.ide.project.core.SDKProjectsImportDataModelProvider;
 import com.liferay.ide.project.ui.ProjectUI;
 import com.liferay.ide.sdk.core.SDK;
+import com.liferay.ide.ui.LiferayPerspectiveFactory;
 import com.liferay.ide.ui.util.UIUtil;
 
 import java.lang.reflect.InvocationTargetException;
@@ -31,86 +31,79 @@ import org.eclipse.wst.common.frameworks.datamodel.IDataModelProvider;
 import org.eclipse.wst.common.frameworks.internal.datamodel.ui.DataModelWizard;
 
 /**
- * @author Greg Amerson
+ * @author Gregory Amerson
  * @author Cindy Li
  */
-@SuppressWarnings( "restriction" )
-public class SDKProjectsImportWizard extends DataModelWizard implements IWorkbenchWizard
-{
-    protected SDKProjectsImportWizardPage sdkProjectsImportWizardPage;
-    protected SDK sdk;
+@SuppressWarnings("restriction")
+public class SDKProjectsImportWizard extends DataModelWizard implements IWorkbenchWizard {
 
-    public SDKProjectsImportWizard()
-    {
-        this( (IDataModel) null );
-    }
+	public SDKProjectsImportWizard() {
+		this((IDataModel)null);
+	}
 
-    public SDKProjectsImportWizard( IDataModel dataModel )
-    {
-        super( dataModel );
+	public SDKProjectsImportWizard(IDataModel dataModel) {
+		super(dataModel);
 
-        setWindowTitle( Msgs.importProjects );
-        setDefaultPageImageDescriptor( ProjectUI.imageDescriptorFromPlugin(
-            ProjectUI.PLUGIN_ID, "/icons/wizban/import_wiz.png" ) ); //$NON-NLS-1$
-    }
+		setWindowTitle(Msgs.importProjects);
+		setDefaultPageImageDescriptor(
+			ProjectUI.imageDescriptorFromPlugin(ProjectUI.PLUGIN_ID, "/icons/wizban/import_wiz.png"));
+	}
 
-    public SDKProjectsImportWizard( SDK sdk )
-    {
-        this( (IDataModel) null );
-        this.sdk = sdk;
-    }
+	public SDKProjectsImportWizard(SDK sdk) {
+		this((IDataModel)null);
 
-    @Override
-    public boolean canFinish()
-    {
-        return getDataModel().isValid();
-    }
+		this.sdk = sdk;
+	}
 
-    public void init( IWorkbench workbench, IStructuredSelection selection )
-    {
-    }
+	@Override
+	public boolean canFinish() {
+		return getDataModel().isValid();
+	}
 
-    @Override
-    protected void doAddPages()
-    {
-        if( sdk != null )
-        {
-            IDataModel model = getDataModel();
-            model.setStringProperty( SDKProjectsImportDataModelProvider.LIFERAY_SDK_NAME, sdk.getName() );
-        }
+	public void init(IWorkbench workbench, IStructuredSelection selection) {
+	}
 
-        sdkProjectsImportWizardPage = new SDKProjectsImportWizardPage( getDataModel(), "pageOne" ); //$NON-NLS-1$
+	@Override
+	protected void doAddPages() {
+		if (sdk != null) {
+			IDataModel model = getDataModel();
 
-        addPage( sdkProjectsImportWizardPage );
-    }
+			model.setStringProperty(SDKProjectsImportDataModelProvider.LIFERAY_SDK_NAME, sdk.getName());
+		}
 
-    @Override
-    protected IDataModelProvider getDefaultProvider()
-    {
-        return new SDKProjectsImportDataModelProvider();
-    }
+		sdkProjectsImportWizardPage = new SDKProjectsImportWizardPage(getDataModel(), "pageOne");
 
-    @Override
-    protected boolean runForked()
-    {
-        return false;
-    }
+		addPage(sdkProjectsImportWizardPage);
+	}
 
-    @Override
-    protected void postPerformFinish() throws InvocationTargetException
-    {
-        UIUtil.switchToLiferayPerspective();
+	@Override
+	protected IDataModelProvider getDefaultProvider() {
+		return new SDKProjectsImportDataModelProvider();
+	}
 
-        super.postPerformFinish();
-    }
+	@Override
+	protected void postPerformFinish() throws InvocationTargetException {
+		UIUtil.switchToLiferayPerspective(LiferayPerspectiveFactory.ID, true);
 
-    private static class Msgs extends NLS
-    {
-        public static String importProjects;
+		super.postPerformFinish();
+	}
 
-        static
-        {
-            initializeMessages( SDKProjectsImportWizard.class.getName(), Msgs.class );
-        }
-    }
+	@Override
+	protected boolean runForked() {
+		return false;
+	}
+
+	protected SDK sdk;
+	protected SDKProjectsImportWizardPage sdkProjectsImportWizardPage;
+
+	private static class Msgs extends NLS {
+
+		public static String importProjects;
+
+		static {
+			initializeMessages(SDKProjectsImportWizard.class.getName(), Msgs.class);
+		}
+
+	}
+
 }

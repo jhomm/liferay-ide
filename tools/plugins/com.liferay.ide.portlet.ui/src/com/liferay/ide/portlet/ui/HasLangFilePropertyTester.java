@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,12 +10,12 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.portlet.ui;
 
 import com.liferay.ide.core.util.CoreUtil;
+import com.liferay.ide.core.util.StringUtil;
 import com.liferay.ide.project.core.util.ProjectUtil;
 
 import java.util.List;
@@ -27,56 +27,53 @@ import org.eclipse.core.resources.IResource;
 import org.eclipse.jdt.core.JavaCore;
 
 /**
- * @author Greg Amerson
+ * @author Gregory Amerson
  */
-public class HasLangFilePropertyTester extends PropertyTester
-{
+public class HasLangFilePropertyTester extends PropertyTester {
 
-    public boolean test( Object receiver, String property, Object[] args, Object expectedValue )
-    {
-        if( receiver instanceof IProject )
-        {
-            IProject project = (IProject) receiver;
+	public boolean test(Object receiver, String property, Object[] args, Object expectedValue) {
+		if (receiver instanceof IProject) {
+			IProject project = (IProject)receiver;
 
-            boolean isLiferayProject = ProjectUtil.isLiferayFacetedProject( project );
+			boolean liferayProject = ProjectUtil.isLiferayFacetedProject(project);
 
-            if( isLiferayProject )
-            {
-                try
-                {
-                    final List<IFolder> srcFolders = CoreUtil.getSourceFolders( JavaCore.create( project ) );
+			if (liferayProject) {
+				try {
+					List<IFolder> srcFolders = CoreUtil.getSourceFolders(JavaCore.create(project));
 
-                    for( IFolder src : srcFolders )
-                    {
-                        IResource[] members = src.members();
+					for (IFolder src : srcFolders) {
+						IResource[] members = src.members();
 
-                        for( IResource member : members )
-                        {
-                            if( member.getType() == IResource.FOLDER && member.getName().equals( "content" ) ) //$NON-NLS-1$
-                            {
-                                IResource[] content = ( (IFolder) member ).members();
+						for (IResource member : members) {
+							if ((member.getType() == IResource.FOLDER) &&
+								StringUtil.equals(member.getName(), "content")) {
 
-                                for( IResource res : content )
-                                {
-                                    if( res.getType() == IResource.FILE &&
-                                        res.getName().matches( "Language.*\\.properties" ) ) //$NON-NLS-1$
-                                    {
+								IFolder folder = (IFolder)member;
 
-                                        return true;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                catch( Throwable t )
-                {
-                    // ignore
-                }
-            }
-        }
+								IResource[] content = folder.members();
 
-        return false;
-    }
+								for (IResource res : content) {
+									String fileName = res.getName();
+
+									if ((res.getType() == IResource.FILE) &&
+										fileName.matches("Language.*\\.properties")) {
+
+										return true;
+									}
+								}
+							}
+						}
+					}
+				}
+				catch (Throwable t) {
+
+					// ignore
+
+				}
+			}
+		}
+
+		return false;
+	}
 
 }

@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,12 +10,16 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.project.core.model.internal;
 
+import com.liferay.ide.core.util.SapphireContentAccessor;
+import com.liferay.ide.core.util.SapphireUtil;
+import com.liferay.ide.project.core.NewLiferayProjectProvider;
 import com.liferay.ide.project.core.model.NewLiferayPluginProjectOp;
+
+import java.util.Objects;
 
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.jdt.core.JavaConventions;
@@ -30,47 +34,48 @@ import org.eclipse.sapphire.services.ValidationService;
 /**
  * @author Gregory Amerson
  */
-@SuppressWarnings( "restriction" )
-public class GroupIdValidationService extends ValidationService
-{
+@SuppressWarnings("restriction")
+public class GroupIdValidationService extends ValidationService implements SapphireContentAccessor {
 
-    private Listener listener;
+	@Override
+	protected Status compute() {
+		NewLiferayPluginProjectOp op = _op();
 
-    @Override
-    protected Status compute()
-    {
-        if( "maven".equals( op().getProjectProvider().content( true ).getShortName() ) )
-        {
-            final String groupId = op().getGroupId().content( true );
+		NewLiferayProjectProvider<NewLiferayPluginProjectOp> provider = get(op.getProjectProvider());
 
-            final IStatus javaStatus =
-                JavaConventions.validatePackageName( groupId, CompilerOptions.VERSION_1_5, CompilerOptions.VERSION_1_5 );
+		if (Objects.equals(provider.getShortName(), "maven")) {
+			String groupId = get(op.getGroupId());
 
-            return StatusBridge.create( javaStatus );
-        }
+			IStatus javaStatus = JavaConventions.validatePackageName(
+				groupId, CompilerOptions.VERSION_1_7, CompilerOptions.VERSION_1_7);
 
-        return StatusBridge.create( org.eclipse.core.runtime.Status.OK_STATUS );
-    }
+			return StatusBridge.create(javaStatus);
+		}
 
-    @Override
-    protected void initValidationService()
-    {
-        super.initValidationService();
+		return StatusBridge.create(org.eclipse.core.runtime.Status.OK_STATUS);
+	}
 
-        this.listener = new FilteredListener<PropertyContentEvent>()
-        {
+	@Override
+	protected void initValidationService() {
+		super.initValidationService();
 
-            protected void handleTypedEvent( final PropertyContentEvent event )
-            {
-                refresh();
-            }
-        };
+		_listener = new FilteredListener<PropertyContentEvent>() {
 
-        op().getProjectProvider().attach( this.listener );
-    }
+			protected void handleTypedEvent(PropertyContentEvent event) {
+				refresh();
+			}
 
-    private NewLiferayPluginProjectOp op()
-    {
-        return context( NewLiferayPluginProjectOp.class );
-    }
+		};
+
+		NewLiferayPluginProjectOp op = _op();
+
+		SapphireUtil.attachListener(op.getProjectProvider(), _listener);
+	}
+
+	private NewLiferayPluginProjectOp _op() {
+		return context(NewLiferayPluginProjectOp.class);
+	}
+
+	private Listener _listener;
+
 }

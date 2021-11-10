@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,12 +10,14 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
+
 package com.liferay.ide.xml.search.ui.validators;
 
 import com.liferay.ide.core.util.CoreUtil;
-import com.liferay.ide.project.core.ValidationPreferences.ValidationType;
+import com.liferay.ide.project.core.ValidationPreferences;
+
+import java.util.Objects;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.runtime.IPath;
@@ -27,66 +29,69 @@ import org.eclipse.wst.xml.core.internal.provisional.document.IDOMNode;
 import org.eclipse.wst.xml.search.core.util.DOMUtils;
 import org.eclipse.wst.xml.search.editor.references.IXMLReference;
 
+import org.w3c.dom.Node;
+
 /**
  * @author Kuo Zhang
  */
-@SuppressWarnings( "restriction" )
-public class PortletDescriptorValidator extends LiferayBaseValidator
-{
+@SuppressWarnings("restriction")
+public class PortletDescriptorValidator extends LiferayBaseValidator {
 
-    public static final String MESSAGE_RESOURCE_BUNDLE_END_PROPERTIES = Msgs.resourceBundleEndProperties;
-    public static final String MESSAGE_RESOURCE_BUNDLE_CONTAIN_PATH_SEPARATOR = Msgs.resourceBundleContainPathSeparator ;
+	public static final String MESSAGE_RESOURCE_BUNDLE_CONTAIN_PATH_SEPARATOR = Msgs.resourceBundleContainPathSeparator;
 
-    @Override
-    protected boolean validateSyntax( IXMLReference reference, IDOMNode node, IFile file,
-                                      IValidator validator, IReporter reporter, boolean batchMode )
-    {
-        int severity = getServerity( ValidationType.SYNTAX_INVALID, file );
+	public static final String MESSAGE_RESOURCE_BUNDLE_END_PROPERTIES = Msgs.resourceBundleEndProperties;
 
-        if( severity != ValidationMessage.IGNORE )
-        {
-            if( "resource-bundle".equals( node.getParentNode().getNodeName() ) )
-            {
-                String validationMsg = null;
+	@Override
+	protected boolean validateSyntax(
+		IXMLReference reference, IDOMNode node, IFile file, IValidator validator, IReporter reporter,
+		boolean batchMode) {
 
-                final String nodeValue = DOMUtils.getNodeValue( node );
+		int severity = getServerity(ValidationPreferences.ValidationType.SYNTAX_INVALID, file);
 
-                if( nodeValue.endsWith( ".properties" ) )
-                {
-                    validationMsg = NLS.bind( MESSAGE_RESOURCE_BUNDLE_END_PROPERTIES, nodeValue );
-                }
+		if (severity == ValidationMessage.IGNORE) {
+			return true;
+		}
 
-                if( validationMsg == null &&
-                    ( nodeValue.contains( IPath.SEPARATOR + "" ) || ( CoreUtil.isWindows() && nodeValue.contains( "\\" ) ) ) )
-                {
-                    validationMsg = NLS.bind( MESSAGE_RESOURCE_BUNDLE_CONTAIN_PATH_SEPARATOR, nodeValue );
-                }
+		Node parentNode = node.getParentNode();
 
-                if( validationMsg != null )
-                {
-                    final String liferayPluginValidationType =
-                        getLiferayPluginValidationType( ValidationType.SYNTAX_INVALID, file );
+		if (Objects.equals("resource-bundle", parentNode.getNodeName())) {
+			String validationMsg = null;
 
-                    addMessage(
-                        node, file, validator, reporter, batchMode, validationMsg, severity,
-                        liferayPluginValidationType );
+			String nodeValue = DOMUtils.getNodeValue(node);
 
-                    return false;
-                }
-            }
-        }
+			if (nodeValue.endsWith(".properties")) {
+				validationMsg = NLS.bind(MESSAGE_RESOURCE_BUNDLE_END_PROPERTIES, nodeValue);
+			}
 
-        return true;
-    }
+			if ((validationMsg == null) &&
+				(nodeValue.contains(IPath.SEPARATOR + "") || (CoreUtil.isWindows() && nodeValue.contains("\\")))) {
 
-    private static class Msgs extends NLS
-    {
-        public static String resourceBundleEndProperties;
-        public static String resourceBundleContainPathSeparator;
+				validationMsg = NLS.bind(MESSAGE_RESOURCE_BUNDLE_CONTAIN_PATH_SEPARATOR, nodeValue);
+			}
 
-        static
-        {
-            initializeMessages( PortletDescriptorValidator.class.getName(), Msgs.class );
-        }
-    }
+			if (validationMsg != null) {
+				String liferayPluginValidationType = getLiferayPluginValidationType(
+					ValidationPreferences.ValidationType.SYNTAX_INVALID, file);
+
+				addMessage(
+					node, file, validator, reporter, batchMode, validationMsg, severity, liferayPluginValidationType);
+
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	private static class Msgs extends NLS {
+
+		public static String resourceBundleContainPathSeparator;
+		public static String resourceBundleEndProperties;
+
+		static {
+			initializeMessages(PortletDescriptorValidator.class.getName(), Msgs.class);
+		}
+
+	}
+
 }

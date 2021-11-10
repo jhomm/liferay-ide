@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,16 +10,18 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
+
 package com.liferay.ide.project.ui.wizard;
 
 import com.liferay.ide.core.util.CoreUtil;
+import com.liferay.ide.core.util.FileUtil;
 import com.liferay.ide.project.core.IPortletFramework;
 import com.liferay.ide.project.core.ProjectCore;
 import com.liferay.ide.project.core.model.NewLiferayPluginProjectOp;
 import com.liferay.ide.project.core.model.PluginType;
 import com.liferay.ide.project.core.model.ProjectName;
+import com.liferay.ide.project.ui.BaseProjectWizard;
 import com.liferay.ide.project.ui.IvyUtil;
 import com.liferay.ide.project.ui.ProjectUI;
 import com.liferay.ide.sdk.core.ISDKConstants;
@@ -28,6 +30,7 @@ import com.liferay.ide.ui.util.UIUtil;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import org.eclipse.ant.internal.ui.model.AntProjectNode;
 import org.eclipse.ant.internal.ui.model.AntProjectNodeProxy;
@@ -39,35 +42,30 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IConfigurationElement;
 import org.eclipse.core.runtime.IExtension;
 import org.eclipse.core.runtime.IExtensionRegistry;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.jdt.internal.ui.util.CoreUtility;
-import org.eclipse.jface.dialogs.IMessageProvider;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.StructuredSelection;
-import org.eclipse.jface.wizard.IWizardPage;
 import org.eclipse.jface.wizard.WizardDialog;
 import org.eclipse.sapphire.ElementList;
 import org.eclipse.sapphire.ui.def.DefinitionLoader;
-import org.eclipse.sapphire.ui.forms.FormComponentPart;
-import org.eclipse.sapphire.ui.forms.swt.SapphireWizard;
-import org.eclipse.sapphire.ui.forms.swt.SapphireWizardPage;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.INewWizard;
 import org.eclipse.ui.IPageLayout;
 import org.eclipse.ui.IViewPart;
 import org.eclipse.ui.IWorkbench;
-import org.eclipse.ui.IWorkbenchWizard;
-import org.eclipse.ui.IWorkingSet;
+import org.eclipse.ui.IWorkbenchPage;
+import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.navigator.CommonViewer;
 import org.eclipse.ui.wizards.newresource.BasicNewProjectResourceWizard;
 import org.eclipse.ui.wizards.newresource.BasicNewResourceWizard;
 import org.eclipse.wst.web.internal.DelegateConfigurationElement;
-
 
 /**
  * @author Gregory Amerson
@@ -75,286 +73,230 @@ import org.eclipse.wst.web.internal.DelegateConfigurationElement;
  * @author Simon Jiang
  * @author Eric Min
  */
-@SuppressWarnings( "restriction" )
-public class NewLiferayPluginProjectWizard extends SapphireWizard<NewLiferayPluginProjectOp>
-    implements IWorkbenchWizard, INewWizard
-{
-    private boolean firstErrorMessageRemoved = false;
+@SuppressWarnings("restriction")
+public class NewLiferayPluginProjectWizard extends BaseProjectWizard<NewLiferayPluginProjectOp> {
 
-    public NewLiferayPluginProjectWizard()
-    {
-        super( createDefaultOp(), DefinitionLoader.sdef( NewLiferayPluginProjectWizard.class ).wizard() );
-    }
+	public static void checkAndConfigureIvy(final IProject project) {
+		if ((project != null) && FileUtil.exists(project.getFile(ISDKConstants.IVY_XML_FILE))) {
+			new WorkspaceJob(
+				"Configuring project with Ivy dependencies"
+			) {
 
-    private void addToWorkingSets( IProject newProject ) throws Exception
-    {
-        if (newProject != null )
-        {
-            for( final FormComponentPart formPart : part().getPages().get( 0 ).children().all() )
-            {
-                if( formPart instanceof WorkingSetCustomPart )
-                {
-                    final WorkingSetCustomPart workingSetPart = (WorkingSetCustomPart) formPart;
-                    final IWorkingSet[] workingSets = workingSetPart.getWorkingSets();
+				@Override
+				public IStatus runInWorkspace(IProgressMonitor monitor) throws CoreException {
+					try {
+						IvyUtil.configureIvyProject(project, monitor);
+					}
+					catch (CoreException ce) {
+						return ProjectCore.createErrorStatus(
+							ProjectCore.PLUGIN_ID, "Failed to configured ivy project.", ce);
+					}
 
-                    if( ! CoreUtil.isNullOrEmpty( workingSets ) )
-                    {
-                        PlatformUI.getWorkbench().getWorkingSetManager().addToWorkingSets(newProject, workingSets);
-                    }
-                }
-            }
-        }
-    }
+					return Status.OK_STATUS;
+				}
 
-    @Override
-    public IWizardPage[] getPages()
-    {
-        final IWizardPage[] wizardPages = super.getPages();
+			}.schedule();
+		}
+	}
 
-        if( !firstErrorMessageRemoved && wizardPages != null )
-        {
-            final SapphireWizardPage wizardPage = (SapphireWizardPage) wizardPages[0];
+	public NewLiferayPluginProjectWizard() {
+		super(_createDefaultOp(), DefinitionLoader.sdef(NewLiferayPluginProjectWizard.class).wizard());
+	}
 
-            final String message = wizardPage.getMessage();
-            final int messageType = wizardPage.getMessageType();
+	@Override
+	public void init(IWorkbench workbench, IStructuredSelection selection) {
+	}
 
-            if( messageType == IMessageProvider.ERROR && ! CoreUtil.isNullOrEmpty( message ) )
-            {
-                wizardPage.setMessage( "Please enter a project name.", SapphireWizardPage.NONE ); //$NON-NLS-1$
-                firstErrorMessageRemoved = true;
-            }
-        }
+	@Override
+	protected void openLiferayPerspective(IProject newProject) {
+		final IWorkbench workbench = PlatformUI.getWorkbench();
 
-        return wizardPages;
-    }
+		// open the "final" perspective
 
-    @Override
-    public void init( IWorkbench workbench, IStructuredSelection selection )
-    {
-    }
+		final IConfigurationElement element = new DelegateConfigurationElement(null) {
 
-    private void openLiferayPerspective( IProject newProject )
-    {
-        final IWorkbench workbench = PlatformUI.getWorkbench();
-        // open the "final" perspective
-        final IConfigurationElement element = new DelegateConfigurationElement( null )
-        {
-            @Override
-            public String getAttribute( String aName )
-            {
-                if( aName.equals( "finalPerspective" ) )
-                {
-                    return LiferayPerspectiveFactory.ID;
-                }
+			@Override
+			public String getAttribute(String aName) {
+				if (aName.equals("finalPerspective")) {
+					return LiferayPerspectiveFactory.ID;
+				}
 
-                return super.getAttribute( aName );
-            }
-        };
+				return super.getAttribute(aName);
+			}
 
-        BasicNewProjectResourceWizard.updatePerspective( element );
+		};
 
-        // select and reveal
-        BasicNewResourceWizard.selectAndReveal( newProject, workbench.getActiveWorkbenchWindow() );
-    }
+		BasicNewProjectResourceWizard.updatePerspective(element);
 
-    @Override
-    protected void performPostFinish()
-    {
-        super.performPostFinish();
+		// select and reveal
 
-        final List<IProject> projects = new ArrayList<IProject>();
+		BasicNewResourceWizard.selectAndReveal(newProject, workbench.getActiveWorkbenchWindow());
+	}
 
-        final NewLiferayPluginProjectOp op = element().nearest( NewLiferayPluginProjectOp.class );
+	@Override
+	protected void performPostFinish() {
+		super.performPostFinish();
 
-        ElementList<ProjectName> projectNames = op.getProjectNames();
+		final List<IProject> projects = new ArrayList<>();
 
-        for( ProjectName projectName : projectNames )
-        {
-            final IProject newProject = CoreUtil.getProject( projectName.getName().content() );
+		final NewLiferayPluginProjectOp op = element().nearest(NewLiferayPluginProjectOp.class);
 
-            if( newProject != null )
-            {
-                projects.add( newProject );
-            }
-        }
+		ElementList<ProjectName> projectNames = op.getProjectNames();
 
-        for( final IProject project : projects )
-        {
-            try
-            {
-                addToWorkingSets( project );
-            }
-            catch( Exception ex )
-            {
-                ProjectUI.logError( "Unable to add project to working set", ex );
-            }
-        }
+		for (ProjectName projectName : projectNames) {
+			IProject newProject = CoreUtil.getProject(get(projectName.getName()));
 
-        final IProject finalProject = projects.get(0);
+			if (newProject != null) {
+				projects.add(newProject);
+			}
+		}
 
-        openLiferayPerspective( finalProject );
+		for (final IProject project : projects) {
+			try {
+				addToWorkingSets(project);
+			}
+			catch (Exception ex) {
+				ProjectUI.logError("Unable to add project to working set", ex);
+			}
+		}
 
-        showInAntView( finalProject );
+		final IProject finalProject = projects.get(0);
 
-        if( finalProject != null && finalProject.getFile( ISDKConstants.IVY_XML_FILE ).exists() )
-        {
-            new WorkspaceJob( "Configuring project with Ivy dependencies" ) //$NON-NLS-1$
-            {
-                @Override
-                public IStatus runInWorkspace( IProgressMonitor monitor ) throws CoreException
-                {
-                    try
-                    {
-                        IvyUtil.configureIvyProject( finalProject, monitor );
-                    }
-                    catch( CoreException e )
-                    {
-                        return ProjectCore.createErrorStatus(
-                            ProjectCore.PLUGIN_ID, "Failed to configured ivy project.", e ); //$NON-NLS-1$
-                    }
+		openLiferayPerspective(finalProject);
 
-                    return Status.OK_STATUS;
-                }
-            }.schedule();
-        }
+		_showInAntView(finalProject);
 
-        // check if a new portlet wizard is needed, available for portlet projects.
-        final boolean createNewPortlet = op.getCreateNewPortlet().content();
+		checkAndConfigureIvy(finalProject);
 
-        if( createNewPortlet && PluginType.portlet.equals( op.getPluginType().content() ) )
-        {
-            final IPortletFramework portletFramework = op.getPortletFramework().content();
-            String wizardId = null;
+		// check if a new portlet wizard is needed, available for portlet projects.
 
-            if( ("mvc").equals( portletFramework.getShortName() ) )
-            {
-                wizardId = "com.liferay.ide.portlet.ui.newPortletWizard";
-            }
-            else if( ("jsf-2.x").equals( portletFramework.getShortName() ) )
-            {
-                wizardId = "com.liferay.ide.portlet.ui.newJSFPortletWizard";
-            }
-            else if( ("vaadin").equals( portletFramework.getShortName() ) )
-            {
-                wizardId = "com.liferay.ide.portlet.vaadin.ui.newVaadinPortletWizard";
-            }
+		boolean createNewPortlet = get(op.getCreateNewPortlet());
 
-            if( wizardId != null )
-            {
-                openNewPortletWizard( wizardId, finalProject );
-            }
-        }
-    }
+		if (createNewPortlet && PluginType.portlet.equals(get(op.getPluginType()))) {
+			final IPortletFramework portletFramework = get(op.getPortletFramework());
+			String wizardId = null;
 
-    private void openNewPortletWizard( String wizardId, final IProject project )
-    {
-        final IExtensionRegistry registry = Platform.getExtensionRegistry();
+			if (Objects.equals("mvc", portletFramework.getShortName())) {
+				wizardId = "com.liferay.ide.portlet.ui.newPortletWizard";
+			}
+			else if (Objects.equals("jsf-2.x", portletFramework.getShortName())) {
+				wizardId = "com.liferay.ide.portlet.ui.newJSFPortletWizard";
+			}
+			else if (Objects.equals("vaadin", portletFramework.getShortName())) {
+				wizardId = "com.liferay.ide.portlet.vaadin.ui.newVaadinPortletWizard";
+			}
 
-        final IExtension extension = registry.getExtension( wizardId );
+			if (wizardId != null) {
+				_openNewPortletWizard(wizardId, finalProject);
+			}
+		}
+	}
 
-        final IConfigurationElement[] elements = extension.getConfigurationElements();
+	private static NewLiferayPluginProjectOp _createDefaultOp() {
+		return NewLiferayPluginProjectOp.TYPE.instantiate();
+	}
 
-        for( final IConfigurationElement element : elements )
-        {
-            if( "wizard".equals( element.getName() ) )
-            {
-                UIUtil.async( new Runnable()
-                {
-                    @Override
-                    public void run()
-                    {
-                        try
-                        {
-                            final INewWizard wizard = (INewWizard) CoreUtility.createExtension( element, "class" );
+	private void _openNewPortletWizard(String wizardId, final IProject project) {
+		final IExtensionRegistry registry = Platform.getExtensionRegistry();
 
-                            final Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell();
+		final IExtension extension = registry.getExtension(wizardId);
 
-                            wizard.init( PlatformUI.getWorkbench(), new StructuredSelection( project ) );
+		final IConfigurationElement[] elements = extension.getConfigurationElements();
 
-                            WizardDialog dialog = new WizardDialog( shell, wizard );
+		for (final IConfigurationElement element : elements) {
+			if (Objects.equals("wizard", element.getName())) {
+				UIUtil.async(
+					new Runnable() {
 
-                            dialog.create();
+						@Override
+						public void run() {
+							try {
+								final INewWizard wizard = (INewWizard)CoreUtility.createExtension(element, "class");
 
-                            dialog.open();
-                        }
-                        catch( CoreException ex )
-                        {
-                            ProjectCore.createErrorStatus( ex );
-                        }
-                    }
-                });
-            }
-        }
-    }
+								IWorkbenchWindow activeWorkbenchWindow = UIUtil.getActiveWorkbenchWindow();
 
-    private void showInAntView( final IProject project )
-    {
-        Display.getDefault().asyncExec
-        (
-            new Runnable()
-            {
-                private void addBuildInAntView()
-                {
-                    if( project != null )
-                    {
-                        IFile buildXmlFile = project.getFile( "build.xml" ); //$NON-NLS-1$
+								final Shell shell = activeWorkbenchWindow.getShell();
 
-                        if( buildXmlFile.exists() )
-                        {
-                            String buildFileName = buildXmlFile.getFullPath().toString();
-                            final AntProjectNode antProject = new AntProjectNodeProxy( buildFileName );
-                            project.getName();
+								wizard.init(PlatformUI.getWorkbench(), new StructuredSelection(project));
 
-                            IViewPart antView =
-                                PlatformUI.getWorkbench().getWorkbenchWindows()[0].getActivePage().findView(
-                                    "org.eclipse.ant.ui.views.AntView" ); //$NON-NLS-1$
+								WizardDialog dialog = new WizardDialog(shell, wizard);
 
-                            if( antView instanceof AntView )
-                            {
-                                ( (AntView) antView ).addProject( antProject );
-                            }
-                        }
-                    }
-                }
+								dialog.create();
 
-                private void refreshProjectExplorer()
-                {
-                    IViewPart view = null;
+								dialog.open();
+							}
+							catch (CoreException ce) {
+								ProjectCore.createErrorStatus(ce);
+							}
+						}
 
-                    try
-                    {
-                        view =
-                            PlatformUI.getWorkbench().getWorkbenchWindows()[0].getActivePage().findView(
-                                IPageLayout.ID_PROJECT_EXPLORER );
-                    }
-                    catch( Exception e )
-                    {
-                        // Just bail and return if there is no view
-                    }
+					});
+			}
+		}
+	}
 
-                    if( view == null )
-                    {
-                        return;
-                    }
+	private void _showInAntView(final IProject project) {
+		Display display = Display.getDefault();
 
-                    CommonViewer viewer = (CommonViewer) view.getAdapter( CommonViewer.class );
+		display.asyncExec(
+			new Runnable() {
 
-                    viewer.refresh( true );
-                }
+				@Override
+				public void run() {
+					_refreshProjectExplorer();
+					_addBuildInAntView();
+				}
 
-                @Override
-                public void run()
-                {
-                    refreshProjectExplorer();
-                    addBuildInAntView();
-                }
-            }
-        );
-    }
+				private void _addBuildInAntView() {
+					if (project != null) {
+						IFile buildXmlFile = project.getFile("build.xml");
 
-    private static NewLiferayPluginProjectOp createDefaultOp()
-    {
-        return NewLiferayPluginProjectOp.TYPE.instantiate();
-    }
+						if (buildXmlFile.exists()) {
+							IPath fullPath = buildXmlFile.getFullPath();
+
+							AntProjectNode antProject = new AntProjectNodeProxy(fullPath.toString());
+
+							IWorkbenchWindow workbenchWindow = UIUtil.getWorkbenchWindows()[0];
+
+							IWorkbenchPage workbenchPage = workbenchWindow.getActivePage();
+
+							IViewPart antView = workbenchPage.findView("org.eclipse.ant.ui.views.AntView");
+
+							if (antView instanceof AntView) {
+								AntView antViewCast = (AntView)antView;
+
+								antViewCast.addProject(antProject);
+							}
+						}
+					}
+				}
+
+				private void _refreshProjectExplorer() {
+					IViewPart view = null;
+
+					IWorkbenchWindow workbenchWindow = UIUtil.getWorkbenchWindows()[0];
+
+					IWorkbenchPage workbenchPage = workbenchWindow.getActivePage();
+
+					try {
+						view = workbenchPage.findView(IPageLayout.ID_PROJECT_EXPLORER);
+					}
+					catch (Exception e) {
+
+						// Just bail and return if there is no view
+
+					}
+
+					if (view == null) {
+						return;
+					}
+
+					CommonViewer viewer = (CommonViewer)view.getAdapter(CommonViewer.class);
+
+					viewer.refresh(true);
+				}
+
+			});
+	}
 
 }

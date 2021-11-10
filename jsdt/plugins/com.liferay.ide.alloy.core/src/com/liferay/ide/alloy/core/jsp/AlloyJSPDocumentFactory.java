@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,8 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.alloy.core.jsp;
 
@@ -19,6 +18,7 @@ import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.content.IContentType;
 import org.eclipse.core.runtime.content.IContentTypeManager;
 import org.eclipse.jface.text.IDocument;
+import org.eclipse.wst.sse.core.internal.document.IDocumentLoader;
 import org.eclipse.wst.sse.core.internal.filebuffers.BasicStructuredDocumentFactory;
 import org.eclipse.wst.sse.core.internal.ltk.modelhandler.IModelHandler;
 import org.eclipse.wst.sse.core.internal.modelhandler.ModelHandlerRegistry;
@@ -27,34 +27,32 @@ import org.eclipse.wst.sse.core.internal.text.JobSafeStructuredDocument;
 /**
  * @author Gregory Amerson
  */
-@SuppressWarnings( "restriction" )
-public class AlloyJSPDocumentFactory extends BasicStructuredDocumentFactory
-{
+@SuppressWarnings("restriction")
+public class AlloyJSPDocumentFactory extends BasicStructuredDocumentFactory {
 
-    @Override
-    public IDocument createDocument()
-    {
-        IDocument document = null;
-        IModelHandler handler = null;
-        IContentType contentType =
-            Platform.getContentTypeManager().getContentType( "com.liferay.ide.alloy.core.alloyjspsource" );
+	@Override
+	public IDocument createDocument() {
+		IModelHandler handler = null;
 
-        while( handler == null && !IContentTypeManager.CT_TEXT.equals( contentType.getId() ) )
-        {
-            handler = ModelHandlerRegistry.getInstance().getHandlerForContentTypeId( contentType.getId() );
-            contentType = contentType.getBaseType();
-        }
+		IContentTypeManager manager = Platform.getContentTypeManager();
 
-        if( handler != null )
-        {
-            document = handler.getDocumentLoader().createNewStructuredDocument();
-        }
-        else
-        {
-            document = new JobSafeStructuredDocument();
-        }
+		IContentType contentType = manager.getContentType("com.liferay.ide.alloy.core.alloyjspsource");
 
-        return document;
-    }
+		while ((handler == null) && !IContentTypeManager.CT_TEXT.equals(contentType.getId())) {
+			ModelHandlerRegistry registry = ModelHandlerRegistry.getInstance();
+
+			handler = registry.getHandlerForContentTypeId(contentType.getId());
+
+			contentType = contentType.getBaseType();
+		}
+
+		if (handler != null) {
+			IDocumentLoader loader = handler.getDocumentLoader();
+
+			return loader.createNewStructuredDocument();
+		}
+
+		return new JobSafeStructuredDocument();
+	}
 
 }

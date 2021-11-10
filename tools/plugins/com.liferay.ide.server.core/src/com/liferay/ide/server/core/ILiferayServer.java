@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,8 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.server.core;
 
@@ -19,39 +18,44 @@ import com.liferay.ide.core.util.StringPool;
 
 import java.net.URL;
 
+import org.eclipse.core.runtime.QualifiedName;
 import org.eclipse.core.runtime.preferences.DefaultScope;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 
 /**
- * @author Greg Amerson
+ * @author Gregory Amerson
  * @author Terry Jia
  */
-public interface ILiferayServer
-{
+public interface ILiferayServer {
 
-    IEclipsePreferences defaultPrefs = DefaultScope.INSTANCE.getNode( LiferayServerCore.PLUGIN_ID );
+	public String getHost();
 
-    String ATTR_PASSWORD = "password";
+	public String getHttpPort();
 
-    String ATTR_USERNAME = "username";
+	public String getId();
 
-    String DEFAULT_PASSWORD = defaultPrefs.get( "default.password", StringPool.EMPTY );
+	public String getPassword();
 
-    String DEFAULT_USERNAME = defaultPrefs.get( "default.username", StringPool.EMPTY );
+	public URL getPluginContextURL(String context);
 
-    URL getWebServicesListURL();
+	public URL getPortalHomeUrl();
 
-    String getPassword();
+	public String getUsername();
 
-    URL getPluginContextURL( String context );
+	public URL getWebServicesListURL();
 
-    URL getPortalHomeUrl();
+	public String ATTR_HTTP_PORT = "http-port";
 
-    String getUsername();
+	public String ATTR_PASSWORD = "password";
 
-    String getHttpPort();
+	public String ATTR_USERNAME = "username";
 
-    String getId();
+	public IEclipsePreferences defaultPrefs = DefaultScope.INSTANCE.getNode(LiferayServerCore.PLUGIN_ID);
 
-    String getHost();
+	public String DEFAULT_PASSWORD = defaultPrefs.get("default.password", StringPool.EMPTY);
+
+	public String DEFAULT_USERNAME = defaultPrefs.get("default.username", StringPool.EMPTY);
+
+	public QualifiedName LIFERAY_SERVER_JOB = new QualifiedName(LiferayServerCore.PLUGIN_ID, "LIFERAY_SERVER_JOB");
+
 }

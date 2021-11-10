@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,11 +10,11 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.project.core;
 
+import com.liferay.ide.core.util.FileUtil;
 import com.liferay.ide.project.core.util.ProjectImportUtil;
 import com.liferay.ide.sdk.core.SDK;
 import com.liferay.ide.sdk.core.SDKManager;
@@ -34,51 +34,43 @@ import org.eclipse.wst.common.frameworks.datamodel.IDataModel;
 import org.eclipse.wst.common.project.facet.core.runtime.IRuntime;
 
 /**
- * @author Greg Amerson
+ * @author Gregory Amerson
  */
-public class LiferayProjectImportOperation extends AbstractDataModelOperation
-    implements ILiferayProjectImportDataModelProperties
-{
+public class LiferayProjectImportOperation
+	extends AbstractDataModelOperation implements ILiferayProjectImportDataModelProperties {
 
-    public LiferayProjectImportOperation( IDataModel model )
-    {
-        super( model );
-    }
+	public LiferayProjectImportOperation(IDataModel model) {
+		super(model);
+	}
 
-    @Override
-    public IStatus execute( IProgressMonitor monitor, IAdaptable info ) throws ExecutionException
-    {
-        ProjectRecord projectRecord = (ProjectRecord) getDataModel().getProperty( PROJECT_RECORD );
+	@Override
+	public IStatus execute(IProgressMonitor monitor, IAdaptable info) throws ExecutionException {
+		ProjectRecord projectRecord = (ProjectRecord)getDataModel().getProperty(PROJECT_RECORD);
 
-        if( projectRecord == null )
-        {
-            return ProjectCore.createErrorStatus( "Project record to import is null." ); //$NON-NLS-1$
-        }
+		if (projectRecord == null) {
+			return ProjectCore.createErrorStatus("Project record to import is null.");
+		}
 
-        File projectDir = projectRecord.getProjectLocation().toFile();
+		File projectDir = FileUtil.getFile(projectRecord.getProjectLocation());
 
-        SDK sdk = SDKUtil.getSDKFromProjectDir( projectDir );
+		SDK sdk = SDKUtil.getSDKFromProjectDir(projectDir);
 
-        if( sdk != null )
-        {
-            if( !( SDKManager.getInstance().containsSDK( sdk ) ) )
-            {
-                SDKManager.getInstance().addSDK( sdk );
-            }
-        }
+		SDKManager sdkManager = SDKManager.getInstance();
 
-        IRuntime runtime = (IRuntime) model.getProperty( IFacetProjectCreationDataModelProperties.FACET_RUNTIME );
+		if ((sdk != null) && !sdkManager.containsSDK(sdk)) {
+			sdkManager.addSDK(sdk);
+		}
 
-        try
-        {
-            ProjectImportUtil.importProject( projectRecord, runtime, sdk.getLocation().toOSString(), monitor );
-        }
-        catch( CoreException e )
-        {
-            return ProjectCore.createErrorStatus( e );
-        }
+		IRuntime runtime = (IRuntime)model.getProperty(IFacetProjectCreationDataModelProperties.FACET_RUNTIME);
 
-        return Status.OK_STATUS;
-    }
+		try {
+			ProjectImportUtil.importProject(projectRecord, runtime, FileUtil.toOSString(sdk.getLocation()), monitor);
+		}
+		catch (CoreException ce) {
+			return ProjectCore.createErrorStatus(ce);
+		}
+
+		return Status.OK_STATUS;
+	}
 
 }

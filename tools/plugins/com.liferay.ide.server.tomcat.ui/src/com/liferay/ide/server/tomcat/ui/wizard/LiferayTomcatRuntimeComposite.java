@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,8 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.server.tomcat.ui.wizard;
 
@@ -20,6 +19,8 @@ import com.liferay.ide.server.tomcat.core.LiferayTomcatRuntime;
 import com.liferay.ide.server.tomcat.core.util.LiferayTomcatUtil;
 import com.liferay.ide.server.ui.LiferayServerUI;
 import com.liferay.ide.ui.util.SWTUtil;
+
+import java.io.File;
 
 import java.util.ArrayList;
 
@@ -32,6 +33,7 @@ import org.eclipse.jdt.launching.JavaRuntime;
 import org.eclipse.jface.dialogs.Dialog;
 import org.eclipse.jface.layout.GridDataFactory;
 import org.eclipse.jface.wizard.IWizard;
+import org.eclipse.jface.wizard.IWizardContainer;
 import org.eclipse.jface.wizard.IWizardPage;
 import org.eclipse.jst.server.core.IJavaRuntime;
 import org.eclipse.jst.server.tomcat.core.internal.TomcatRuntime;
@@ -56,375 +58,378 @@ import org.eclipse.wst.server.core.IRuntimeWorkingCopy;
 import org.eclipse.wst.server.ui.wizard.IWizardHandle;
 
 /**
- * @author Greg Amerson
+ * @author Gregory Amerson
+ * @author Andy Wu
  */
-@SuppressWarnings( { "restriction", "unchecked" } )
-public class LiferayTomcatRuntimeComposite extends TomcatRuntimeComposite implements ModifyListener
-{
-
-    public static void setFieldValue( Text field, String value )
-    {
-        if( field != null && !field.isDisposed() )
-        {
-            field.setText( value != null ? value : StringPool.EMPTY );
-        }
-    }
-
-    protected Text dirField;
-    protected boolean ignoreModifyEvent;
-    protected Button jreButton;
-    protected Combo jreCombo;
-    protected Label jreLabel;
-    protected Text nameField;
-
-    public LiferayTomcatRuntimeComposite( Composite parent, IWizardHandle wizard )
-    {
-        super( parent, wizard );
-
-        wizard.setTitle( Msgs.liferayTomcatRuntime );
-        wizard.setDescription( Msgs.specifyInstallationDirectory );
-        wizard.setImageDescriptor( LiferayServerUI.getImageDescriptor( LiferayServerUI.IMG_WIZ_RUNTIME ) );
-    }
+@SuppressWarnings({"restriction", "unchecked"})
+public class LiferayTomcatRuntimeComposite extends TomcatRuntimeComposite implements ModifyListener {
 
-    public void modifyText( ModifyEvent e )
-    {
-        if( ignoreModifyEvent )
-        {
-            ignoreModifyEvent = false;
+	public static void setFieldValue(Text field, String value) {
+		if ((field != null) && !field.isDisposed()) {
+			field.setText((value != null) ? value : StringPool.EMPTY);
+		}
+	}
 
-            return;
-        }
+	public LiferayTomcatRuntimeComposite(Composite parent, IWizardHandle wizard) {
+		super(parent, wizard);
 
-        if( e.getSource().equals( dirField ) )
-        {
-            getRuntime().setLocation( new Path( dirField.getText() ) );
-        }
-        else if( e.getSource().equals( nameField ) )
-        {
-            getRuntime().setName( nameField.getText() );
-        }
+		wizard.setTitle(Msgs.liferayTomcatRuntime);
+		wizard.setDescription(Msgs.specifyInstallationDirectory);
+		wizard.setImageDescriptor(LiferayServerUI.getImageDescriptor(LiferayServerUI.IMG_WIZ_RUNTIME));
+	}
 
-        validate();
+	public void modifyText(ModifyEvent e) {
+		if (ignoreModifyEvent) {
+			ignoreModifyEvent = false;
 
-        IStatus status = getRuntime().validate( null );
+			return;
+		}
 
-        if( !status.isOK() && e.getSource().equals( dirField ) )
-        {
-            // check to see if we need to modify from a liferay folder down to
-            // embedded tomcat
-            IPath currentLocation = getRuntime().getLocation();
+		if (dirField.equals(e.getSource())) {
+			getRuntime().setLocation(new Path(dirField.getText()));
+		}
+		else if (nameField.equals(e.getSource())) {
+			getRuntime().setName(nameField.getText());
+		}
 
-            IPath modifiedLocation = LiferayTomcatUtil.modifyLocationForBundle( currentLocation );
+		validate();
 
-            if( modifiedLocation != null )
-            {
-                getRuntime().setLocation( modifiedLocation );
+		IStatus status = getRuntime().validate(null);
 
-                status = getRuntime().validate( null );
+		if (!status.isOK() && dirField.equals(e.getSource())) {
 
-                if( status.isOK() )
-                {
-                    ignoreModifyEvent = true;
+			// check to see if we need to modify from a liferay folder down to embedded tomcat
 
-                    dirField.setText( modifiedLocation.toOSString() );
+			IPath currentLocation = getRuntime().getLocation();
 
-                    validate();
-                }
-            }
-        }
+			IPath modifiedLocation = LiferayTomcatUtil.modifyLocationForBundle(currentLocation);
 
-        enableJREControls( true );
+			if (modifiedLocation != null) {
+				getRuntime().setLocation(modifiedLocation);
 
-        if( getTomcatRuntime().getVMInstall() != null )
-        {
-            // check to see if selected VM is in same path as new server
-            // location
-            IPath vmLoc = new Path( getTomcatRuntime().getVMInstall().getInstallLocation().getPath() );
+				status = getRuntime().validate(null);
 
-            IPath runtimeLoc = getRuntime().getLocation();
+				if (status.isOK()) {
+					ignoreModifyEvent = true;
 
-            if( !runtimeLoc.isPrefixOf( vmLoc ) )
-            {
-                // we have a jre that is outside the runtime location, need to
-                // look for new bundled JRE
-                LiferayTomcatRuntime runtime = (LiferayTomcatRuntime) getTomcatRuntime();
+					dirField.setText(modifiedLocation.toOSString());
 
-                IVMInstall newVM = runtime.findPortalBundledJRE( true );
+					validate();
+				}
+			}
+		}
 
-                if( newVM != null )
-                {
-                    runtime.setVMInstall( newVM );
-                }
-            }
+		enableJREControls(true);
 
-            updateJREs();
-        }
-    }
+		IVMInstall vmInstaller = getTomcatRuntime().getVMInstall();
 
-    protected Button createButton( String text, int style )
-    {
-        Button button = new Button( this, style );
+		if (vmInstaller == null) {
+			return;
+		}
 
-        button.setText( text );
+		// check to see if selected VM is in same path as new server location
 
-        GridDataFactory.generate( button, 2, 1 );
+		File file = vmInstaller.getInstallLocation();
 
-        return button;
-    }
+		IPath vmLoc = new Path(file.getPath());
 
-    @Override
-    protected void createControl()
-    {
-        setLayout( createLayout() );
+		IPath runtimeLoc = getRuntime().getLocation();
 
-        setLayoutData( new GridData( GridData.FILL_BOTH ) );
+		if ((runtimeLoc != null) && !runtimeLoc.isPrefixOf(vmLoc)) {
 
-        createFields();
+			// we have a jre that is outside the runtime location, need to look for new bundled JRE
 
-        // initially disabled until user selects an installation directory
-        enableJREControls( false );
+			LiferayTomcatRuntime runtime = (LiferayTomcatRuntime)getTomcatRuntime();
 
-        init();
+			IVMInstall newVM = runtime.findPortalBundledJRE(true);
 
-        validate();
+			if (newVM != null) {
+				runtime.setVMInstall(newVM);
+			}
+		}
 
-        Dialog.applyDialogFont( this );
-    }
+		updateJREs();
+	}
 
-    protected void createFields()
-    {
-        nameField = createTextField( Msgs.name );
-        nameField.addModifyListener( this );
+	protected Button createButton(String text, int style) {
+		Button button = new Button(this, style);
 
-        dirField = createTextField( Msgs.liferayTomcatDirectory );
-        dirField.addModifyListener( this );
+		button.setText(text);
 
-        SWTUtil.createButton( this, Msgs.browse ).addSelectionListener( new SelectionAdapter()
-        {
+		GridDataFactory.generate(button, 2, 1);
 
-            public void widgetSelected( SelectionEvent e )
-            {
-                DirectoryDialog dd = new DirectoryDialog( LiferayTomcatRuntimeComposite.this.getShell() );
+		return button;
+	}
 
-                dd.setMessage( Msgs.selectLiferayTomcatDirectory );
-                dd.setFilterPath( dirField.getText() );
+	@Override
+	protected void createControl() {
+		setLayout(createLayout());
+		setLayoutData(new GridData(GridData.FILL_BOTH));
+		setBackground(getParent().getBackground());
 
-                String selectedDir = dd.open();
+		createFields();
 
-                if( selectedDir != null )
-                {
-                    dirField.setText( selectedDir );
-                }
-            }
-        } );
+		// initially disabled until user selects an installation directory
 
-        installLabel = new Label( this, SWT.RIGHT );
+		enableJREControls(false);
 
-        GridData data = new GridData( GridData.FILL_HORIZONTAL );
-        data.horizontalIndent = 10;
+		init();
 
-        installLabel.setLayoutData( data );
+		validate();
 
-        install = SWTUtil.createButton( this, Msgs.install );
-        install.setVisible( false );
+		Dialog.applyDialogFont(this);
+	}
 
-        jreLabel = createLabel( Msgs.selecteRuntimeJRE );
+	protected void createFields() {
+		nameField = createTextField(Msgs.name);
 
-        jreCombo = new Combo( this, SWT.DROP_DOWN | SWT.READ_ONLY );
-        jreCombo.setLayoutData( new GridData( GridData.FILL_HORIZONTAL ) );
-        jreCombo.addSelectionListener( new SelectionAdapter()
-        {
+		nameField.addModifyListener(this);
 
-            public void widgetSelected( SelectionEvent e )
-            {
-                int sel = jreCombo.getSelectionIndex();
+		dirField = createTextField(Msgs.liferayTomcatDirectory);
 
-                IVMInstall vmInstall = null;
+		dirField.addModifyListener(this);
 
-                if( sel > 0 )
-                {
-                    vmInstall = (IVMInstall) installedJREs.get( sel - 1 );
-                }
+		Button browseBuntton = SWTUtil.createButton(this, Msgs.browse);
 
-                getTomcatRuntime().setVMInstall( vmInstall );
+		browseBuntton.addSelectionListener(
+			new SelectionAdapter() {
 
-                validate();
-            }
-        } );
+				public void widgetSelected(SelectionEvent e) {
+					DirectoryDialog dd = new DirectoryDialog(LiferayTomcatRuntimeComposite.this.getShell());
 
-        jreButton = SWTUtil.createButton( this, Msgs.installedJREs );
-        jreButton.addSelectionListener( new SelectionAdapter()
-        {
+					dd.setMessage(Msgs.selectLiferayTomcatDirectory);
+					dd.setFilterPath(dirField.getText());
 
-            public void widgetSelected( SelectionEvent e )
-            {
-                if( SWTUtil.showPreferencePage( "org.eclipse.jdt.debug.ui.preferences.VMPreferencePage", getShell() ) ) //$NON-NLS-1$
-                {
-                    updateJREs();
-                    validate();
-                }
-            }
+					String selectedDir = dd.open();
 
-        } );
+					if (selectedDir != null) {
+						dirField.setText(selectedDir);
+					}
+				}
 
-        Link link = createLink( Msgs.seeAdditionalConfigurationPage );
-        link.addSelectionListener( new SelectionAdapter()
-        {
+			});
 
-            @Override
-            public void widgetSelected( SelectionEvent e )
-            {
-                if( wizard instanceof IWizardPage )
-                {
-                    IWizard parentWizard = ( (IWizardPage) wizard ).getWizard();
-                    parentWizard.getContainer().showPage( ( (IWizardPage) wizard ).getNextPage() );
-                }
-            }
+		installLabel = new Label(this, SWT.RIGHT);
 
-        } );
-    }
+		GridData data = new GridData(GridData.FILL_HORIZONTAL);
 
-    protected Label createLabel( String text )
-    {
-        Label label = new Label( this, SWT.NONE );
-        label.setText( text );
+		data.horizontalIndent = 10;
 
-        GridDataFactory.generate( label, 2, 1 );
+		installLabel.setLayoutData(data);
 
-        return label;
-    }
+		install = SWTUtil.createButton(this, Msgs.install);
 
-    protected Layout createLayout()
-    {
-        GridLayout layout = new GridLayout( 2, false );
-        return layout;
-    }
+		install.setVisible(false);
 
-    protected Link createLink( String linkText )
-    {
-        Link link = new Link( this, SWT.NONE );
-        link.setText( linkText );
+		jreLabel = createLabel(Msgs.selecteRuntimeJRE);
 
-        GridDataFactory.generate( link, 2, 1 );
+		jreCombo = new Combo(this, SWT.DROP_DOWN | SWT.READ_ONLY);
 
-        return link;
-    }
+		jreCombo.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+		jreCombo.addModifyListener(
+			new ModifyListener() {
 
-    protected void createSpacer()
-    {
-        new Label( this, SWT.NONE );
-    }
+				@Override
+				public void modifyText(ModifyEvent e) {
+					int sel = jreCombo.getSelectionIndex();
 
-    protected Text createTextField( String labelText )
-    {
-        createLabel( labelText );
+					IVMInstall vmInstall = null;
 
-        Text text = new Text( this, SWT.BORDER );
-        text.setLayoutData( new GridData( GridData.FILL_HORIZONTAL ) );
+					if (sel > 0) {
+						vmInstall = (IVMInstall)installedJREs.get(sel - 1);
+					}
 
-        return text;
-    }
+					getTomcatRuntime().setVMInstall(vmInstall);
 
-    protected void enableJREControls( boolean enabled )
-    {
-        jreLabel.setEnabled( enabled );
-        jreCombo.setEnabled( enabled );
-        jreButton.setEnabled( enabled );
-    }
+					validate();
+				}
 
-    protected IJavaRuntime getJavaRuntime()
-    {
-        return (IJavaRuntime) this.runtime;
-    }
+			});
 
-    protected IRuntimeWorkingCopy getRuntime()
-    {
-        return this.runtimeWC;
-    }
+		jreButton = SWTUtil.createButton(this, Msgs.installedJREs);
 
-    protected TomcatRuntime getTomcatRuntime()
-    {
-        return (TomcatRuntime) this.runtime;
-    }
+		jreButton.addSelectionListener(
+			new SelectionAdapter() {
 
-    @Override
-    protected void init()
-    {
-        if( ( nameField == null ) || dirField == null || getRuntime() == null )
-        {
-            return;
-        }
+				public void widgetSelected(SelectionEvent e) {
+					if (SWTUtil.showPreferencePage(
+							"org.eclipse.jdt.debug.ui.preferences.VMPreferencePage", getShell())) {
 
-        setFieldValue( nameField, getRuntime().getName() );
-        setFieldValue( dirField, getRuntime().getLocation() != null ? getRuntime().getLocation().toOSString() : StringPool.EMPTY );
-    }
+						updateJREs();
+						validate();
+					}
+				}
 
-    protected void updateJREs()
-    {
-        IVMInstall currentVM = getJavaRuntime().getVMInstall();
+			});
 
-        int currentJREIndex = -1;
+		Link link = createLink(Msgs.seeAdditionalConfigurationPage);
 
-        // get all installed JVMs
-        installedJREs = new ArrayList<IVMInstall>();
+		link.addSelectionListener(
+			new SelectionAdapter() {
 
-        IVMInstallType[] vmInstallTypes = JavaRuntime.getVMInstallTypes();
+				@Override
+				public void widgetSelected(SelectionEvent e) {
+					if (wizard instanceof IWizardPage) {
+						IWizardPage wizardPage = (IWizardPage)wizard;
 
-        int size = vmInstallTypes.length;
+						IWizard parentWizard = wizardPage.getWizard();
 
-        for( int i = 0; i < size; i++ )
-        {
-            IVMInstall[] vmInstalls = vmInstallTypes[i].getVMInstalls();
+						IWizardContainer container = parentWizard.getContainer();
 
-            int size2 = vmInstalls.length;
+						container.showPage(wizardPage.getNextPage());
+					}
+				}
 
-            for( int j = 0; j < size2; j++ )
-            {
-                installedJREs.add( vmInstalls[j] );
-            }
-        }
+			});
+	}
 
-        // get names
-        size = installedJREs.size();
+	protected Label createLabel(String text) {
+		Label label = new Label(this, SWT.NONE);
 
-        jreNames = new String[size + 1];
-        jreNames[0] = "<Default Workbench JRE>"; //$NON-NLS-1$
+		label.setText(text);
 
-        for( int i = 0; i < size; i++ )
-        {
-            IVMInstall vmInstall = (IVMInstall) installedJREs.get( i );
+		GridDataFactory.generate(label, 2, 1);
 
-            jreNames[i + 1] = vmInstall.getName();
+		return label;
+	}
 
-            if( vmInstall.equals( currentVM ) )
-            {
-                currentJREIndex = i + 1;
-            }
-        }
+	protected Layout createLayout() {
+		return new GridLayout(2, false);
+	}
 
-        if( jreCombo != null )
-        {
-            jreCombo.setItems( jreNames );
-            jreCombo.select( currentJREIndex );
-        }
-    }
+	protected Link createLink(String linkText) {
+		Link link = new Link(this, SWT.NONE);
 
-    private static class Msgs extends NLS
-    {
-        public static String browse;
-        public static String install;
-        public static String installedJREs;
-        public static String liferayTomcatDirectory;
-        public static String liferayTomcatRuntime;
-        public static String name;
-        public static String seeAdditionalConfigurationPage;
-        public static String selecteRuntimeJRE;
-        public static String selectLiferayTomcatDirectory;
-        public static String specifyInstallationDirectory;
+		link.setText(linkText);
 
-        static
-        {
-            initializeMessages( LiferayTomcatRuntimeComposite.class.getName(), Msgs.class );
-        }
-    }
+		GridDataFactory.generate(link, 2, 1);
+
+		return link;
+	}
+
+	protected void createSpacer() {
+		new Label(this, SWT.NONE);
+	}
+
+	protected Text createTextField(String labelText) {
+		createLabel(labelText);
+
+		Text text = new Text(this, SWT.BORDER);
+
+		text.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+
+		return text;
+	}
+
+	protected void enableJREControls(boolean enabled) {
+		jreLabel.setEnabled(enabled);
+		jreCombo.setEnabled(enabled);
+		jreButton.setEnabled(enabled);
+	}
+
+	protected IJavaRuntime getJavaRuntime() {
+		return (IJavaRuntime)runtime;
+	}
+
+	protected IRuntimeWorkingCopy getRuntime() {
+		return runtimeWC;
+	}
+
+	protected TomcatRuntime getTomcatRuntime() {
+		return (TomcatRuntime)runtime;
+	}
+
+	@Override
+	protected void init() {
+		if ((nameField == null) || (dirField == null) || (getRuntime() == null)) {
+			return;
+		}
+
+		setFieldValue(nameField, getRuntime().getName());
+
+		IPath runtimeLocation = getRuntime().getLocation();
+
+		setFieldValue(dirField, (runtimeLocation != null) ? runtimeLocation.toOSString() : StringPool.EMPTY);
+	}
+
+	protected void updateJREs() {
+		IJavaRuntime iJavaRuntime = getJavaRuntime();
+
+		IVMInstall currentVM = null;
+
+		if ((iJavaRuntime != null) && (iJavaRuntime.getVMInstall() != null)) {
+			currentVM = iJavaRuntime.getVMInstall();
+		}
+		else {
+			currentVM = JavaRuntime.getDefaultVMInstall();
+		}
+
+		int currentJREIndex = -1;
+
+		// get all installed JVMs
+
+		installedJREs = new ArrayList<>();
+
+		IVMInstallType[] vmInstallTypes = JavaRuntime.getVMInstallTypes();
+
+		int size = vmInstallTypes.length;
+
+		for (int i = 0; i < size; i++) {
+			IVMInstall[] vmInstalls = vmInstallTypes[i].getVMInstalls();
+
+			int size2 = vmInstalls.length;
+
+			for (int j = 0; j < size2; j++) {
+				installedJREs.add(vmInstalls[j]);
+			}
+		}
+
+		size = installedJREs.size();
+
+		jreNames = new String[size + 1];
+
+		jreNames[0] = "<Default Workbench JRE>";
+
+		for (int i = 0; i < size; i++) {
+			IVMInstall vmInstall = (IVMInstall)installedJREs.get(i);
+
+			jreNames[i + 1] = vmInstall.getName();
+
+			if (vmInstall.equals(currentVM)) {
+				currentJREIndex = i + 1;
+			}
+		}
+
+		if (jreCombo != null) {
+			jreCombo.setItems(jreNames);
+			jreCombo.select(currentJREIndex);
+		}
+	}
+
+	protected Text dirField;
+	protected boolean ignoreModifyEvent;
+	protected Button jreButton;
+	protected Combo jreCombo;
+	protected Label jreLabel;
+	protected Text nameField;
+
+	private static class Msgs extends NLS {
+
+		public static String browse;
+		public static String install;
+		public static String installedJREs;
+		public static String liferayTomcatDirectory;
+		public static String liferayTomcatRuntime;
+		public static String name;
+		public static String seeAdditionalConfigurationPage;
+		public static String selecteRuntimeJRE;
+		public static String selectLiferayTomcatDirectory;
+		public static String specifyInstallationDirectory;
+
+		static {
+			initializeMessages(LiferayTomcatRuntimeComposite.class.getName(), Msgs.class);
+		}
+
+	}
+
 }

@@ -24,6 +24,7 @@ import com.liferay.ide.core.util.CoreUtil;
 import com.liferay.ide.project.core.ProjectCore;
 import com.liferay.ide.project.core.model.NewLiferayPluginProjectOp;
 
+import org.eclipse.core.internal.resources.ResourceException;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
@@ -36,48 +37,50 @@ import org.junit.Test;
 /**
  * @author Simon Jiang
  */
+@SuppressWarnings("restriction")
 public class NewLiferayPluginProjectPortletNameOpTests extends ProjectCoreBase
 {
+
     @Override
     protected IPath getLiferayPluginsSdkDir()
     {
-        return ProjectCore.getDefault().getStateLocation().append( "liferay-plugins-sdk-7.0" );
+        return ProjectCore.getDefault().getStateLocation().append(
+            "com.liferay.portal.plugins.sdk-1.0.16-withdependencies" );
     }
 
     @Override
     protected IPath getLiferayPluginsSDKZip()
     {
-        return getLiferayBundlesPath().append( "liferay-plugins-sdk-7.0-ce-m5-20150515112305685.zip" );
+        return getLiferayBundlesPath().append(
+            "com.liferay.portal.plugins.sdk-1.0.16-withdependencies.zip" );
     }
 
     @Override
     protected String getLiferayPluginsSdkZipFolder()
     {
-        return "liferay-plugins-sdk-7.0/";
+        return "com.liferay.portal.plugins.sdk-1.0.16-withdependencies/";
     }
 
-    @AfterClass
-    public static void removePluginsSDK()
-    {
-        IProject[] projects = CoreUtil.getAllProjects();
-        for( IProject iProject : projects )
-        {
-            if ( iProject != null && iProject.isAccessible() && iProject.exists())
-            {
-                try
-                {
-                    iProject.delete( true, true, new NullProgressMonitor() );
-                }
-                catch( CoreException e )
-                {
-                    e.printStackTrace();
-                }
-            }
-        }
-    }
+	@AfterClass
+	public static void removePluginsSDK() throws CoreException {
+		IProject[] projects = CoreUtil.getAllProjects();
+
+		for (IProject project : projects) {
+			if (project != null && project.isAccessible() && project.exists()) {
+				try {
+					project.close(new NullProgressMonitor());
+					project.delete(true, new NullProgressMonitor());
+				}
+				catch (ResourceException re) {
+					project.close(new NullProgressMonitor());
+					project.delete(true, new NullProgressMonitor());
+				}
+			}
+		}
+	}
 
     protected IProject createNewJSFPortletProjectCustomPortletName(
-        final String  jsfSuite, String suffix, String customPortletName ) throws Exception
+        final String jsfSuite, String suffix, String customPortletName ) throws Exception
     {
         final String projectName = "test-" + jsfSuite + suffix + "-sdk-project";
         final NewLiferayPluginProjectOp op = newProjectOp( projectName );
@@ -116,16 +119,16 @@ public class NewLiferayPluginProjectPortletNameOpTests extends ProjectCoreBase
     @Test
     public void testNewJSFPortletProjectPortletName() throws Exception
     {
-        if( shouldSkipBundleTests() ) return;
+        if( shouldSkipBundleTests() )
+            return;
 
         final String jsfSuite = "jsf-2.x";
         final String suffix = "";
         final String customPortletName = "test111";
 
-        IProject jsfProject = createNewJSFPortletProjectCustomPortletName(jsfSuite,suffix,customPortletName);
+        IProject jsfProject = createNewJSFPortletProjectCustomPortletName( jsfSuite, suffix, customPortletName );
 
-        final IFolder defaultDocroot =
-            LiferayCore.create( IWebProject.class, jsfProject ).getDefaultDocrootFolder();
+        final IFolder defaultDocroot = LiferayCore.create( IWebProject.class, jsfProject ).getDefaultDocrootFolder();
 
         final IFile portletXml = defaultDocroot.getFile( "WEB-INF/portlet.xml" );
 
@@ -155,11 +158,12 @@ public class NewLiferayPluginProjectPortletNameOpTests extends ProjectCoreBase
     @Test
     public void testNewMVCPortletProjectCustomPortletName() throws Exception
     {
-        if( shouldSkipBundleTests() ) return;
+        if( shouldSkipBundleTests() )
+            return;
 
         final String customPortletName = "test111";
 
-        IProject jsfProject = createNewMVCPortletProjectCustomPortletName(customPortletName);
+        IProject jsfProject = createNewMVCPortletProjectCustomPortletName( customPortletName );
 
         final IFolder docroot = LiferayCore.create( IWebProject.class, jsfProject ).getDefaultDocrootFolder();
 

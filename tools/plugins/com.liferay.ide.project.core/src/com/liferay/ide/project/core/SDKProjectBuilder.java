@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,25 +10,30 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.project.core;
 
+import com.liferay.ide.core.Artifact;
 import com.liferay.ide.core.ILiferayConstants;
 import com.liferay.ide.sdk.core.ISDKConstants;
 import com.liferay.ide.sdk.core.SDK;
 
+import java.util.List;
+
 import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.resources.IncrementalProjectBuilder;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
-import org.eclipse.core.runtime.SubProgressMonitor;
+import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.jdt.core.ClasspathContainerInitializer;
 import org.eclipse.jdt.core.IClasspathEntry;
 import org.eclipse.jdt.core.IJavaProject;
@@ -42,178 +47,167 @@ import org.eclipse.osgi.util.NLS;
  * @author Gregory Amerson
  * @author Simon Jiang
  */
-@SuppressWarnings( "restriction" )
-public class SDKProjectBuilder extends AbstractProjectBuilder
-{
+@SuppressWarnings("restriction")
+public class SDKProjectBuilder extends AbstractProjectBuilder {
 
-    private SDK sdk;
+	public SDKProjectBuilder(IProject project, SDK sdk) {
+		super(project);
 
-    public SDKProjectBuilder( IProject project, SDK sdk )
-    {
-        super( project );
-        this.sdk = sdk;
-    }
+		_sdk = sdk;
+	}
 
-    @Override
-    public IStatus buildLang( IFile langFile, IProgressMonitor monitor ) throws CoreException
-    {
-        IStatus status = sdk.validate();
+	@Override
+	public IStatus buildLang(IFile langFile, IProgressMonitor monitor) throws CoreException {
+		IStatus status = _sdk.validate();
 
-        if ( !status.isOK())
-        {
-            return status;
-        }
+		if (!status.isOK()) {
+			return status;
+		}
 
-        return sdk.buildLanguage(
-            getProject(), langFile, null, monitor );
-    }
+		return _sdk.buildLanguage(getProject(), langFile, null, monitor);
+	}
 
-    @Override
-    public IStatus buildService( IProgressMonitor monitor ) throws CoreException
-    {
-        final IFile servicesFile = getDocrootFile( "WEB-INF/" + ILiferayConstants.SERVICE_XML_FILE );
+	@Override
+	public IStatus buildService(IProgressMonitor monitor) throws CoreException {
+		IFile servicesFile = getDocrootFile("WEB-INF/" + ILiferayConstants.SERVICE_XML_FILE);
 
-        if( servicesFile != null && servicesFile.exists() )
-        {
-            final IProgressMonitor sub = new SubProgressMonitor( monitor, 100 );
+		if ((servicesFile != null) && servicesFile.exists()) {
+			IProgressMonitor sub = SubMonitor.convert(monitor);
 
-            sub.beginTask( Msgs.buildingServices, 100 );
+			sub.beginTask(Msgs.buildingServices, 100);
 
-            return buildService( servicesFile, sub );
-        }
+			return _buildService(servicesFile, sub);
+		}
 
-        return Status.OK_STATUS;
-    }
+		return Status.OK_STATUS;
+	}
 
-    private IStatus buildService( IFile serviceXmlFile, IProgressMonitor monitor ) throws CoreException
-    {
-        IStatus status = sdk.validate();
+	@Override
+	public IStatus buildWSDD(IProgressMonitor monitor) throws CoreException {
+		IFile servicesFile = getDocrootFile("WEB-INF/" + ILiferayConstants.SERVICE_XML_FILE);
 
-        if ( !status.isOK() )
-        {
-            return status;
-        }
+		if ((servicesFile != null) && servicesFile.exists()) {
+			IProgressMonitor sub = SubMonitor.convert(monitor);
 
-        IStatus retval =
-            sdk.buildService(
-                getProject(), serviceXmlFile, null );
+			sub.beginTask(Msgs.buildingServices, 100);
 
-        try
-        {
-            getProject().refreshLocal( IResource.DEPTH_INFINITE, monitor );
-        }
-        catch( Exception e )
-        {
-            retval = ProjectCore.createErrorStatus( e );
-        }
+			return _buildWSDD(servicesFile, sub);
+		}
 
-        ResourcesPlugin.getWorkspace().build( IncrementalProjectBuilder.INCREMENTAL_BUILD, monitor );
+		return Status.OK_STATUS;
+	}
 
-        updateClasspath( getProject() );
+	@Override
+	public IStatus updateDependencies(IProject project, List<Artifact> dependencies) throws CoreException {
+		throw new CoreException(ProjectCore.createErrorStatus("Not implemented"));
+	}
 
-        getProject().refreshLocal( IResource.DEPTH_INFINITE, monitor );
+	protected IStatus updateClasspath(IProject project) throws CoreException {
+		FlexibleProjectContainer container = J2EEComponentClasspathContainerUtils.getInstalledWebAppLibrariesContainer(
+			project);
 
-        return retval;
-    }
+		if (container == null) {
+			return Status.OK_STATUS;
+		}
 
-    @Override
-    public IStatus buildWSDD( IProgressMonitor monitor ) throws CoreException
-    {
-        final IFile servicesFile = getDocrootFile( "WEB-INF/" + ILiferayConstants.SERVICE_XML_FILE );
+		container.refresh();
 
-        if( servicesFile != null && servicesFile.exists() )
-        {
-            final IProgressMonitor sub = new SubProgressMonitor( monitor, 100 );
+		container = J2EEComponentClasspathContainerUtils.getInstalledWebAppLibrariesContainer(project);
 
-            sub.beginTask( Msgs.buildingServices, 100 );
+		IClasspathEntry[] webappEntries = container.getClasspathEntries();
 
-            return buildWSDD( servicesFile, sub );
-        }
+		for (IClasspathEntry entry2 : webappEntries) {
+			IPath path = entry2.getPath();
 
-        return Status.OK_STATUS;
-    }
+			String segment = path.lastSegment();
 
-    private IStatus buildWSDD( IFile serviceXmlFile, IProgressMonitor monitor ) throws CoreException
-    {
-        IStatus status = sdk.validate();
+			if (segment.equals(getProject().getName() + "-service.jar")) {
+				IFolder folder = getProject().getFolder(ISDKConstants.DEFAULT_DOCROOT_FOLDER + "/WEB-INF/service");
 
-        if ( !status.isOK() )
-        {
-            return status;
-        }
+				ClasspathEntry classpathEntry2 = (ClasspathEntry)entry2;
 
-        IStatus retval =
-            sdk.buildWSDD( getProject(), serviceXmlFile, null );
+				classpathEntry2.sourceAttachmentPath = folder.getFullPath();
 
-        try
-        {
-            getProject().refreshLocal( IResource.DEPTH_INFINITE, monitor );
-        }
-        catch( Exception e )
-        {
-            retval = ProjectCore.createErrorStatus( e );
-        }
+				break;
+			}
+		}
 
-        getProject().build( IncrementalProjectBuilder.INCREMENTAL_BUILD, monitor );
+		ClasspathContainerInitializer initializer = JavaCore.getClasspathContainerInitializer(
+			"org.eclipse.jst.j2ee.internal.web.container");
 
-        try
-        {
-            getProject().refreshLocal( IResource.DEPTH_INFINITE, monitor );
-        }
-        catch( Exception e )
-        {
-            ProjectCore.logError( e );
-        }
+		IJavaProject javaProject = JavaCore.create(project);
 
-        return retval;
-    }
+		initializer.requestClasspathContainerUpdate(container.getPath(), javaProject, container);
 
-    protected IStatus updateClasspath( IProject project ) throws CoreException
-    {
-        FlexibleProjectContainer container =
-            J2EEComponentClasspathContainerUtils.getInstalledWebAppLibrariesContainer( project );
+		return Status.OK_STATUS;
+	}
 
-        if( container == null )
-        {
-            return Status.OK_STATUS;
-        }
+	protected static class Msgs extends NLS {
 
-        container.refresh();
+		public static String buildingServices;
+		public static String buildingWSDD;
 
-        container = J2EEComponentClasspathContainerUtils.getInstalledWebAppLibrariesContainer( project );
+		static {
+			initializeMessages(SDKProjectBuilder.class.getName(), Msgs.class);
+		}
 
-        IClasspathEntry[] webappEntries = container.getClasspathEntries();
+	}
 
-        for( IClasspathEntry entry2 : webappEntries )
-        {
-            if( entry2.getPath().lastSegment().equals( getProject().getName() + "-service.jar" ) ) //$NON-NLS-1$
-            {
-                ( (ClasspathEntry) entry2 ).sourceAttachmentPath =
-                    getProject().getFolder( ISDKConstants.DEFAULT_DOCROOT_FOLDER + "/WEB-INF/service" ).getFullPath(); //$NON-NLS-1$
+	private IStatus _buildService(IFile serviceXmlFile, IProgressMonitor monitor) throws CoreException {
+		IStatus status = _sdk.validate();
 
-                break;
-            }
-        }
+		if (!status.isOK()) {
+			return status;
+		}
 
-        ClasspathContainerInitializer initializer =
-            JavaCore.getClasspathContainerInitializer( "org.eclipse.jst.j2ee.internal.web.container" ); //$NON-NLS-1$
+		IStatus retval = _sdk.buildService(getProject(), serviceXmlFile, null);
 
-        IJavaProject javaProject = JavaCore.create( project );
+		try {
+			getProject().refreshLocal(IResource.DEPTH_INFINITE, monitor);
+		}
+		catch (Exception e) {
+			retval = ProjectCore.createErrorStatus(e);
+		}
 
-        initializer.requestClasspathContainerUpdate( container.getPath(), javaProject, container );
+		IWorkspace workspace = ResourcesPlugin.getWorkspace();
 
-        return Status.OK_STATUS;
-    }
+		workspace.build(IncrementalProjectBuilder.INCREMENTAL_BUILD, monitor);
 
-    protected static class Msgs extends NLS
-    {
+		updateClasspath(getProject());
 
-        public static String buildingServices;
-        public static String buildingWSDD;
+		getProject().refreshLocal(IResource.DEPTH_INFINITE, monitor);
 
-        static
-        {
-            initializeMessages( SDKProjectBuilder.class.getName(), Msgs.class );
-        }
-    }
+		return retval;
+	}
+
+	private IStatus _buildWSDD(IFile serviceXmlFile, IProgressMonitor monitor) throws CoreException {
+		IStatus status = _sdk.validate();
+
+		if (!status.isOK()) {
+			return status;
+		}
+
+		IStatus retval = _sdk.buildWSDD(getProject(), serviceXmlFile, null);
+
+		try {
+			getProject().refreshLocal(IResource.DEPTH_INFINITE, monitor);
+		}
+		catch (Exception e) {
+			retval = ProjectCore.createErrorStatus(e);
+		}
+
+		getProject().build(IncrementalProjectBuilder.INCREMENTAL_BUILD, monitor);
+
+		try {
+			getProject().refreshLocal(IResource.DEPTH_INFINITE, monitor);
+		}
+		catch (Exception e) {
+			ProjectCore.logError(e);
+		}
+
+		return retval;
+	}
+
+	private SDK _sdk;
+
 }

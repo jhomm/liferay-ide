@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,8 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.project.core.library;
 
@@ -19,36 +18,40 @@ import org.eclipse.core.expressions.PropertyTester;
 import org.eclipse.jst.common.project.facet.core.libprov.EnablementExpressionContext;
 import org.eclipse.wst.common.project.facet.core.IFacetedProjectBase;
 import org.eclipse.wst.server.core.IRuntime;
+import org.eclipse.wst.server.core.IRuntimeType;
 import org.eclipse.wst.server.core.internal.facets.FacetUtil;
 
 /**
- * @author Greg Amerson
+ * @author Gregory Amerson
  */
-@SuppressWarnings( "restriction" )
-public class LiferayRuntimePropertyTester extends PropertyTester
-{
+@SuppressWarnings("restriction")
+public class LiferayRuntimePropertyTester extends PropertyTester {
 
-    public boolean test( Object receiver, String property, Object[] args, Object expectedValue )
-    {
-        boolean retval = false;
+	public boolean test(Object receiver, String property, Object[] args, Object expectedValue) {
+		boolean retval = false;
 
-        try
-        {
-            EnablementExpressionContext ctx = (EnablementExpressionContext) receiver;
-            IFacetedProjectBase projectBase = ctx.getFacetedProject();
-            IRuntime serverRuntime = FacetUtil.getRuntime( projectBase.getPrimaryRuntime() );
+		try {
+			EnablementExpressionContext ctx = (EnablementExpressionContext)receiver;
 
-            if( serverRuntime.getRuntimeType().getId().startsWith( "com.liferay." ) ) //$NON-NLS-1$
-            {
-                retval = true;
-            }
-        }
-        catch( Throwable t )
-        {
-            // don't log error just means test returns false;
-        }
+			IFacetedProjectBase projectBase = ctx.getFacetedProject();
 
-        return retval;
-    }
+			IRuntime serverRuntime = FacetUtil.getRuntime(projectBase.getPrimaryRuntime());
+
+			IRuntimeType runtimeType = serverRuntime.getRuntimeType();
+
+			String runtimeId = runtimeType.getId();
+
+			if (runtimeId.startsWith("com.liferay.")) {
+				retval = true;
+			}
+		}
+		catch (Throwable t) {
+
+			// don't log error just means test returns false;
+
+		}
+
+		return retval;
+	}
 
 }

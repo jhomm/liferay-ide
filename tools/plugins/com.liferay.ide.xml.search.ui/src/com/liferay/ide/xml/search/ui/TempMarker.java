@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,8 +10,8 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
+
 package com.liferay.ide.xml.search.ui;
 
 import com.liferay.ide.core.util.CoreUtil;
@@ -24,164 +24,170 @@ import java.util.Map;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.wst.sse.ui.internal.reconcile.TemporaryAnnotation;
 
-
 /**
  * @author Gregory Amerson
  */
-@SuppressWarnings( "restriction" )
-public class TempMarker implements IMarker
-{
-    private final TemporaryAnnotation annotation;
-    private final Map<String, Object> attributes;
-    private final long creationTime;
-    private final IFile file;
-    private final String type;
+@SuppressWarnings("restriction")
+public class TempMarker implements IMarker {
 
-    public TempMarker( TemporaryAnnotation temp )
-    {
-        this.annotation = temp;
-        this.attributes = new HashMap<String, Object>();
-        this.creationTime = System.currentTimeMillis();
+	public TempMarker(TemporaryAnnotation temp) {
+		_annotation = temp;
 
-        for( Object key : this.annotation.getAttributes().keySet() )
-        {
-            this.attributes.put( key.toString(), this.annotation.getAttributes().get( key ) );
-        }
+		_attributes = new HashMap<>();
 
-        this.file =
-            CoreUtil.getWorkspaceRoot().getFile(
-                Path.fromPortableString( (String) this.attributes.get( XMLSearchConstants.FULL_PATH ) ) );
+		_creationTime = System.currentTimeMillis();
 
-        this.type = (String) this.attributes.get( XMLSearchConstants.MARKER_TYPE );
-    }
+		Map attribute = _annotation.getAttributes();
 
-    @Override
-    public void delete() throws CoreException
-    {
-    }
+		for (Object key : attribute.keySet()) {
+			_attributes.put(key.toString(), attribute.get(key));
+		}
 
-    @Override
-    public boolean exists()
-    {
-        return false;
-    }
+		IWorkspaceRoot workspaceRoot = CoreUtil.getWorkspaceRoot();
 
-    @SuppressWarnings( "rawtypes" )
-    @Override
-    public Object getAdapter( Class adapter )
-    {
-        return null;
-    }
+		_file = workspaceRoot.getFile(Path.fromPortableString((String)_attributes.get(XMLSearchConstants.FULL_PATH)));
 
-    @Override
-    public Object getAttribute( String attributeName ) throws CoreException
-    {
-        return annotation.getAttributes().get( attributeName );
-    }
+		_type = (String)_attributes.get(XMLSearchConstants.MARKER_TYPE);
+	}
 
-    @Override
-    public boolean getAttribute( String attributeName, boolean defaultValue )
-    {
-        final Object value = annotation.getAttributes().get( attributeName );
+	@Override
+	public void delete() throws CoreException {
+	}
 
-        return value instanceof Boolean ? Boolean.parseBoolean( value.toString() ) : defaultValue;
-    }
+	@Override
+	public boolean exists() {
+		return false;
+	}
 
-    @Override
-    public int getAttribute( String attributeName, int defaultValue )
-    {
-        final Object value = annotation.getAttributes().get( attributeName );
+	@Override
+	@SuppressWarnings("rawtypes")
+	public Object getAdapter(Class adapter) {
+		return null;
+	}
 
-        return value instanceof Integer ? Integer.parseInt( value.toString() ) : defaultValue;
-    }
+	@Override
+	public Object getAttribute(String attributeName) throws CoreException {
+		Map attributes = _annotation.getAttributes();
 
-    @Override
-    public String getAttribute( String attributeName, String defaultValue )
-    {
-        final Object value = annotation.getAttributes().get( attributeName );
+		return attributes.get(attributeName);
+	}
 
-        return value != null ? value.toString() : defaultValue;
-    }
+	@Override
+	public boolean getAttribute(String attributeName, boolean defaultValue) {
+		Map attributes = _annotation.getAttributes();
 
-    @Override
-    public Map<String, Object> getAttributes() throws CoreException
-    {
-        return this.attributes;
-    }
+		Object value = attributes.get(attributeName);
 
-    @Override
-    public Object[] getAttributes( String[] attributeNames ) throws CoreException
-    {
-        final List<Object> retval = new ArrayList<Object>();
+		if (value instanceof Boolean) {
+			return Boolean.parseBoolean(value.toString());
+		}
 
-        for( String attributeName : attributeNames )
-        {
-            if( this.attributes.get( attributeName ) != null )
-            {
-                retval.add( this.attributes.get( attributeName ) );
-            }
-        }
+		return defaultValue;
+	}
 
-        return retval.toArray( new Object[0] );
-    }
+	@Override
+	public int getAttribute(String attributeName, int defaultValue) {
+		Map attributes = _annotation.getAttributes();
 
-    @Override
-    public long getCreationTime() throws CoreException
-    {
-        return this.creationTime;
-    }
+		Object value = attributes.get(attributeName);
 
-    @Override
-    public long getId()
-    {
-        return -1;
-    }
+		if (value instanceof Integer) {
+			try {
+				return Integer.parseInt(value.toString());
+			}
+			catch (NumberFormatException nfe) {
+				return -1;
+			}
+		}
 
-    @Override
-    public IResource getResource()
-    {
-        return this.file;
-    }
+		return defaultValue;
+	}
 
-    @Override
-    public String getType() throws CoreException
-    {
-        return this.type;
-    }
+	@Override
+	public String getAttribute(String attributeName, String defaultValue) {
+		Map attributes = _annotation.getAttributes();
 
-    @Override
-    public boolean isSubtypeOf( String superType ) throws CoreException
-    {
-        return false;
-    }
+		Object value = attributes.get(attributeName);
 
-    @Override
-    public void setAttribute( String attributeName, boolean value ) throws CoreException
-    {
-    }
+		if (value != null) {
+			return value.toString();
+		}
 
-    @Override
-    public void setAttribute( String attributeName, int value ) throws CoreException
-    {
-    }
+		return defaultValue;
+	}
 
-    @Override
-    public void setAttribute( String attributeName, Object value ) throws CoreException
-    {
-    }
+	@Override
+	public Map<String, Object> getAttributes() throws CoreException {
+		return _attributes;
+	}
 
-    @Override
-    public void setAttributes( Map<String, ? extends Object> attributes ) throws CoreException
-    {
-    }
+	@Override
+	public Object[] getAttributes(String[] attributeNames) throws CoreException {
+		List<Object> retval = new ArrayList<>();
 
-    @Override
-    public void setAttributes( String[] attributeNames, Object[] values ) throws CoreException
-    {
-    }
+		for (String attributeName : attributeNames) {
+			if (_attributes.get(attributeName) != null) {
+				retval.add(_attributes.get(attributeName));
+			}
+		}
+
+		return retval.toArray(new Object[0]);
+	}
+
+	@Override
+	public long getCreationTime() throws CoreException {
+		return _creationTime;
+	}
+
+	@Override
+	public long getId() {
+		return -1;
+	}
+
+	@Override
+	public IResource getResource() {
+		return _file;
+	}
+
+	@Override
+	public String getType() throws CoreException {
+		return _type;
+	}
+
+	@Override
+	public boolean isSubtypeOf(String superType) throws CoreException {
+		return false;
+	}
+
+	@Override
+	public void setAttribute(String attributeName, boolean value) throws CoreException {
+	}
+
+	@Override
+	public void setAttribute(String attributeName, int value) throws CoreException {
+	}
+
+	@Override
+	public void setAttribute(String attributeName, Object value) throws CoreException {
+	}
+
+	@Override
+	public void setAttributes(Map<String, ? extends Object> attributes) throws CoreException {
+	}
+
+	@Override
+	public void setAttributes(String[] attributeNames, Object[] values) throws CoreException {
+	}
+
+	private final TemporaryAnnotation _annotation;
+	private final Map<String, Object> _attributes;
+	private final long _creationTime;
+	private final IFile _file;
+	private final String _type;
 
 }

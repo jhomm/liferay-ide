@@ -1,14 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE service-builder PUBLIC "-//Liferay//DTD Service Builder ${version}//EN" "http://www.liferay.com/dtd/liferay-service-builder_${version_}.dtd">
 <service-builder package-path="${package_path}">
-    <author>${author}</author>
-    <namespace>${namespace}</namespace>
+	<author>${author}</author>
 
-	<entity name="Foo" local-service="true" remote-service="true">
+	<namespace>${namespace}</namespace>
+
+	<entity local-service="true" name="Foo" remote-service="true">
 
 		<!-- PK fields -->
 
-		<column name="fooId" type="long" primary="true" />
+		<column name="fooId" primary="true" type="long" />
 
 		<!-- Group instance -->
 

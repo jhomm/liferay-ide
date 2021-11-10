@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,158 +10,136 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- * Contributors:
- *               Kamesh Sampath - initial implementation
- *******************************************************************************/
+ */
 
 package com.liferay.ide.portlet.core.model.internal;
 
+import com.liferay.ide.core.util.ListUtil;
 import com.liferay.ide.portlet.core.util.PortletAppModelConstants;
 
 import java.util.List;
 
 import org.eclipse.sapphire.Property;
+import org.eclipse.sapphire.PropertyDef;
 import org.eclipse.sapphire.modeling.xml.XmlAttribute;
 import org.eclipse.sapphire.modeling.xml.XmlElement;
 import org.eclipse.sapphire.modeling.xml.XmlNode;
 import org.eclipse.sapphire.modeling.xml.XmlPath;
 import org.eclipse.sapphire.modeling.xml.XmlValueBindingImpl;
 import org.eclipse.sapphire.modeling.xml.annotations.CustomXmlValueBinding;
+
 import org.w3c.dom.Attr;
+import org.w3c.dom.Element;
 
 /**
  * @author Kamesh Sampath
  */
-public class QNamespaceValueBinding extends XmlValueBindingImpl
-{
+public class QNamespaceValueBinding extends XmlValueBindingImpl {
 
-    String[] params;
-    XmlPath path;
+	@Override
+	public XmlNode getXmlNode() {
+		XmlElement element = xml(false);
 
-    /*
-     * (non-Javadoc)
-     * @see org.eclipse.sapphire.modeling.PropertyBinding#init(org.eclipse.sapphire.modeling.Element,
-     * org.eclipse.sapphire.modeling.Property, java.lang.String[])
-     */
-    @Override
-    public void init( Property property )
-    {
-        super.init( property );
+		if (element != null) {
+			return element.getChildNode(_path, false);
+		}
 
-        this.params = property.definition().getAnnotation( CustomXmlValueBinding.class ).params();
-        this.path = new XmlPath( params[0], resource().getXmlNamespaceResolver() );
-    }
+		return null;
+	}
 
-    /*
-     * (non-Javadoc)
-     * @see org.eclipse.sapphire.modeling.ValuePropertyBinding#read()
-     */
-    @Override
-    public String read()
-    {
-        String value = null;
-        XmlElement parent = xml( false );
-        XmlElement qNameElement = null;
-        // Fix for Alias QName not displayed in list
-        if( parent.getLocalName().equals( params[0] ) )
-        {
-            qNameElement = parent;
-        }
-        else
-        {
-            qNameElement = parent.getChildElement( params[0], false );
-        }
-        if( qNameElement != null )
-        {
-            // System.out.println( qNameElement );
-            List<XmlAttribute> listOfAttibutes = qNameElement.getAttributes();
-            XmlAttribute xmlAttribute =
-                listOfAttibutes != null && listOfAttibutes.size() > 0 ? listOfAttibutes.get( 0 ) : null;
-            if( xmlAttribute != null )
-            {
-                value = xmlAttribute.getText();
-            }
-        }
+	@Override
+	public void init(Property property) {
+		super.init(property);
 
-        // System.out.println( "QNamespaceValueBinding.read() - Value:" + value );
+		PropertyDef propertyDef = property.definition();
 
-        return value != null ? value.trim() : value;
-    }
+		CustomXmlValueBinding customXmlValueBinding = propertyDef.getAnnotation(CustomXmlValueBinding.class);
 
-    /*
-     * (non-Javadoc)
-     * @see org.eclipse.sapphire.modeling.ValuePropertyBinding#write(java.lang.String)
-     */
-    @Override
-    public void write( String value )
-    {
-        String val = value;
+		_params = customXmlValueBinding.params();
 
-        // System.out.println( "VALUE ___________________ " + val );
+		_path = new XmlPath(_params[0], resource().getXmlNamespaceResolver());
+	}
 
-        XmlElement parent = xml( true );
-        /*
-         * In some cases the parent node and the child nodes will be same, we need to ensure that we dont create them
-         * accidentally again
-         */
-        // System.out.println( "QNamespaceValueBinding.write() - Parent local name:" + parent.getLocalName() );
-        XmlElement qNameElement = null;
-        if( parent.getLocalName().equals( params[0] ) )
-        {
-            qNameElement = parent;
-        }
-        else
-        {
-            qNameElement = parent.getChildElement( params[0], true );
-        }
+	@Override
+	public String read() {
+		String value = null;
 
-        if( qNameElement != null && val != null )
-        {
-            // System.out.println( "QNamespaceValueBinding.write() - 1" );
-            val = value.trim();
-            org.w3c.dom.Element qnameDef = qNameElement.getDomNode();
-            /*
-             * Check to ensure that the attribute is not added multiple times, check if the attribute already exist if
-             * yes remove it add add it afresh
-             */
-            Attr oldQnsAttribute = qnameDef.getAttributeNode( PortletAppModelConstants.DEFAULT_QNAME_NS_DECL );
-            if( oldQnsAttribute == null )
-            {
-                // System.out.println( "QNamespaceValueBinding.write() - Attrib does not exist" );
-                qnameDef.setAttributeNS(
-                    PortletAppModelConstants.XMLNS_NS_URI, PortletAppModelConstants.DEFAULT_QNAME_NS_DECL, val );
-            }
-            else
-            {
-                // System.out.println( "QNamespaceValueBinding.write() - Attrib  exist" );
-                qnameDef.removeAttributeNode( oldQnsAttribute );
-                qnameDef.setAttributeNS(
-                    PortletAppModelConstants.XMLNS_NS_URI, PortletAppModelConstants.DEFAULT_QNAME_NS_DECL, val );
-            }
+		XmlElement parent = xml(false);
 
-        }// Remove the nod/e if it exists and current value is null
-        else if( qNameElement != null && val == null )
-        {
-            qNameElement.remove();
-        }
+		XmlElement qNameElement = null;
 
-    }
+		// Fix for Alias QName not displayed in list
 
-    /*
-     * (non-Javadoc)
-     * @see org.eclipse.sapphire.modeling.xml.XmlValuePropertyBinding#getXmlNode()
-     */
-    @Override
-    public XmlNode getXmlNode()
-    {
-        final XmlElement element = xml( false );
-        if( element != null )
-        {
-            return element.getChildNode( this.path, false );
-        }
+		if (_params[0].equals(parent.getLocalName())) {
+			qNameElement = parent;
+		}
+		else {
+			qNameElement = parent.getChildElement(_params[0], false);
+		}
 
-        return null;
-    }
+		if (qNameElement != null) {
+			List<XmlAttribute> listOfAttibutes = qNameElement.getAttributes();
+
+			XmlAttribute xmlAttribute = ListUtil.isNotEmpty(listOfAttibutes) ? listOfAttibutes.get(0) : null;
+
+			if (xmlAttribute != null) {
+				value = xmlAttribute.getText();
+			}
+		}
+
+		if (value != null) {
+			return value.trim();
+		}
+
+		return value;
+	}
+
+	@Override
+	public void write(String value) {
+		String val = value;
+
+		XmlElement parent = xml(true);
+
+		/**
+		 * In some cases the parent node and the child nodes will be same, we need to
+		 * ensure that we dont create them accidentally again
+		 */
+		XmlElement qNameElement = null;
+
+		if (_params[0].equals(parent.getLocalName())) {
+			qNameElement = parent;
+		}
+		else {
+			qNameElement = parent.getChildElement(_params[0], true);
+		}
+
+		if ((qNameElement != null) && (val != null)) {
+			val = value.trim();
+
+			Element qnameDef = qNameElement.getDomNode();
+
+			/**
+			 * Check to ensure that the attribute is not added multiple times, check if the
+			 * attribute already exist if yes remove it add add it afresh
+			 */
+			Attr oldQnsAttribute = qnameDef.getAttributeNode(PortletAppModelConstants.QNAME_NS_DECL);
+
+			if (oldQnsAttribute == null) {
+				qnameDef.setAttributeNS(
+					PortletAppModelConstants.XMLNS_NS_URI, PortletAppModelConstants.QNAME_NS_DECL, val);
+			}
+			else {
+				qnameDef.removeAttributeNode(oldQnsAttribute);
+				qnameDef.setAttributeNS(
+					PortletAppModelConstants.XMLNS_NS_URI, PortletAppModelConstants.QNAME_NS_DECL, val);
+			}
+		}
+		else if ((qNameElement != null) && (val == null)) {
+			qNameElement.remove();
+		}
+	}
+
+	private String[] _params;
+	private XmlPath _path;
 
 }

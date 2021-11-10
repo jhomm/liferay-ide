@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,10 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- * Contributors:
- *    Gregory Amerson - initial implementation
- ******************************************************************************/
+ */
 
 package com.liferay.ide.hook.core.model;
 
@@ -21,6 +18,7 @@ import com.liferay.ide.hook.core.model.internal.SrcFoldersRelativePathService;
 
 import org.eclipse.sapphire.Element;
 import org.eclipse.sapphire.ElementType;
+import org.eclipse.sapphire.Type;
 import org.eclipse.sapphire.Value;
 import org.eclipse.sapphire.ValueProperty;
 import org.eclipse.sapphire.modeling.Path;
@@ -30,33 +28,30 @@ import org.eclipse.sapphire.modeling.annotations.InitialValue;
 import org.eclipse.sapphire.modeling.annotations.Label;
 import org.eclipse.sapphire.modeling.annotations.MustExist;
 import org.eclipse.sapphire.modeling.annotations.Service;
-import org.eclipse.sapphire.modeling.annotations.Type;
 import org.eclipse.sapphire.modeling.annotations.ValidFileSystemResourceType;
 import org.eclipse.sapphire.modeling.xml.annotations.XmlBinding;
 
 /**
  * @author Gregory Amerson
  */
-public interface PortalPropertiesFile extends Element
-{
+public interface PortalPropertiesFile extends Element {
 
-    ElementType TYPE = new ElementType( PortalPropertiesFile.class );
+	public ElementType TYPE = new ElementType(PortalPropertiesFile.class);
 
-    // *** Value ***
+	public Value<Path> getValue();
 
-    @Type( base = Path.class )
-    @Label( standard = "Portal Properties File" )
-    @XmlBinding( path = "" )
-    @InitialValue( text = "portal.properties" )
-    @Service( impl = SrcFoldersRelativePathService.class )
-    @ValidFileSystemResourceType( FileSystemResourceType.FILE )
-    @FileExtensions( expr = "properties" )
-    @MustExist
-    ValueProperty PROP_VALUE = new ValueProperty( TYPE, "Value" ); //$NON-NLS-1$
+	public void setValue(Path value);
 
-    Value<Path> getValue();
+	public void setValue(String value);
 
-    void setValue( String value );
+	@FileExtensions(expr = "properties")
+	@InitialValue(text = "portal.properties")
+	@Label(standard = "Portal Properties File")
+	@MustExist
+	@Service(impl = SrcFoldersRelativePathService.class)
+	@Type(base = Path.class)
+	@ValidFileSystemResourceType(FileSystemResourceType.FILE)
+	@XmlBinding(path = "")
+	public ValueProperty PROP_VALUE = new ValueProperty(TYPE, "Value");
 
-    void setValue( Path value );
 }

@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,9 +10,11 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
+
 package com.liferay.ide.xml.search.ui.java;
+
+import java.util.Objects;
 
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
@@ -23,96 +25,93 @@ import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.wst.xml.search.editor.searchers.javamethod.requestor.AbstractJavaMethodRequestor;
 import org.eclipse.wst.xml.search.editor.searchers.javamethod.requestor.IJavaMethodRequestor;
 
-
 /**
  * @author Gregory Amerson
  */
-public class PortletActionMethodRequestor extends AbstractJavaMethodRequestor
-{
-    public static final IJavaMethodRequestor INSTANCE = new PortletActionMethodRequestor();
+public class PortletActionMethodRequestor extends AbstractJavaMethodRequestor {
 
-    @Override
-    protected IStatus doValidate( IMethod method )
-    {
-        final String[] parameterTypes = method.getParameterTypes();
+	public static final IJavaMethodRequestor INSTANCE = new PortletActionMethodRequestor();
 
-        boolean valid =
-            parameterTypes != null &&
-                parameterTypes.length == 2 &&
-                    ( parameterTypes[0].equals( "QActionRequest;" ) ||
-                      parameterTypes[0].equals( "Qjavax.portlet.ActionRequest;" ) ) &&
-                    ( parameterTypes[1].equals( "QActionResponse;" ) ||
-                      parameterTypes[1].equals( "Qjavax.portlet.ActionResponse;" ) );
+	@Override
+	protected IStatus doValidate(IMethod method) {
+		String[] parameterTypes = method.getParameterTypes();
 
-        return valid ? Status.OK_STATUS : null;
-    }
+		boolean valid = false;
 
-    private IMemberValuePair findNamePair( IAnnotation annotation )
-    {
-        IMemberValuePair retval = null;
+		if ((parameterTypes != null) && (parameterTypes.length == 2) &&
+			(parameterTypes[0].equals("QActionRequest;") ||
+			 parameterTypes[0].equals("Qjavax.portlet.ActionRequest;")) &&
+			(parameterTypes[1].equals("QActionResponse;") ||
+			 parameterTypes[1].equals("Qjavax.portlet.ActionResponse;"))) {
 
-        try
-        {
-            final IMemberValuePair[] pairs = annotation.getMemberValuePairs();
+			valid = true;
+		}
 
-            for( IMemberValuePair pair : pairs )
-            {
-                if( "name".equals( pair.getMemberName() ) )
-                {
-                    retval = pair;
-                    break;
-                }
-            }
-        }
-        catch( JavaModelException e )
-        {
-        }
+		if (valid) {
+			return Status.OK_STATUS;
+		}
 
-        return retval;
-    }
+		return null;
+	}
 
-    @Override
-    protected String formatMethodName( Object selectedNode, IMethod method )
-    {
-        String retval = null;
+	@Override
+	protected String formatMethodName(Object selectedNode, IMethod method) {
+		String retval = null;
 
-        if( hasProcessActionAnnotation( method ) )
-        {
-            final IAnnotation annotation = method.getAnnotation( "ProcessAction" );
-            final IMemberValuePair pair = findNamePair( annotation );
+		if (_hasProcessActionAnnotation(method)) {
+			IAnnotation annotation = method.getAnnotation("ProcessAction");
 
-            if( pair != null )
-            {
-                retval = pair.getValue().toString();
-            }
-        }
-        else
-        {
-            retval = method.getElementName();
-        }
+			IMemberValuePair pair = _findNamePair(annotation);
 
-        return retval;
-    }
+			if (pair != null) {
+				Object value = pair.getValue();
 
-    private boolean hasProcessActionAnnotation( IMethod method )
-    {
-        try
-        {
-            IAnnotation[] annots = method.getAnnotations();
+				if (value != null) {
+					retval = value.toString();
+				}
+			}
+		}
+		else {
+			retval = method.getElementName();
+		}
 
-            for( IAnnotation annot : annots )
-            {
-                if( "ProcessAction".equals( annot.getElementName() ) )
-                {
-                    return true;
-                }
-            }
-        }
-        catch( JavaModelException e )
-        {
-        }
+		return retval;
+	}
 
-        return false;
-    }
+	private IMemberValuePair _findNamePair(IAnnotation annotation) {
+		IMemberValuePair retval = null;
+
+		try {
+			IMemberValuePair[] pairs = annotation.getMemberValuePairs();
+
+			for (IMemberValuePair pair : pairs) {
+				if (Objects.equals("name", pair.getMemberName())) {
+					retval = pair;
+
+					break;
+				}
+			}
+		}
+		catch (JavaModelException jme) {
+		}
+
+		return retval;
+	}
+
+	private boolean _hasProcessActionAnnotation(IMethod method) {
+		try {
+			IAnnotation[] annots = method.getAnnotations();
+
+			for (IAnnotation annot : annots) {
+				if (Objects.equals("ProcessAction", annot.getElementName())) {
+					return true;
+				}
+			}
+		}
+		catch (JavaModelException jme) {
+		}
+
+		return false;
+	}
 
 }

@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,8 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.layouttpl.ui.util;
 
@@ -22,91 +21,90 @@ import com.liferay.ide.layouttpl.ui.parts.PortletRowLayoutEditPart;
 import com.liferay.ide.project.core.facet.IPluginFacetConstants;
 import com.liferay.ide.project.core.util.ProjectUtil;
 
+import java.util.List;
+
 import org.eclipse.core.resources.IProject;
 import org.eclipse.gef.Request;
 import org.eclipse.gef.requests.CreateRequest;
+import org.eclipse.sapphire.ElementList;
 
 /**
- * @author Greg Amerson
+ * @author Gregory Amerson
  * @author Cindy Li
  */
-public class LayoutTplUIUtil
-{
+public class LayoutTplUIUtil {
 
-    public static int getColumnIndex( PortletLayoutElement currentParent, PortletColumnElement column )
-    {
-        if( currentParent == null || column == null )
-        {
-            return -1;
-        }
+	public static int adjustWeight(int newWeight) {
+		int retval = -1;
 
+		/**
+		 * make sure that new weight is valid
+		 *
+		 * use 35 instead of 34 because the 33 and 66 situations should be
+		 * corresponding by a sum of 100 or when 66 is in 66, 34 is not in 33
+		 * but 35
+		 */
+		if ((newWeight > 31) && (newWeight < 35)) {
+			retval = 33;
+		}
+		else if ((newWeight > 65) && (newWeight < 69)) {
+			retval = 66;
+		}
+		else {
+			int weightClosestByFive = (int)Math.round((double)newWeight / (double)5);
 
-        return currentParent.getPortletColumns().indexOf( column );
-    }
+			retval = weightClosestByFive * 5;
+		}
 
-    public static int getRowIndex( PortletLayoutEditPart layoutEditPart )
-    {
-        if( layoutEditPart == null )
-        {
-            return -1;
-        }
+		return retval;
+	}
 
-        PortletRowLayoutEditPart rowLayoutPart = (PortletRowLayoutEditPart) layoutEditPart.getParent();
-        Object[] rows = rowLayoutPart.getChildren().toArray();
+	public static int getColumnIndex(PortletLayoutElement currentParent, PortletColumnElement column) {
+		if ((currentParent == null) || (column == null)) {
+			return -1;
+		}
 
-        for( int i = 0; i < rows.length; i++ )
-        {
-            if( layoutEditPart.equals( rows[i] ) )
-            {
-                return i;
-            }
-        }
+		ElementList<PortletColumnElement> list = currentParent.getPortletColumns();
 
-        return -1;
-    }
+		return list.indexOf(column);
+	}
 
-    public static boolean isCreateRequest( Class<?> class1, Request request )
-    {
-        if( !( request instanceof CreateRequest ) )
-        {
-            return false;
-        }
+	public static int getRowIndex(PortletLayoutEditPart layoutEditPart) {
+		if (layoutEditPart == null) {
+			return -1;
+		}
 
-        if( !( ( (CreateRequest) request ).getNewObjectType() == class1 ) )
-        {
-            return false;
-        }
+		PortletRowLayoutEditPart rowLayoutPart = (PortletRowLayoutEditPart)layoutEditPart.getParent();
 
-        return true;
-    }
+		List children = rowLayoutPart.getChildren();
 
-    public static boolean isLayoutTplProject( IProject project )
-    {
-        return ProjectUtil.hasFacet( project, IPluginFacetConstants.LIFERAY_LAYOUTTPL_PROJECT_FACET );
-    }
+		Object[] rows = children.toArray();
 
-    public static int adjustWeight( int newWeight )
-    {
-        int retval = -1;
+		for (int i = 0; i < rows.length; i++) {
+			if (layoutEditPart.equals(rows[i])) {
+				return i;
+			}
+		}
 
-        // make sure that new weight is valid
+		return -1;
+	}
 
-        //use 35 instead of 34 because the 33 and 66 situations should be corresponding by a sum of 100
-        //or when 66 is in 66, 34 is not in 33 but 35
-        if( newWeight > 31 && newWeight < 35 )
-        {
-            retval = 33;
-        }
-        else if( newWeight > 65 && newWeight < 69 )
-        {
-            retval = 66;
-        }
-        else
-        {
-            retval = (int) Math.round( (double) newWeight / (double) 5 ) * 5;
-        }
+	public static boolean isCreateRequest(Class<?> class1, Request request) {
+		if (!(request instanceof CreateRequest)) {
+			return false;
+		}
 
-        return retval;
-    }
+		CreateRequest createRequest = (CreateRequest)request;
+
+		if (!(createRequest.getNewObjectType() == class1)) {
+			return false;
+		}
+
+		return true;
+	}
+
+	public static boolean isLayoutTplProject(IProject project) {
+		return ProjectUtil.hasFacet(project, IPluginFacetConstants.LIFERAY_LAYOUTTPL_PROJECT_FACET);
+	}
 
 }

@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,13 +10,14 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *******************************************************************************/
+ */
 
 package com.liferay.ide.portlet.core.lfportlet.model.internal;
 
 import com.liferay.ide.core.util.CoreUtil;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.eclipse.core.resources.IFolder;
@@ -26,44 +27,34 @@ import org.eclipse.sapphire.Element;
 import org.eclipse.sapphire.modeling.Path;
 import org.eclipse.sapphire.services.RelativePathService;
 
-
 /**
  * @author Simon Jiang
  */
-public class IconRelativePathService extends RelativePathService
-{
+public class IconRelativePathService extends RelativePathService {
 
-    final List<Path> computeRoots( IProject project )
-    {
-        List<Path> roots = new ArrayList<Path>();
+	@Override
+	public List<Path> roots() {
+		Element element = context(Element.class);
 
-        if( project != null )
-        {
-            final IFolder webappRoot = CoreUtil.getDefaultDocrootFolder( project );
+		IProject project = element.adapt(IProject.class);
 
-            if( webappRoot != null )
-            {
-                final IPath location = webappRoot.getLocation();
+		if (project == null) {
+			return Collections.emptyList();
+		}
 
-                if( location != null )
-                {
-                    roots.add( new Path( location.toPortableString() ) );
-                }
-            }
-        }
+		List<Path> roots = new ArrayList<>();
 
-        return roots;
-    }
+		IFolder webappRoot = CoreUtil.getDefaultDocrootFolder(project);
 
-    protected IProject project()
-    {
-        return context( Element.class ).adapt( IProject.class );
-    }
+		if (webappRoot != null) {
+			IPath location = webappRoot.getLocation();
 
-    @Override
-    public final List<Path> roots()
-    {
-        return computeRoots( project() );
-    }
+			if (location != null) {
+				roots.add(new Path(location.toPortableString()));
+			}
+		}
+
+		return roots;
+	}
 
 }

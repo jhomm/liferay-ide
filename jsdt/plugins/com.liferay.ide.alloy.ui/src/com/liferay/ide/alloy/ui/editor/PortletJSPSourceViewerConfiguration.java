@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,10 +10,11 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *******************************************************************************/
+ */
 
 package com.liferay.ide.alloy.ui.editor;
 
+import com.liferay.ide.core.util.ListUtil;
 import com.liferay.ide.xml.search.ui.editor.LiferayCustomXmlHover;
 
 import java.util.List;
@@ -30,61 +31,57 @@ import org.eclipse.wst.sse.ui.internal.taginfo.TextHoverManager;
 /**
  * @author Kuo Zhang
  */
-@SuppressWarnings( "restriction" )
-public class PortletJSPSourceViewerConfiguration extends JSDTStructuredTextViewerConfigurationJSP
-{
-    @SuppressWarnings( { "rawtypes", "unchecked" } )
-    protected ITextHover[] createDocumentationHovers( String partitionType )
-    {
-        List extendedTextHover =
-            ExtendedConfigurationBuilder.getInstance().getConfigurations(
-                ExtendedConfigurationBuilder.DOCUMENTATIONTEXTHOVER, partitionType );
+@SuppressWarnings("restriction")
+public class PortletJSPSourceViewerConfiguration extends JSDTStructuredTextViewerConfigurationJSP {
 
-        return (ITextHover[]) extendedTextHover.toArray( new ITextHover[extendedTextHover.size()] );
-    }
+	@Override
+	public ITextHover getTextHover(ISourceViewer sourceViewer, String contentType, int stateMask) {
+		ITextHover textHover = null;
 
-    @Override
-    public ITextHover getTextHover( ISourceViewer sourceViewer, String contentType, int stateMask )
-    {
-        ITextHover textHover = null;
+		SSEUIPlugin plugin = SSEUIPlugin.getDefault();
 
-        TextHoverManager.TextHoverDescriptor[] hoverDescs =
-                SSEUIPlugin.getDefault().getTextHoverManager().getTextHovers();
+		TextHoverManager textHoverManager = plugin.getTextHoverManager();
 
-        int i = 0;
+		TextHoverManager.TextHoverDescriptor[] hoverDescs = textHoverManager.getTextHovers();
 
-        while( i < hoverDescs.length && textHover == null )
-        {
-            if( hoverDescs[i].isEnabled() && computeStateMask( hoverDescs[i].getModifierString() ) == stateMask )
-            {
-                String hoverType = hoverDescs[i].getId();
+		int i = 0;
 
-                if( TextHoverManager.PROBLEM_HOVER.equalsIgnoreCase( hoverType ) )
-                {
-                    textHover = new ProblemAnnotationHoverProcessor();
-                }
-                else if( TextHoverManager.ANNOTATION_HOVER.equalsIgnoreCase( hoverType ) )
-                {
-                    textHover = new AnnotationHoverProcessor();
-                }
-                else if( TextHoverManager.COMBINATION_HOVER.equalsIgnoreCase( hoverType ) )
-                {
-                    textHover = (ITextHover) new LiferayCustomXmlHover();
-                }
-                else if( TextHoverManager.DOCUMENTATION_HOVER.equalsIgnoreCase( hoverType ) )
-                {
-                    ITextHover[] hovers = createDocumentationHovers(contentType);
+		while ((i < hoverDescs.length) && (textHover == null)) {
+			if (hoverDescs[i].isEnabled() && (computeStateMask(hoverDescs[i].getModifierString()) == stateMask)) {
+				String hoverType = hoverDescs[i].getId();
 
-                    if( hovers != null && hovers.length > 0 )
-                    {
-                        textHover = hovers[0];
-                    }
-                }
-            }
+				if (TextHoverManager.PROBLEM_HOVER.equalsIgnoreCase(hoverType)) {
+					textHover = new ProblemAnnotationHoverProcessor();
+				}
+				else if (TextHoverManager.ANNOTATION_HOVER.equalsIgnoreCase(hoverType)) {
+					textHover = new AnnotationHoverProcessor();
+				}
+				else if (TextHoverManager.COMBINATION_HOVER.equalsIgnoreCase(hoverType)) {
+					textHover = (ITextHover)new LiferayCustomXmlHover();
+				}
+				else if (TextHoverManager.DOCUMENTATION_HOVER.equalsIgnoreCase(hoverType)) {
+					ITextHover[] hovers = createDocumentationHovers(contentType);
 
-            i++;
-        }
+					if (ListUtil.isNotEmpty(hovers)) {
+						textHover = hovers[0];
+					}
+				}
+			}
 
-        return textHover;
-    }
+			i++;
+		}
+
+		return textHover;
+	}
+
+	@SuppressWarnings({"rawtypes", "unchecked"})
+	protected ITextHover[] createDocumentationHovers(String partitionType) {
+		ExtendedConfigurationBuilder instance = ExtendedConfigurationBuilder.getInstance();
+
+		List extendedTextHover = instance.getConfigurations(
+			ExtendedConfigurationBuilder.DOCUMENTATIONTEXTHOVER, partitionType);
+
+		return (ITextHover[])extendedTextHover.toArray(new ITextHover[0]);
+	}
+
 }

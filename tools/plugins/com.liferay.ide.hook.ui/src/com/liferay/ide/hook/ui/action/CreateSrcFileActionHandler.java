@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,31 +10,31 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- * Contributors:
- *    Kamesh Sampath - initial implementation
- *    Gregory Amerson - initial implementation review and ongoing maintenance
- ******************************************************************************/
+ */
 
 package com.liferay.ide.hook.ui.action;
 
 import com.liferay.ide.core.util.CoreUtil;
+import com.liferay.ide.core.util.FileUtil;
+import com.liferay.ide.core.util.ListUtil;
 import com.liferay.ide.core.util.StringPool;
 import com.liferay.ide.hook.ui.HookUI;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+
 import java.util.List;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
-import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.sapphire.Element;
 import org.eclipse.sapphire.Property;
+import org.eclipse.sapphire.PropertyDef;
 import org.eclipse.sapphire.Value;
 import org.eclipse.sapphire.ValueProperty;
 import org.eclipse.sapphire.modeling.Path;
@@ -49,124 +49,120 @@ import org.eclipse.sapphire.ui.forms.PropertyEditorPart;
  * @author Kamesh Sampath
  * @author Gregory Amerson
  */
-public class CreateSrcFileActionHandler extends PropertyEditorActionHandler
-{
-    private String refreshOnRunProperty;
+public class CreateSrcFileActionHandler extends PropertyEditorActionHandler {
 
-    @Override
-    protected final boolean computeEnablementState()
-    {
-        boolean isEnabled = super.computeEnablementState();
+	@Override
+	public Object run(Presentation context) {
+		IFile file = _getSrcFile();
 
-        if( this.getModelElement() != null && isEnabled )
-        {
-            // check for existence of the file
-            final IFile srcFile = getSrcFile();
+		try (InputStream defaultContentStream = new ByteArrayInputStream(StringPool.EMPTY.getBytes())) {
+			if (!file.exists()) {
+				file.create(defaultContentStream, true, null);
 
-            if( srcFile != null && srcFile.exists() )
-            {
-                isEnabled = false;
-            }
-        }
+				try {
+					file.refreshLocal(IResource.DEPTH_INFINITE, null);
+				}
+				catch (Exception e) {
+					HookUI.logError(e);
+				}
 
-        return isEnabled;
-    }
+				ValueProperty valueProperty = ValueProperty.class.cast(property().definition());
 
-    private IPath getDefaultSrcFolderPath()
-    {
-        final IProject project = this.getModelElement().adapt( IProject.class );
+				// do this so that the downstream properties can update their
+				// enablement/validation/etc.
 
-        final List<IFolder> folders = CoreUtil.getSourceFolders( JavaCore.create( project ) );
+				Value<Object> value = getModelElement().property(valueProperty);
 
-        if( !CoreUtil.isNullOrEmpty( folders ) )
-        {
-            return folders.get( 0 ).getFullPath();
-        }
+				Object content = value.content();
 
-        return null;
-    }
+				value.clear();
+				value.write(content);
 
-    private IFile getSrcFile()
-    {
-        IFile retval = null;
+				refreshEnablementState();
+			}
+		}
+		catch (Exception e) {
+			HookUI.logError("Unable to create src file: " + file.getName(), e);
+		}
 
-        final ValueProperty valueProperty = ValueProperty.class.cast( this.property().definition() );
-        final Value<Path> value = this.getModelElement().property( valueProperty );
+		return null;
+	}
 
-        if( value != null && !CoreUtil.isNullOrEmpty( value.text() ) )
-        {
-            final IPath defaultSrcFolderPath = getDefaultSrcFolderPath();
+	public static class Condition extends PropertyEditorCondition {
 
-            if( defaultSrcFolderPath != null )
-            {
-                final IPath filePath = defaultSrcFolderPath.append( value.text() );
-                retval = ResourcesPlugin.getWorkspace().getRoot().getFile( filePath );
-            }
-        }
+		@Override
+		protected boolean evaluate(PropertyEditorPart part) {
+			Property property = part.property();
+			Element element = part.getModelElement();
 
-        return retval;
-    }
+			PropertyDef propertyDef = property.definition();
 
-    @Override
-    public Object run( Presentation context )
-    {
-        final IFile file = getSrcFile();
+			if ((propertyDef instanceof ValueProperty) && (element != null) && propertyDef.isOfType(Path.class)) {
+				ValidFileSystemResourceType typeAnnotation = propertyDef.getAnnotation(
+					ValidFileSystemResourceType.class);
 
-        try
-        {
-            if( ! file.exists() )
-            {
-                InputStream defaultContentStream = new ByteArrayInputStream( StringPool.EMPTY.getBytes() );
+				if ((typeAnnotation != null) && (typeAnnotation.value() == FileSystemResourceType.FILE)) {
+					return true;
+				}
+			}
 
-                file.create( defaultContentStream, true, null );
+			return false;
+		}
 
-                try
-                {
-                    file.refreshLocal( IResource.DEPTH_INFINITE, null );
-                }
-                catch( Exception e )
-                {
-                    HookUI.logError( e );
-                }
+	}
 
-                final ValueProperty valueProperty = ValueProperty.class.cast( this.property().definition() );
+	@Override
+	protected boolean computeEnablementState() {
+		boolean enabled = super.computeEnablementState();
 
-                // do this so that the downstream properties can update their enablement/validation/etc.
-                Object content = this.getModelElement().property( valueProperty ).content();
-                this.getModelElement().property( valueProperty ).clear();
-                this.getModelElement().property( valueProperty ).write( content );
+		if ((getModelElement() != null) && enabled) {
 
-                refreshEnablementState();
-            }
-        }
-        catch( Exception e )
-        {
-            HookUI.logError( "Unable to create src file: " + file.getName(), e );
-        }
+			// check for existence of the file
 
-        return null;
-    }
+			IFile srcFile = _getSrcFile();
 
-    public static class Condition extends PropertyEditorCondition
-    {
-        @Override
-        protected final boolean evaluate( final PropertyEditorPart part )
-        {
-            final Property property = part.property();
-            final Element element = part.getModelElement();
+			if (FileUtil.exists(srcFile)) {
+				enabled = false;
+			}
+		}
 
-            if( property.definition() instanceof ValueProperty && element != null && property.definition().isOfType( Path.class ) )
-            {
-                final ValidFileSystemResourceType typeAnnotation =
-                    property.definition().getAnnotation( ValidFileSystemResourceType.class );
+		return enabled;
+	}
 
-                if( typeAnnotation != null && typeAnnotation.value() == FileSystemResourceType.FILE )
-                {
-                    return true;
-                }
-            }
+	private IPath _getDefaultSrcFolderPath() {
+		IProject project = getModelElement().adapt(IProject.class);
 
-            return false;
-        }
-    }
+		List<IFolder> folders = CoreUtil.getSourceFolders(JavaCore.create(project));
+
+		if (ListUtil.isNotEmpty(folders)) {
+			IFolder folder = folders.get(0);
+
+			return folder.getFullPath();
+		}
+
+		return null;
+	}
+
+	private IFile _getSrcFile() {
+		IFile retval = null;
+
+		ValueProperty valueProperty = ValueProperty.class.cast(property().definition());
+
+		Value<Path> value = getModelElement().property(valueProperty);
+
+		if ((value != null) && !CoreUtil.isNullOrEmpty(value.text())) {
+			IPath defaultSrcFolderPath = _getDefaultSrcFolderPath();
+
+			if (defaultSrcFolderPath != null) {
+				IPath filePath = defaultSrcFolderPath.append(value.text());
+
+				IWorkspaceRoot root = CoreUtil.getWorkspaceRoot();
+
+				retval = root.getFile(filePath);
+			}
+		}
+
+		return retval;
+	}
+
 }

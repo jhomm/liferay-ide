@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,8 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.server.remote;
 
@@ -21,41 +20,40 @@ import com.liferay.ide.server.core.ILiferayServer;
 import org.eclipse.wst.server.core.model.IURLProvider;
 
 /**
- * @author Greg Amerson
+ * @author Gregory Amerson
  */
-public interface IRemoteServer extends ILiferayServer, IURLProvider
-{
+public interface IRemoteServer extends ILiferayServer, IURLProvider {
 
-    String ATTR_ADJUST_DEPLOYMENT_TIMESTAMP = "adjust-deployment-timestamp"; //$NON-NLS-1$
+	public boolean getAdjustDeploymentTimestamp();
 
-    String ATTR_HOSTNAME = "hostname"; //$NON-NLS-1$
+	public String getHost();
 
-    String ATTR_HTTP_PORT = "http-port"; //$NON-NLS-1$
+	public String getHTTPPort();
 
-    String ATTR_LIFERAY_PORTAL_CONTEXT_PATH = "liferay-portal-context-path"; //$NON-NLS-1$
+	public String getId();
 
-    String ATTR_SERVER_MANAGER_CONTEXT_PATH = "server-manager-context-path"; //$NON-NLS-1$
+	public String getLiferayPortalContextPath();
 
-    boolean DEFAULT_ADJUST_DEPLOYMENT_TIMESTAMP = defaultPrefs.getBoolean( "adjust.deployment.timestamp", true ); //$NON-NLS-1$
+	public String getServerManagerContextPath();
 
-    String DEFAULT_HTTP_PORT = defaultPrefs.get( "default.http.port", StringPool.EMPTY ); //$NON-NLS-1$
+	public void setAdjustDeploymentTimestamp(boolean adjustDemploymentTimestamp);
 
-    String DEFAULT_LIFERAY_PORTAL_CONTEXT_PATH = defaultPrefs.get( "default.liferay.portal.context.path", StringPool.EMPTY ); //$NON-NLS-1$
+	public String ATTR_ADJUST_DEPLOYMENT_TIMESTAMP = "adjust-deployment-timestamp";
 
-    String DEFAULT_SERVER_MANAGER_CONTEXT_PATH = defaultPrefs.get( "default.server.manager.context.path", StringPool.EMPTY ); //$NON-NLS-1$
+	public String ATTR_HOSTNAME = "hostname";
 
-    boolean getAdjustDeploymentTimestamp();
+	public String ATTR_LIFERAY_PORTAL_CONTEXT_PATH = "liferay-portal-context-path";
 
-    String getHost();
+	public String ATTR_SERVER_MANAGER_CONTEXT_PATH = "server-manager-context-path";
 
-    String getHTTPPort();
+	public boolean DEFAULT_ADJUST_DEPLOYMENT_TIMESTAMP = defaultPrefs.getBoolean("adjust.deployment.timestamp", true);
 
-    String getId();
+	public String DEFAULT_HTTP_PORT = defaultPrefs.get("default.http.port", StringPool.EMPTY);
 
-    String getLiferayPortalContextPath();
+	public String DEFAULT_LIFERAY_PORTAL_CONTEXT_PATH = defaultPrefs.get(
+		"default.liferay.portal.context.path", StringPool.EMPTY);
 
-    String getServerManagerContextPath();
-
-    void setAdjustDeploymentTimestamp( boolean adjustDemploymentTimestamp );
+	public String DEFAULT_SERVER_MANAGER_CONTEXT_PATH = defaultPrefs.get(
+		"default.server.manager.context.path", StringPool.EMPTY);
 
 }

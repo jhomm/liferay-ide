@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,10 +10,12 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *******************************************************************************/
+ */
+
 package com.liferay.ide.layouttpl.ui.actions;
 
 import com.liferay.ide.layouttpl.core.model.LayoutTplElement;
+import com.liferay.ide.layouttpl.core.model.PortletLayoutElement;
 import com.liferay.ide.layouttpl.ui.util.LayoutTemplatesFactory;
 import com.liferay.ide.ui.util.UIUtil;
 
@@ -22,226 +24,244 @@ import java.util.List;
 
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.osgi.util.NLS;
+import org.eclipse.sapphire.Element;
+import org.eclipse.sapphire.ElementList;
+import org.eclipse.sapphire.Value;
 import org.eclipse.sapphire.ui.Presentation;
 import org.eclipse.sapphire.ui.SapphireAction;
 import org.eclipse.sapphire.ui.SapphireActionHandler;
 import org.eclipse.sapphire.ui.SapphireActionHandlerFactory;
+import org.eclipse.sapphire.ui.SapphirePart;
 import org.eclipse.sapphire.ui.def.ActionHandlerDef;
 import org.eclipse.sapphire.ui.def.ActionHandlerFactoryDef;
-
 
 /**
  * @author Kuo Zhang
  */
-public class AddLayoutTemplateActionHandlerFactory extends SapphireActionHandlerFactory
-{
-    private final static String ADD_LAYOUT_TEMPLATE_ACTION_ID = "LayoutTpl.Add.LayoutTemplate";
-    private final static String ADD_LAYOUT_1_2_I_ACTION_HANDLER_ID = "Add.Layout.1_2_I.ActionHandler";
-    private final static String ADD_LAYOUT_1_2_II_ACTION_HANDLER_ID = "Add.Layout.1_2_II.ActionHandler";
-    private final static String ADD_LAYOUT_2_2_ACTION_HANDLER_ID = "Add.Layout.2_2.ActionHandler";
-    private final static String ADD_LAYOUT_1_2_1_ACTION_HANDLER_ID = "Add.Layout.1_2_1.ActionHandler";
-    private boolean isBootstrapStyle;
+public class AddLayoutTemplateActionHandlerFactory extends SapphireActionHandlerFactory {
 
-    public AddLayoutTemplateActionHandlerFactory()
-    {
-        super();
-    }
+	public AddLayoutTemplateActionHandlerFactory() {
+	}
 
-    @Override
-    public void init( SapphireAction action, ActionHandlerFactoryDef def )
-    {
-        super.init( action, def );
-        isBootstrapStyle = getModelElement().nearest( LayoutTplElement.class ).getBootstrapStyle().content();
-    }
+	@Override
+	public List<SapphireActionHandler> create() {
+		if (_ADD_LAYOUT_TEMPLATE_ACTION_ID.equals(getAction().getId())) {
+			ArrayList<SapphireActionHandler> actionHandlers = new ArrayList<>();
 
-    @Override
-    public List<SapphireActionHandler> create()
-    {
-        if( ADD_LAYOUT_TEMPLATE_ACTION_ID.equals( getAction().getId() ) )
-        {
-            ArrayList<SapphireActionHandler> actionHandlers = new ArrayList<SapphireActionHandler>();
-            actionHandlers.add( new Add_Layout_1_2_I_ActionHandler() );
-            actionHandlers.add( new Add_Layout_1_2_II_ActionHandler() );
-            actionHandlers.add( new Add_Layout_2_2_ActionHandler() );
-            actionHandlers.add( new Add_Layout_1_2_1_ActionHandler() );
-            return actionHandlers;
-        }
+			actionHandlers.add(new Add_Layout_1_2_I_ActionHandler());
+			actionHandlers.add(new Add_Layout_1_2_II_ActionHandler());
+			actionHandlers.add(new Add_Layout_2_2_ActionHandler());
+			actionHandlers.add(new Add_Layout_1_2_1_ActionHandler());
 
-        return null;
-    }
+			return actionHandlers;
+		}
 
-    private class Add_Layout_1_2_I_ActionHandler extends SapphireActionHandler
-    {
-        @Override
-        public void init( SapphireAction action, ActionHandlerDef def )
-        {
-            super.init( action, def );
-            setId( ADD_LAYOUT_1_2_I_ACTION_HANDLER_ID );
-            setLabel();
-        }
- 
-        protected void setLabel()
-        {
-            final String prefix = "Layout with 2 Rows "; 
+		return null;
+	}
 
-            if( isBootstrapStyle )
-            {
-               super.setLabel( prefix + "(12, (4, 8))" );
-            }
-            else
-            {
-                super.setLabel( prefix + "(100, (30, 70))");
-            }
-        }
+	@Override
+	public void init(SapphireAction action, ActionHandlerFactoryDef def) {
+		super.init(action, def);
 
-        @Override
-        protected Object run( Presentation context )
-        {
-            LayoutTplElement element = context.part().getModelElement().nearest( LayoutTplElement.class );
+		LayoutTplElement tplElement = getModelElement().nearest(LayoutTplElement.class);
 
-            if( element.getPortletLayouts().size() == 0 || canOverride() )
-            {
-                element.getPortletLayouts().clear();
-                LayoutTemplatesFactory.add_Layout_1_2_I( element );
-            }
+		Value<Boolean> bootstrapStyle = tplElement.getBootstrapStyle();
 
-            return null;
-        }
-    }
+		_bootstrapStyle = bootstrapStyle.content();
+	}
 
-    private class Add_Layout_1_2_II_ActionHandler extends SapphireActionHandler
-    {
+	private boolean _canOverride() {
+		return MessageDialog.openQuestion(UIUtil.getActiveShell(), "Warning", Msgs.addLayoutTplWarningMsg);
+	}
 
-        @Override
-        public void init( SapphireAction action, ActionHandlerDef def )
-        {
-            super.init( action, def );
+	private static final String _ADD_LAYOUT_1_2_1_ACTION_HANDLER_ID = "Add.Layout.1_2_1.ActionHandler";
 
-            setId( ADD_LAYOUT_1_2_II_ACTION_HANDLER_ID );
-            setLabel();
-        }
+	private static final String _ADD_LAYOUT_1_2_I_ACTION_HANDLER_ID = "Add.Layout.1_2_I.ActionHandler";
 
-        protected void setLabel()
-        {
-            final String prefix = "Layout with 2 Rows "; 
+	private static final String _ADD_LAYOUT_1_2_II_ACTION_HANDLER_ID = "Add.Layout.1_2_II.ActionHandler";
 
-            if( isBootstrapStyle )
-            {
-               super.setLabel( prefix + "(12, (8, 4))" );
-            }
-            else
-            {
-                super.setLabel( prefix + "(100, (70, 30))");
-            }
-        }
+	private static final String _ADD_LAYOUT_2_2_ACTION_HANDLER_ID = "Add.Layout.2_2.ActionHandler";
 
-        @Override
-        protected Object run( Presentation context )
-        {
-            LayoutTplElement element = context.part().getModelElement().nearest( LayoutTplElement.class );
+	private static final String _ADD_LAYOUT_TEMPLATE_ACTION_ID = "LayoutTpl.Add.LayoutTemplate";
 
-            if( element.getPortletLayouts().size() == 0 || canOverride() )
-            {
-                element.getPortletLayouts().clear();
-                LayoutTemplatesFactory.add_Layout_1_2_II( element );
-            }
+	private boolean _bootstrapStyle;
 
-            return null;
-        }
-    }
+	private static class Msgs extends NLS {
 
-    private class Add_Layout_2_2_ActionHandler extends SapphireActionHandler
-    {
+		public static String addLayoutTplWarningMsg;
 
-        @Override
-        public void init( SapphireAction action, ActionHandlerDef def )
-        {
-            super.init( action, def );
-            setId( ADD_LAYOUT_2_2_ACTION_HANDLER_ID );
-            setLabel();
-        }
+		static {
+			initializeMessages(AddLayoutTemplateActionHandlerFactory.class.getName(), Msgs.class);
+		}
 
-        protected void setLabel()
-        {
-            final String prefix = "Layout with 2 Rows "; 
+	}
 
-            if( isBootstrapStyle )
-            {
-                super.setLabel( prefix + "((8, 4), (4, 8))" );
-            }
-            else
-            {
-                super.setLabel( prefix + "((70, 30), (30, 70))");
-            }
-        }
+	private class Add_Layout_1_2_1_ActionHandler extends SapphireActionHandler {
 
-        @Override
-        protected Object run( Presentation context )
-        {
-            LayoutTplElement element = context.part().getModelElement().nearest( LayoutTplElement.class );
+		@Override
+		public void init(SapphireAction action, ActionHandlerDef def) {
+			super.init(action, def);
 
-            if( element.getPortletLayouts().size() == 0 || canOverride()  )
-            {
-                element.getPortletLayouts().clear();
-                LayoutTemplatesFactory.add_Layout_2_2( element );
-            }
+			setId(_ADD_LAYOUT_1_2_1_ACTION_HANDLER_ID);
+			setLabel();
+		}
 
-            return null;
-        }
-    }
+		@Override
+		protected Object run(Presentation context) {
+			SapphirePart part = context.part();
 
-    private class Add_Layout_1_2_1_ActionHandler extends SapphireActionHandler
-    {
+			Element modelElement = part.getModelElement();
 
-        @Override
-        public void init( SapphireAction action, ActionHandlerDef def )
-        {
-            super.init( action, def );
-            setId( ADD_LAYOUT_1_2_1_ACTION_HANDLER_ID );
-            setLabel();
-        }
+			LayoutTplElement element = modelElement.nearest(LayoutTplElement.class);
 
-        protected void setLabel()
-        {
-            final String prefix = "Layout with 3 Rows ";
+			ElementList<PortletLayoutElement> layouts = element.getPortletLayouts();
 
-            if( isBootstrapStyle )
-            {
-                super.setLabel( prefix + "(12, (6, 6), 12))" );
-            }
-            else
-            {
-                super.setLabel( prefix + "(100, (50, 50), 100)");
-            }
-        }
+			if (layouts.isEmpty() || _canOverride()) {
+				layouts.clear();
 
-        @Override
-        protected Object run( Presentation context )
-        {
-            LayoutTplElement element = context.part().getModelElement().nearest( LayoutTplElement.class );
+				new LayoutTemplatesFactory().add_Layout_1_2_1(element);
+			}
 
-            if( element.getPortletLayouts().size() == 0 || canOverride() )
-            {
-                element.getPortletLayouts().clear();
-                LayoutTemplatesFactory.add_Layout_1_2_1( element );
-            }
+			return null;
+		}
 
-            return null;
-        }
-    }
+		protected void setLabel() {
+			String prefix = "Layout with 3 Rows ";
 
-    private boolean canOverride()
-    {
-        return MessageDialog.openQuestion( UIUtil.getActiveShell(), "Warning", Msgs.addLayoutTplWarningMsg );
-    }
+			if (_bootstrapStyle) {
+				super.setLabel(prefix + "(12, (6, 6), 12))");
+			}
+			else {
+				super.setLabel(prefix + "(100, (50, 50), 100)");
+			}
+		}
 
-    private static class Msgs extends NLS
-    {
-        public static String addLayoutTplWarningMsg;
+	}
 
-        static
-        {
-            initializeMessages( AddLayoutTemplateActionHandlerFactory.class.getName(), Msgs.class );
-        }
-    }
+	private class Add_Layout_1_2_I_ActionHandler extends SapphireActionHandler {
+
+		@Override
+		public void init(SapphireAction action, ActionHandlerDef def) {
+			super.init(action, def);
+
+			setId(_ADD_LAYOUT_1_2_I_ACTION_HANDLER_ID);
+			setLabel();
+		}
+
+		@Override
+		protected Object run(Presentation context) {
+			SapphirePart part = context.part();
+
+			Element modelElement = part.getModelElement();
+
+			LayoutTplElement element = modelElement.nearest(LayoutTplElement.class);
+
+			ElementList<PortletLayoutElement> layouts = element.getPortletLayouts();
+
+			if (layouts.isEmpty() || _canOverride()) {
+				layouts.clear();
+
+				new LayoutTemplatesFactory().add_Layout_1_2_I(element);
+			}
+
+			return null;
+		}
+
+		protected void setLabel() {
+			String prefix = "Layout with 2 Rows ";
+
+			if (_bootstrapStyle) {
+				super.setLabel(prefix + "(12, (4, 8))");
+			}
+			else {
+				super.setLabel(prefix + "(100, (30, 70))");
+			}
+		}
+
+	}
+
+	private class Add_Layout_1_2_II_ActionHandler extends SapphireActionHandler {
+
+		@Override
+		public void init(SapphireAction action, ActionHandlerDef def) {
+			super.init(action, def);
+
+			setId(_ADD_LAYOUT_1_2_II_ACTION_HANDLER_ID);
+			setLabel();
+		}
+
+		@Override
+		protected Object run(Presentation context) {
+			SapphirePart part = context.part();
+
+			Element modelElement = part.getModelElement();
+
+			LayoutTplElement element = modelElement.nearest(LayoutTplElement.class);
+
+			ElementList<PortletLayoutElement> layouts = element.getPortletLayouts();
+
+			if (layouts.isEmpty() || _canOverride()) {
+				layouts.clear();
+
+				new LayoutTemplatesFactory().add_Layout_1_2_II(element);
+			}
+
+			return null;
+		}
+
+		protected void setLabel() {
+			String prefix = "Layout with 2 Rows ";
+
+			if (_bootstrapStyle) {
+				super.setLabel(prefix + "(12, (8, 4))");
+			}
+			else {
+				super.setLabel(prefix + "(100, (70, 30))");
+			}
+		}
+
+	}
+
+	private class Add_Layout_2_2_ActionHandler extends SapphireActionHandler {
+
+		@Override
+		public void init(SapphireAction action, ActionHandlerDef def) {
+			super.init(action, def);
+
+			setId(_ADD_LAYOUT_2_2_ACTION_HANDLER_ID);
+			setLabel();
+		}
+
+		@Override
+		protected Object run(Presentation context) {
+			SapphirePart part = context.part();
+
+			Element modelElement = part.getModelElement();
+
+			LayoutTplElement element = modelElement.nearest(LayoutTplElement.class);
+
+			ElementList<PortletLayoutElement> layouts = element.getPortletLayouts();
+
+			if (layouts.isEmpty() || _canOverride()) {
+				layouts.clear();
+
+				new LayoutTemplatesFactory().add_Layout_2_2(element);
+			}
+
+			return null;
+		}
+
+		protected void setLabel() {
+			String prefix = "Layout with 2 Rows ";
+
+			if (_bootstrapStyle) {
+				super.setLabel(prefix + "((8, 4), (4, 8))");
+			}
+			else {
+				super.setLabel(prefix + "((70, 30), (30, 70))");
+			}
+		}
+
+	}
+
 }

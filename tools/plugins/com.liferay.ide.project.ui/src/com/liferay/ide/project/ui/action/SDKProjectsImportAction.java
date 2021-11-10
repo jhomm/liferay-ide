@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,13 +10,11 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.project.ui.action;
 
-import com.liferay.ide.project.ui.wizard.SDKProjectsImportWizard;
-import com.liferay.ide.sdk.core.SDKManager;
+import com.liferay.ide.project.ui.wizard.ImportSDKProjectsWizard;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.jface.action.IAction;
@@ -29,70 +27,67 @@ import org.eclipse.ui.IObjectActionDelegate;
 import org.eclipse.ui.IWorkbenchPart;
 
 /**
- * @author Greg Amerson
+ * @author Gregory Amerson
+ * @author Simon Jiang
  */
-public class SDKProjectsImportAction implements IObjectActionDelegate
-{
-    private ISelection fSelection;
+public class SDKProjectsImportAction implements IObjectActionDelegate {
 
-    public SDKProjectsImportAction()
-    {
-    }
+	public SDKProjectsImportAction() {
+	}
 
-    public Display getDisplay()
-    {
-        Display display = Display.getCurrent();
+	public Display getDisplay() {
+		Display display = Display.getCurrent();
 
-        if( display == null )
-            display = Display.getDefault();
+		if (display == null) {
+			display = Display.getDefault();
+		}
 
-        return display;
-    }
+		return display;
+	}
 
-    public void run( IAction action )
-    {
-        if( fSelection instanceof IStructuredSelection )
-        {
-            Object[] elems = ( (IStructuredSelection) fSelection ).toArray();
+	@Override
+	public void run(IAction action) {
+		if (_fSelection instanceof IStructuredSelection) {
+			IStructuredSelection fStructureSelection = (IStructuredSelection)_fSelection;
 
-            IProject project = null;
+			Object[] elems = fStructureSelection.toArray();
 
-            Object elem = elems[0];
+			IProject project = null;
 
-            if( elem instanceof IProject )
-            {
-                project = (IProject) elem;
-            }
+			Object elem = elems[0];
 
-            SDKProjectsImportWizard wizard =
-                new SDKProjectsImportWizard( SDKManager.getInstance().getSDK( project.getLocation() ) );
+			if (elem instanceof IProject) {
+				project = (IProject)elem;
+			}
 
-            final Display display = getDisplay();
+			ImportSDKProjectsWizard wizard = new ImportSDKProjectsWizard(project.getLocation());
 
-            final WizardDialog dialog = new WizardDialog( display.getActiveShell(), wizard );
+			final Display display = getDisplay();
 
-            BusyIndicator.showWhile
-            ( 
-                display, 
-                new Runnable()
-                {
-                    public void run()
-                    {
-                        dialog.open();
-                    }
-                }
-            );
-        }
+			final WizardDialog dialog = new WizardDialog(display.getActiveShell(), wizard);
 
-    }
+			BusyIndicator.showWhile(
+				display,
+				new Runnable() {
 
-    public void selectionChanged( IAction action, ISelection selection )
-    {
-        fSelection = selection;
-    }
+					@Override
+					public void run() {
+						dialog.open();
+					}
 
-    public void setActivePart( IAction action, IWorkbenchPart targetPart )
-    {
-    }
+				});
+		}
+	}
+
+	@Override
+	public void selectionChanged(IAction action, ISelection selection) {
+		_fSelection = selection;
+	}
+
+	@Override
+	public void setActivePart(IAction action, IWorkbenchPart targetPart) {
+	}
+
+	private ISelection _fSelection;
 
 }

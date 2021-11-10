@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,155 +10,289 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
+
 package com.liferay.ide.maven.core;
 
 import com.liferay.ide.core.IBundleProject;
+import com.liferay.ide.core.IProjectBuilder;
+import com.liferay.ide.core.util.CoreUtil;
+import com.liferay.ide.core.util.FileUtil;
+import com.liferay.ide.core.util.ListUtil;
+import com.liferay.ide.core.util.StringUtil;
 import com.liferay.ide.maven.core.util.DefaultMaven2OsgiConverter;
-import com.liferay.ide.project.core.IProjectBuilder;
+import com.liferay.ide.project.core.util.ProjectUtil;
 import com.liferay.ide.server.remote.IRemoteServerPublisher;
 
 import java.io.File;
+import java.io.InputStream;
+
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.maven.artifact.Artifact;
+import org.apache.maven.model.Build;
 import org.apache.maven.project.MavenProject;
+
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
+import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IWorkspace;
+import org.eclipse.core.resources.IWorkspaceDescription;
+import org.eclipse.core.resources.IncrementalProjectBuilder;
+import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.core.runtime.Path;
+import org.eclipse.jdt.internal.core.builder.JavaBuilder;
 import org.eclipse.m2e.core.project.IMavenProjectFacade;
-
 
 /**
  * @author Gregory Amerson
  */
-public class MavenBundlePluginProject extends LiferayMavenProject implements IBundleProject
-{
-    private final String[] ignorePaths = new String[] { "target" };
+@SuppressWarnings("restriction")
+public class MavenBundlePluginProject extends LiferayMavenProject implements IBundleProject {
 
-    public MavenBundlePluginProject( IProject project )
-    {
-        super( project );
-    }
+	public MavenBundlePluginProject(IProject project) {
+		super(project);
+	}
 
-    public <T> T adapt( Class<T> adapterType )
-    {
-        T adapter = super.adapt( adapterType );
+	@Override
+	public <T> T adapt(Class<T> adapterType) {
+		T adapter = super.adapt(adapterType);
 
-        if( adapter != null )
-        {
-            return adapter;
-        }
+		if (adapter != null) {
+			return adapter;
+		}
 
-        final IMavenProjectFacade facade = MavenUtil.getProjectFacade( getProject(), new NullProgressMonitor() );
+		IMavenProjectFacade facade = MavenUtil.getProjectFacade(getProject(), new NullProgressMonitor());
 
-        if( facade != null )
-        {
-            if( IProjectBuilder.class.equals( adapterType ) )
-            {
-                final IProjectBuilder projectBuilder = new MavenProjectBuilder( getProject() );
+		if (facade != null) {
+			if (IProjectBuilder.class.equals(adapterType)) {
+				IProjectBuilder projectBuilder = new MavenProjectBuilder(getProject());
 
-                return adapterType.cast( projectBuilder );
-            }
-            else if( IRemoteServerPublisher.class.equals( adapterType ) )
-            {
-                final IRemoteServerPublisher remoteServerPublisher =
-                    new MavenProjectRemoteServerPublisher( getProject() );
+				return adapterType.cast(projectBuilder);
+			}
+			else if (IRemoteServerPublisher.class.equals(adapterType)) {
+				IRemoteServerPublisher remoteServerPublisher = new MavenProjectRemoteServerPublisher(getProject());
 
-                return adapterType.cast( remoteServerPublisher );
-            }
-            else if( IBundleProject.class.equals( adapterType ) )
-            {
-                return adapterType.cast( this );
-            }
-        }
+				return adapterType.cast(remoteServerPublisher);
+			}
+			else if (IBundleProject.class.equals(adapterType)) {
+				return adapterType.cast(this);
+			}
+		}
 
-        return null;
-    }
+		return null;
+	}
 
-    @Override
-    public IFile getDescriptorFile( String name )
-    {
-        // TODO Auto-generated method stub
-        return null;
-    }
+	@Override
+	public boolean filterResource(IPath resourcePath) {
+		if (filterResource(resourcePath, _ignorePaths)) {
+			return true;
+		}
 
-    @Override
-    public IPath getOutputJar( boolean buildIfNeeded, IProgressMonitor monitor ) throws CoreException
-    {
-        IPath outputJar = null;
+		return false;
+	}
 
-        if( buildIfNeeded )
-        {
-            final MavenProjectBuilder mavenProjectBuilder = new MavenProjectBuilder( this.getProject() );
+	@Override
+	public String getBundleShape() {
+		return "jar";
+	}
 
-            // TODO update status
-            final IStatus status = mavenProjectBuilder.execGoal( "package", monitor );
+	@Override
+	public IPath getOutputBundle(boolean cleanBuild, IProgressMonitor monitor) throws CoreException {
+		IPath outputJar = null;
 
-            if( status != null && status.isOK() )
-            {
-                final IMavenProjectFacade projectFacade = MavenUtil.getProjectFacade( getProject(), monitor );
-                final MavenProject mavenProject = projectFacade.getMavenProject( monitor );
+		IMavenProjectFacade projectFacade = MavenUtil.getProjectFacade(getProject(), monitor);
+		MavenProjectBuilder mavenProjectBuilder = new MavenProjectBuilder(getProject());
 
-                final String targetName = mavenProject.getBuild().getFinalName() + ".jar";
+		// IDE-3009 delete the MANIFEST.MF to ensure that it will be regenerated by
+		// bnd-process
 
-                // TODO find a better way to get the target folder
-                final IFolder targetFolder = getProject().getFolder( "target" );
+		FileUtil.delete(getProject().getFile("target/classes/META-INF/MANIFEST.MF"));
 
-                if( targetFolder.exists() )
-                {
-                    //targetFolder.refreshLocal( IResource.DEPTH_ONE, monitor );
-                    final IPath targetFile = targetFolder.getRawLocation().append( targetName );
+		if (cleanBuild || !_isAutoBuild()) {
+			getProject().build(IncrementalProjectBuilder.CLEAN_BUILD, monitor);
+			getProject().build(IncrementalProjectBuilder.FULL_BUILD, monitor);
+		}
+		else {
+			getProject().build(IncrementalProjectBuilder.INCREMENTAL_BUILD, monitor);
+		}
 
-                    if( targetFile.toFile().exists() )
-                    {
-                        outputJar = targetFile;
-                    }
-                }
-            }
-            else
-            {
-                throw new CoreException( status );
-            }
-        }
+		IMarker[] buildProblems = JavaBuilder.getProblemsFor(getProject());
 
-        return outputJar;
-    }
+		List<IMarker> errorMarkerList = Stream.of(
+			buildProblems
+		).filter(
+			marker -> {
+				try {
+					int severirty = (int)marker.getAttribute(IMarker.SEVERITY);
 
-    @Override
-    public String getSymbolicName() throws CoreException
-    {
-        String retval = null;
+					return IMarker.SEVERITY_ERROR == severirty;
+				}
+				catch (CoreException ce) {
+					return false;
+				}
+			}
+		).collect(
+			Collectors.toList()
+		);
 
-        final IProgressMonitor monitor = new NullProgressMonitor();
-        final IMavenProjectFacade projectFacade = MavenUtil.getProjectFacade( getProject(), monitor );
-        final MavenProject mavenProject = projectFacade.getMavenProject( monitor );
+		if (ListUtil.isNotEmpty(errorMarkerList)) {
+			return outputJar;
+		}
 
-        final Artifact artifact = mavenProject.getArtifact();
-        final File file = artifact.getFile();
+		mavenProjectBuilder.execJarMojo(projectFacade, monitor);
 
-        if( file != null && file.exists() && !artifact.getFile().getName().equals( "classes" ) )
-        {
-            retval = new DefaultMaven2OsgiConverter().getBundleSymbolicName( artifact );
-        }
+		MavenProject mavenProject = projectFacade.getMavenProject(monitor);
 
-        return retval;
-    }
+		Build build = mavenProject.getBuild();
 
-    @Override
-    public boolean filterResource( IPath resourcePath )
-    {
-        if( filterResource( resourcePath, ignorePaths ) )
-        {
-            return true;
-        }
+		String targetName = build.getFinalName() + "." + getBundleShape();
 
-        return false;
-    }
+		String buildDirectory = build.getDirectory();
+
+		File baseDirectory = mavenProject.getBasedir();
+
+		IPath buildDirPath = new Path(buildDirectory);
+		IPath baseDirPath = new Path(baseDirectory.toString());
+
+		IPath relativePath = buildDirPath.makeRelativeTo(baseDirPath);
+
+		IFolder targetFolder = _getTargetFolder(getProject(), relativePath);
+
+		if (FileUtil.exists(targetFolder)) {
+
+			// targetFolder.refreshLocal( IResource.DEPTH_ONE, monitor );
+
+			IPath rawLocation = targetFolder.getRawLocation();
+
+			IPath targetFile = rawLocation.append(targetName);
+
+			if (FileUtil.exists(targetFile)) {
+				outputJar = targetFile;
+			}
+		}
+
+		return outputJar;
+	}
+
+	@Override
+	public IPath getOutputBundlePath() {
+		IPath outputJar = null;
+
+		try {
+			IMavenProjectFacade projectFacade = MavenUtil.getProjectFacade(getProject(), null);
+
+			MavenProject mavenProject = projectFacade.getMavenProject(null);
+
+			Build build = mavenProject.getBuild();
+
+			String targetName = build.getFinalName() + "." + getBundleShape();
+
+			IFolder targetFolder = getProject().getFolder("target");
+
+			if (FileUtil.exists(targetFolder)) {
+				IPath rawLocation = targetFolder.getRawLocation();
+
+				IPath targetFile = rawLocation.append(targetName);
+
+				if (FileUtil.exists(targetFile)) {
+					outputJar = targetFile;
+				}
+			}
+		}
+		catch (Exception e) {
+			LiferayMavenCore.logError(e);
+		}
+
+		return outputJar;
+	}
+
+	@Override
+	public String getSymbolicName() throws CoreException {
+		String bsn = ProjectUtil.getBundleSymbolicNameFromBND(getProject());
+
+		if (!CoreUtil.empty(bsn)) {
+			return bsn;
+		}
+
+		String retval = null;
+
+		IProgressMonitor monitor = new NullProgressMonitor();
+
+		IMavenProjectFacade projectFacade = MavenUtil.getProjectFacade(getProject(), monitor);
+
+		if (projectFacade == null) {
+			return retval;
+		}
+
+		MavenProject mavenProject = projectFacade.getMavenProject(monitor);
+
+		Artifact artifact = mavenProject.getArtifact();
+
+		File file = artifact.getFile();
+
+		if (FileUtil.exists(file) && !StringUtil.equals(file.getName(), "classes")) {
+			retval = new DefaultMaven2OsgiConverter().getBundleSymbolicName(artifact);
+		}
+		else {
+
+			// fallback to project name
+
+			retval = FileUtil.getLastSegment(getProject());
+		}
+
+		return retval;
+	}
+
+	@Override
+	public boolean isFragmentBundle() {
+		IFile bndFile = getProject().getFile("bnd.bnd");
+
+		if (FileUtil.exists(bndFile)) {
+			try (InputStream inputStream = bndFile.getContents()) {
+				String content = FileUtil.readContents(inputStream);
+
+				if (content.contains("Fragment-Host")) {
+					return true;
+				}
+			}
+			catch (Exception e) {
+			}
+		}
+
+		return false;
+	}
+
+	@Override
+	public boolean isWarCoreExtModule() {
+		return false;
+	}
+
+	private IFolder _getTargetFolder(IProject project, IPath relativePath) {
+		IFolder targetFolder = project.getFolder(relativePath);
+
+		if (FileUtil.notExists(targetFolder)) {
+			targetFolder = project.getFolder("target");
+		}
+
+		return targetFolder;
+	}
+
+	private boolean _isAutoBuild() {
+		IWorkspace workspace = ResourcesPlugin.getWorkspace();
+
+		IWorkspaceDescription workspaceDescription = workspace.getDescription();
+
+		return workspaceDescription.isAutoBuilding();
+	}
+
+	private String[] _ignorePaths = {"target"};
 
 }

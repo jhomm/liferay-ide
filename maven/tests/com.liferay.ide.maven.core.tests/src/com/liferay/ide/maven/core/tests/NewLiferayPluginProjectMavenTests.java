@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,17 +10,14 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.maven.core.tests;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 
 import com.liferay.ide.core.util.CoreUtil;
 import com.liferay.ide.core.util.FileUtil;
 import com.liferay.ide.project.core.IPortletFramework;
+import com.liferay.ide.project.core.NewLiferayProjectProvider;
 import com.liferay.ide.project.core.ProjectCore;
 import com.liferay.ide.project.core.model.NewLiferayPluginProjectOp;
 import com.liferay.ide.project.core.model.PluginType;
@@ -30,6 +27,7 @@ import com.liferay.ide.sdk.core.SDK;
 import com.liferay.ide.sdk.core.SDKUtil;
 
 import java.io.File;
+
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -40,437 +38,473 @@ import org.eclipse.core.runtime.IPath;
 import org.eclipse.sapphire.ElementList;
 import org.eclipse.sapphire.EnablementService;
 import org.eclipse.sapphire.PossibleValuesService;
+import org.eclipse.sapphire.Value;
+import org.eclipse.sapphire.modeling.Path;
 import org.eclipse.sapphire.platform.PathBridge;
 import org.eclipse.sapphire.services.ValidationService;
+
+import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
 /**
  * @author Gregory Amerson
  */
-public class NewLiferayPluginProjectMavenTests extends ProjectCoreBase
-{
-    protected final ProjectCoreBase base = new ProjectCoreBase();
-
-    protected IProject createMavenProject( NewLiferayPluginProjectOp op ) throws Exception
-    {
-        IProject project = createProject( op );
-
-        assertEquals( true, project.getFolder( "src" ).exists() );
-
-        return project;
-    }
-
-    protected void createMavenProjectName( final String projectName ) throws Exception
-    {
-        final NewLiferayPluginProjectOp op = NewLiferayPluginProjectOp.TYPE.instantiate();
-        op.setProjectName( projectName );
-        op.setProjectProvider( "maven" );
-
-        createMavenProject( op );
-    }
-
-    @Override
-    protected IPath getLiferayPluginsSdkDir()
-    {
-        return ProjectCore.getDefault().getStateLocation().append( "liferay-plugins-sdk-6.2.0" );
-    }
-
-    @Override
-    protected IPath getLiferayPluginsSDKZip()
-    {
-        return getLiferayBundlesPath().append( "liferay-plugins-sdk-6.2.0-ce-ga1-20131101192857659.zip" );
-    }
-
-    @Override
-    protected String getLiferayPluginsSdkZipFolder()
-    {
-        return "liferay-plugins-sdk-6.2.0/";
-    }
-
-    @Override
-    protected IPath getLiferayRuntimeDir()
-    {
-        return ProjectCore.getDefault().getStateLocation().append( "liferay-portal-6.2.0-ce-ga1/tomcat-7.0.42" );
-    }
-
-    @Override
-    protected IPath getLiferayRuntimeZip()
-    {
-        return getLiferayBundlesPath().append( "liferay-portal-tomcat-6.2.0-ce-ga1-20131101192857659.zip" );
-    }
-
-    @Override
-    protected String getRuntimeId()
-    {
-        return "com.liferay.ide.eclipse.server.tomcat.runtime.70";
-    }
-
-    @Override
-    public String getRuntimeVersion()
-    {
-        return "6.2.0";
-    }
-
-    @Test
-    public void testCreateNewMavenProject() throws Exception
-    {
-        createMavenProjectName( "test-name-1" );
-        createMavenProjectName( "Test With Spaces" );
-        createMavenProjectName( "test_name_1" );
-    }
-
-    @Test
-    public void testGroupIdValidation() throws Exception
-    {
-        final NewLiferayPluginProjectOp op = newProjectOp( "test-group-id-validation" );
-        op.setProjectProvider( "maven" );
-
-        final ValidationService vs = op.getGroupId().service( ValidationService.class );
-
-        op.setGroupId( ".com.liferay.test" );
-        final String expected = "A package name cannot start or end with a dot";
-        assertEquals( expected, vs.validation().message() );
-        assertEquals( expected, op.getGroupId().validation().message() );
-
-        op.setGroupId( "com.life*ray.test" );
-        final String expected2 = "'life*ray' is not a valid Java identifier";
-        assertEquals( expected2, vs.validation().message() );
-        assertEquals( expected2, op.getGroupId().validation().message() );
-    }
-
-    @Test
-    public void testHookProjectName() throws Exception
-    {
-        final NewLiferayPluginProjectOp op = newProjectOp( "test-hook" );
-        op.setProjectProvider( "maven" );
-        op.setPluginType( PluginType.hook );
-        op.setUseDefaultLocation( true );
-
-        IProject expectedProject = createMavenProject(op);
-
-        String expectedProjectName = expectedProject.getName();
-
-        String actualProjectName = op.getProjectNames().get(0).getName().content();
+public class NewLiferayPluginProjectMavenTests extends ProjectCoreBase {
 
-        assertEquals( expectedProjectName, actualProjectName );
-    }
+	@Test
+	public void testCreateNewMavenProject() throws Exception {
+		createMavenProjectName("test-name-1");
+	}
 
-    @Test
-    public void testLocationValidation() throws Exception
-    {
-        final NewLiferayPluginProjectOp op = newProjectOp( "test-location-validation-service" );
-        op.setProjectProvider( "maven" );
-        op.setPluginType( "portlet" );
-        op.setUseDefaultLocation( false );
+	@Test
+	public void testCreateProjectNameWithSpaces() throws Exception {
+		createMavenProjectName("Test With Spaces");
+	}
 
-        final ValidationService vs = op.getLocation().service( ValidationService.class );
-
-        String invalidLocation = null;
-        invalidLocation = "not-absolute-location";
-        op.setLocation( invalidLocation );
-        final String projectName = op.getProjectName().content();
+	@Test
+	public void testCreateProjectNameWithUnderscores() throws Exception {
+		createMavenProjectName("test_name_1");
+	}
 
-        final String expected = "\"" + invalidLocation + "\\" + projectName + "\"" + " is not an absolute path.";
+	@Test
+	public void testGroupIdValidation() throws Exception {
+		NewLiferayPluginProjectOp op = newProjectOp("test-group-id-validation");
 
-        assertEquals( normalize( expected ), normalize( vs.validation().message() ) );
-        assertEquals( normalize( expected ), normalize( op.getLocation().validation().message() ) );
+		op.setProjectProvider("maven");
 
-        if( CoreUtil.isWindows() )
-        {
-            invalidLocation = "Z:\\test-location-validation-service";
-        }
-        else
-        {
-            invalidLocation = "/test-location-validation-service";
-        }
+		ValidationService vs = op.getGroupId().service(ValidationService.class);
 
-        op.setLocation( invalidLocation );
-        final String expected2 = "Cannot create project content at " + "\"" + invalidLocation + "\"";
-        assertEquals( expected2, vs.validation().message() );
-        assertEquals( expected2, op.getLocation().validation().message() );
-
-        if( CoreUtil.isWindows() )
-        {
-            invalidLocation = CoreUtil.getWorkspaceRoot().getLocation().getDevice() + "\\";
-        }
-        else
-        {
-            invalidLocation = "/";
-        }
-
-        op.setLocation( invalidLocation );
-
-        final String expected3 = "Project location is not empty or a parent pom.";
-
-        assertEquals( expected3, vs.validation().message() );
-        //assertEquals( expected3, op.getLocation().validation().message() );
-
-        op.setLocation( "" );
-        
-        //IDE-2069
-        invalidLocation = getLiferayRuntimeDir().removeLastSegments( 2 ).toOSString();
-        op.setLocation( invalidLocation );
+		op.setGroupId(".com.liferay.test");
 
-        final String expected5 = "Project location is not empty or a parent pom.";
-
-        assertEquals( expected5, vs.validation().message() );
-        
-        final String expected4 = "Location must be specified.";
-        assertEquals( expected4, vs.validation().message() );
-        assertEquals( expected4, op.getLocation().validation().message() );
-    }
+		String expected = "A package name cannot start or end with a dot";
 
-    private String normalize( String val )
-    {
-        return val.replaceAll( "\\\\", "/" );
-    }
+		Value<String> groupId = op.getGroupId();
 
-    @Test
-    public void testParentFolderLocationValidation() throws Exception
-    {
-        File parentFolder =
-            CoreUtil.getWorkspaceRoot().getLocation().append(
-                "test-parent-folder-location-validation-service" ).toFile();
+		Assert.assertEquals(expected, vs.validation().message());
+		Assert.assertEquals(expected, groupId.validation().message());
 
-        if( !parentFolder.exists() )
-        {
-            parentFolder.mkdir();
-        }
+		op.setGroupId("com.life*ray.test");
 
-        File pomFile = new File( "projects/validations/location/pom.xml" );
+		String expected2 = "'life*ray' is not a valid Java identifier";
 
-        FileUtil.copyFileToDir( pomFile, parentFolder );
+		groupId = op.getGroupId();
 
-        final NewLiferayPluginProjectOp op = NewLiferayPluginProjectOp.TYPE.instantiate();
-        op.setProjectName( "test-parent-folder-location-validation-service" );
+		Assert.assertEquals(expected2, vs.validation().message());
+		Assert.assertEquals(expected2, groupId.validation().message());
+	}
 
-        final ValidationService vs = op.getLocation().service( ValidationService.class );
+	@Test
+	public void testHookProjectName() throws Exception {
+		NewLiferayPluginProjectOp op = newProjectOp("test-hook");
 
-        op.setProjectProvider( "maven" );
-        op.setPluginType( "portlet" );
-        op.setUseDefaultLocation( false );
-        op.setLocation( parentFolder.getAbsolutePath() );
+		op.setProjectProvider("maven");
+		op.setPluginType(PluginType.hook);
+		op.setUseDefaultLocation(true);
 
-        String projectName = op.getProjectName().content();
+		IProject expectedProject = createMavenProject(op);
 
-        String expected = "The project name \"" + projectName + "\" can't be the same as the parent.";
+		String expectedProjectName = expectedProject.getName();
 
-        assertEquals( expected, vs.validation().message() );
-        assertEquals( expected, op.getLocation().validation().message() );
-    }
+		ElementList<ProjectName> names = op.getProjectNames();
 
-    @Test
-    @Ignore
-    public void testPortletFrameworkValidation() throws Exception
-    {
-        if( shouldSkipBundleTests() ) return;
+		ProjectName name = names.get(0);
 
-        NewLiferayPluginProjectOp op = newProjectOp( "test-portlet-framework-validation" );
-        op.setPluginType( "portlet" );
-        final ValidationService vs = op.getPortletFramework().service( ValidationService.class );
+		String actualProjectName = name.getName().content();
 
-        assertEquals( true, vs.validation().ok() );
+		Assert.assertEquals(expectedProjectName, actualProjectName);
+	}
 
-        final SDK newSDK = createNewSDK();
-        newSDK.setVersion( "6.0.0" );
+	@Ignore
+	@Test
+	public void testLocationValidation() throws Exception {
+		NewLiferayPluginProjectOp op = newProjectOp("test-location-validation-service");
 
-        final IPortletFramework jsf = ProjectCore.getPortletFramework( "jsf" );
+		op.setProjectProvider("maven");
+		op.setPluginType("portlet");
+		op.setUseDefaultLocation(false);
 
-        op.setProjectProvider( "ant" );
-        op.setPortletFramework( "jsf" );
+		ValidationService vs = op.getLocation().service(ValidationService.class);
 
-        assertEquals(
-            "Selected portlet framework requires SDK version at least " + jsf.getRequiredSDKVersion(),
-            vs.validation().message() );
-        // Value is not excepted.
-        /*
-         * assertEquals( "Selected portlet framework requires SDK version at least " + jsf.getRequiredSDKVersion(),
-         * op.getPortletFramework().validation().message() );
-         */
-    }
+		String invalidLocation = null;
 
-    @Test
-    public void testPortletProjectName() throws Exception
-    {
-        final NewLiferayPluginProjectOp op = newProjectOp( "test-name" );
-        op.setProjectProvider( "maven" );
-        op.setPluginType( PluginType.portlet );
-        op.setUseDefaultLocation( true );
-        op.setPortletFramework( "mvc" );
-        op.setPortletName( "testPortlet" );
+		invalidLocation = "not-absolute-location";
 
-        IProject expectedProject = createMavenProject(op);
+		op.setLocation(invalidLocation);
 
-        String expectedProjectName = expectedProject.getName();
+		String expected = "\"" + invalidLocation + "\" is not an absolute path.";
 
-        String actualProjectName = op.getProjectNames().get(0).getName().content();
+		Assert.assertEquals(_normalize(expected), _normalize(vs.validation().message()));
 
-        assertEquals( expectedProjectName, actualProjectName );
-    }
+		Value<Path> location = op.getLocation();
 
-    @Test
-    public void testProjectNameListener() throws Exception
-    {
-        if( shouldSkipBundleTests() ) return ;
+		Assert.assertEquals(_normalize(expected), _normalize(location.validation().message()));
 
-        final NewLiferayPluginProjectOp op = newProjectOp( "" );
-        final SDK sdk = SDKUtil.createSDKFromLocation( getLiferayPluginsSdkDir() );
+		if (CoreUtil.isWindows()) {
+			invalidLocation = "Z:\\test-location-validation-service";
+		}
+		else {
+			invalidLocation = "/test-location-validation-service";
+		}
 
-        final String projectName = "test-project-name-listener";
-        final String projectName2 = "test-project-name-listener-2";
+		op.setLocation(invalidLocation);
 
-        op.setProjectProvider( "ant" );
-        op.setUseDefaultLocation( true );
-        op.setPluginType( "portlet" );
+		String expected2 = "Cannot create project content at \"" + invalidLocation + "\"";
 
-        IPath exceptedLocation = null;
+		Assert.assertEquals(expected2, vs.validation().message());
 
-        op.setProjectName( projectName );
-        exceptedLocation = sdk.getLocation().append( "portlets" ).append( projectName + "-portlet" );
-        assertEquals( exceptedLocation, PathBridge.create( op.getLocation().content() ) );
+		Value<Path> location2 = op.getLocation();
 
-        op.setProjectName( projectName2 );
-        exceptedLocation = sdk.getLocation().append( "portlets" ).append( projectName2 + "-portlet" );
-        assertEquals( exceptedLocation, PathBridge.create( op.getLocation().content() ) );
+		Assert.assertEquals(expected2, location2.validation().message());
 
-        op.setProjectProvider( "maven" );
+		if (CoreUtil.isWindows()) {
+			invalidLocation = CoreUtil.getWorkspaceRootLocation().getDevice() + "\\";
+		}
+		else {
+			invalidLocation = "/";
+		}
 
-        op.setProjectName( projectName );
-        exceptedLocation = CoreUtil.getWorkspaceRoot().getLocation().append( projectName );
-        assertEquals( exceptedLocation, PathBridge.create( op.getLocation().content() ) );
+		op.setLocation(invalidLocation);
 
-        op.setProjectName( projectName2 );
-        exceptedLocation = CoreUtil.getWorkspaceRoot().getLocation().append( projectName2 );
-        assertEquals( exceptedLocation, PathBridge.create( op.getLocation().content() ) );
-    }
+		String expected3 = "Project location is not empty or a parent pom.";
 
-    @Test
-    public void testProjectProviderListener() throws Exception
-    {
-        if( shouldSkipBundleTests() ) return;
+		Assert.assertEquals(expected3, vs.validation().message());
 
-        final NewLiferayPluginProjectOp op = newProjectOp( "test-project-provider-listener" );
-        final String projectName = op.getProjectName().content();
-        op.setPluginType( "portlet" );
-        op.setUseDefaultLocation( true );
+		// IDE-2069
 
-        final SDK sdk = SDKUtil.createSDKFromLocation( getLiferayPluginsSdkDir() );
+		IPath path = getLiferayRuntimeDir();
 
-        IPath exceptedLocation = null;
+		invalidLocation = path.removeLastSegments(2).toOSString();
 
-        op.setProjectProvider( "ant" );
-        exceptedLocation = sdk.getLocation().append( "portlets" ).append( projectName + "-portlet" );
-        assertEquals( exceptedLocation, PathBridge.create( op.getLocation().content() ) );
+		op.setLocation(invalidLocation);
 
-        op.setProjectProvider( "maven" );
-        exceptedLocation = CoreUtil.getWorkspaceRoot().getLocation().append( projectName );
-        assertEquals( exceptedLocation, PathBridge.create( op.getLocation().content() ) );
-    }
+		String expected5 = "Project location is not empty or a parent pom.";
 
-    @Test
-    public void testProjectProviderPossibleValues() throws Exception
-    {
-        if( shouldSkipBundleTests() ) return;
+		Assert.assertEquals(expected5, vs.validation().message());
 
-        final NewLiferayPluginProjectOp op = newProjectOp( "test-project-provider-possbile-values" );
+		op.setLocation("");
 
-        final Set<String> acturalValues = op.getProjectProvider().service( PossibleValuesService.class ).values();
+		String expected4 = "Location must be specified.";
 
-        assertNotNull( acturalValues );
+		Assert.assertEquals(expected4, vs.validation().message());
 
-        Set<String> exceptedValues = new HashSet<String>();
-        exceptedValues.add( "ant" );
-        exceptedValues.add( "maven" );
+		Value<Path> location4 = op.getLocation();
 
-        assertEquals( true, exceptedValues.containsAll( acturalValues ) );
-        assertEquals( true, acturalValues.containsAll( exceptedValues ) );
-    }
+		Assert.assertEquals(expected4, location4.validation().message());
+	}
 
-    @Test
-    public void testServiceBuilderProjectName() throws Exception
-    {
-        NewLiferayPluginProjectOp op = NewLiferayPluginProjectOp.TYPE.instantiate();
-        op.setProjectName( "test-name" );
-        op.setProjectProvider( "maven" );
-        op.setPluginType( PluginType.servicebuilder );
+	@Test
+	public void testParentFolderLocationValidation() throws Exception {
+		File parentFolder = CoreUtil.getWorkspaceRootLocation(
+		).append(
+			"test-parent-folder-location-validation-service"
+		).toFile();
 
-        final IProject project = base.createProject( op, op.getProjectName() + "-portlet" );
+		if (!parentFolder.exists()) {
+			parentFolder.mkdir();
+		}
 
-        String projectName = project.getName();
-        String finalProjectName = projectName.substring( 0, projectName.lastIndexOf( "-" ) );
+		File pomFile = new File("projects/validations/location/pom.xml");
 
-        ElementList<ProjectName> projectNames = op.getProjectNames();
+		FileUtil.copyFileToDir(pomFile, parentFolder);
 
-        List<String> finalProjectnames = new ArrayList<String>();
+		NewLiferayPluginProjectOp op = NewLiferayPluginProjectOp.TYPE.instantiate();
 
-        for( ProjectName expectedProjectName : projectNames )
-        {
-            finalProjectnames.add( expectedProjectName.getName().content() );
-        }
+		op.setProjectName("test-parent-folder-location-validation-service");
 
-        assertEquals( true, finalProjectnames.contains( finalProjectName ) );
-        assertEquals( true, finalProjectnames.contains( finalProjectName + "-portlet" ) );
-        assertEquals( true, finalProjectnames.contains( finalProjectName + "-portlet-service" ) );
-    }
+		ValidationService vs = op.getLocation().service(ValidationService.class);
 
-    @Test
-    public void testUseDefaultLocationEnablement() throws Exception
-    {
-        this.testUseDefaultLocationEnablement( true );
-    }
+		op.setProjectProvider("maven");
+		op.setPluginType("portlet");
+		op.setUseDefaultLocation(false);
+		op.setLocation(parentFolder.getAbsolutePath());
 
-    public void testUseDefaultLocationEnablement( boolean versionRestriction ) throws Exception
-    {
-        final NewLiferayPluginProjectOp op = newProjectOp( "test-use-default-location-enablement" );
-        op.setProjectProvider( "maven" );
+		String projectName = op.getProjectName().content();
 
-        assertEquals( true, op.getUseDefaultLocation().service( EnablementService.class ).enablement() );
-        assertEquals( true, op.getUseDefaultLocation().enabled() );
+		String expected = "The project name \"" + projectName + "\" can not be the same as the parent.";
 
-        if( versionRestriction )
-        {
-            op.setProjectProvider( "ant" );
+		Assert.assertEquals(expected, vs.validation().message());
 
-            assertEquals( false, op.getUseDefaultLocation().service( EnablementService.class ).enablement() );
-            assertEquals( false, op.getUseDefaultLocation().enabled() );
-        }
-    }
+		Value<Path> location = op.getLocation();
 
-    @Test
-    public void testUseDefaultLocationListener() throws Exception
-    {
-        this.testUseDefaultLocationListener( false );
-    }
+		Assert.assertEquals(expected, location.validation().message());
+	}
 
-    protected void testUseDefaultLocationListener( boolean versionRestriction ) throws Exception
-    {
-        final NewLiferayPluginProjectOp op = newProjectOp( "test-use-default-location-listener" );
-        final String projectName = op.getProjectName().content();
-        op.setProjectProvider( "maven" );
+	@Ignore
+	@Test
+	public void testPortletFrameworkValidation() throws Exception {
+		if (shouldSkipBundleTests()) {
+			return;
+		}
 
-        IPath exceptedLocation = null;
+		NewLiferayPluginProjectOp op = newProjectOp("test-portlet-framework-validation");
 
-        op.setUseDefaultLocation( true );
-        exceptedLocation = CoreUtil.getWorkspaceRoot().getLocation().append( projectName );
-        assertEquals( exceptedLocation, PathBridge.create( op.getLocation().content() ) );
+		op.setPluginType("portlet");
 
-        op.setUseDefaultLocation( false );
-        assertEquals( null, op.getLocation().content() );
+		ValidationService vs = op.getPortletFramework().service(ValidationService.class);
 
-        if( versionRestriction )
-        {
-            op.setProjectProvider( "ant" );
-            op.setPluginType( "portlet" );
-            op.setUseDefaultLocation( true );
+		Assert.assertEquals(true, vs.validation().ok());
 
-            final SDK sdk = SDKUtil.createSDKFromLocation( getLiferayPluginsSdkDir() );
+		SDK newSDK = createNewSDK();
 
-            exceptedLocation = sdk.getLocation().append( "portlets" ).append( projectName + "-portlet" );
-            assertEquals( exceptedLocation, PathBridge.create( op.getLocation().content() ) );
+		newSDK.setVersion("6.0.0");
 
-            op.setUseDefaultLocation( false );
-            assertEquals( null, op.getLocation().content() );
-        }
-    }
+		IPortletFramework jsf = ProjectCore.getPortletFramework("jsf");
+
+		op.setProjectProvider("ant");
+		op.setPortletFramework("jsf");
+
+		Assert.assertEquals(
+			"Selected portlet framework requires SDK version at least " + jsf.getRequiredSDKVersion(),
+			vs.validation().message());
+	}
+
+	@Test
+	public void testPortletProjectName() throws Exception {
+		NewLiferayPluginProjectOp op = newProjectOp("test-name");
+
+		op.setProjectProvider("maven");
+		op.setPluginType(PluginType.portlet);
+		op.setUseDefaultLocation(true);
+		op.setPortletFramework("mvc");
+		op.setPortletName("testPortlet");
+
+		IProject expectedProject = createMavenProject(op);
+
+		String expectedProjectName = expectedProject.getName();
+
+		ElementList<ProjectName> names = op.getProjectNames();
+
+		ProjectName name = names.get(0);
+
+		String actualProjectName = name.getName().content();
+
+		Assert.assertEquals(expectedProjectName, actualProjectName);
+	}
+
+	@Test
+	public void testProjectNameListener() throws Exception {
+		if (shouldSkipBundleTests()) {
+			return;
+		}
+
+		NewLiferayPluginProjectOp op = newProjectOp("");
+
+		SDK sdk = SDKUtil.createSDKFromLocation(getLiferayPluginsSdkDir());
+
+		String projectName = "test-project-name-listener";
+		String projectName2 = "test-project-name-listener-2";
+
+		op.setProjectProvider("ant");
+		op.setUseDefaultLocation(true);
+		op.setPluginType("portlet");
+
+		IPath exceptedLocation = null;
+
+		op.setProjectName(projectName);
+
+		IPath location = sdk.getLocation();
+
+		exceptedLocation = location.append("portlets").append(projectName + "-portlet");
+
+		Assert.assertEquals(exceptedLocation, PathBridge.create(op.getLocation().content()));
+
+		op.setProjectName(projectName2);
+
+		exceptedLocation = location.append("portlets").append(projectName2 + "-portlet");
+
+		Assert.assertEquals(exceptedLocation, PathBridge.create(op.getLocation().content()));
+
+		op.setProjectProvider("maven");
+
+		op.setProjectName(projectName);
+
+		exceptedLocation = CoreUtil.getWorkspaceRootLocation().append(projectName);
+
+		Assert.assertEquals(exceptedLocation, PathBridge.create(op.getLocation().content()));
+
+		op.setProjectName(projectName2);
+
+		exceptedLocation = CoreUtil.getWorkspaceRootLocation().append(projectName2);
+
+		Assert.assertEquals(exceptedLocation, PathBridge.create(op.getLocation().content()));
+	}
+
+	@Test
+	public void testProjectProviderListener() throws Exception {
+		if (shouldSkipBundleTests()) {
+			return;
+		}
+
+		NewLiferayPluginProjectOp op = newProjectOp("test-project-provider-listener");
+
+		String projectName = op.getProjectName().content();
+
+		op.setPluginType("portlet");
+		op.setUseDefaultLocation(true);
+
+		SDK sdk = SDKUtil.createSDKFromLocation(getLiferayPluginsSdkDir());
+
+		IPath exceptedLocation = null;
+
+		op.setProjectProvider("ant");
+
+		IPath location = sdk.getLocation();
+
+		exceptedLocation = location.append("portlets").append(projectName + "-portlet");
+
+		Assert.assertEquals(exceptedLocation, PathBridge.create(op.getLocation().content()));
+
+		op.setProjectProvider("maven");
+
+		exceptedLocation = CoreUtil.getWorkspaceRootLocation().append(projectName);
+
+		Assert.assertEquals(exceptedLocation, PathBridge.create(op.getLocation().content()));
+	}
+
+	@Test
+	public void testProjectProviderPossibleValues() throws Exception {
+		if (shouldSkipBundleTests()) {
+			return;
+		}
+
+		NewLiferayPluginProjectOp op = newProjectOp("test-project-provider-possbile-values");
+
+		Value<NewLiferayProjectProvider<NewLiferayPluginProjectOp>> provider = op.getProjectProvider();
+
+		Set<String> acturalValues = provider.service(PossibleValuesService.class).values();
+
+		Assert.assertNotNull(acturalValues);
+
+		Set<String> exceptedValues = new HashSet<>();
+
+		exceptedValues.add("ant");
+		exceptedValues.add("maven");
+
+		Assert.assertEquals(true, exceptedValues.containsAll(acturalValues));
+		Assert.assertEquals(true, acturalValues.containsAll(exceptedValues));
+	}
+
+	@Test
+	public void testServiceBuilderProjectName() throws Exception {
+		NewLiferayPluginProjectOp op = NewLiferayPluginProjectOp.TYPE.instantiate();
+
+		op.setProjectName("test-name");
+		op.setProjectProvider("maven");
+		op.setPluginType(PluginType.servicebuilder);
+
+		IProject project = base.createProject(op, op.getProjectName() + "-portlet");
+
+		waitForBuildAndValidation(project);
+
+		String projectName = project.getName();
+
+		String finalProjectName = projectName.substring(0, projectName.lastIndexOf("-"));
+
+		ElementList<ProjectName> projectNames = op.getProjectNames();
+
+		List<String> finalProjectnames = new ArrayList<>();
+
+		for (ProjectName expectedProjectName : projectNames) {
+			finalProjectnames.add(expectedProjectName.getName().content());
+		}
+
+		Assert.assertEquals(true, finalProjectnames.contains(finalProjectName));
+		Assert.assertEquals(true, finalProjectnames.contains(finalProjectName + "-portlet"));
+		Assert.assertEquals(true, finalProjectnames.contains(finalProjectName + "-portlet-service"));
+	}
+
+	@Test
+	public void testUseDefaultLocationEnablement() throws Exception {
+		testUseDefaultLocationEnablement(true);
+	}
+
+	public void testUseDefaultLocationEnablement(boolean versionRestriction) throws Exception {
+		NewLiferayPluginProjectOp op = newProjectOp("test-use-default-location-enablement");
+
+		op.setProjectProvider("maven");
+
+		Value<Boolean> useDefaultLocation = op.getUseDefaultLocation();
+
+		Assert.assertEquals(true, useDefaultLocation.service(EnablementService.class).enablement());
+		Assert.assertEquals(true, useDefaultLocation.enabled());
+
+		if (versionRestriction) {
+			op.setProjectProvider("ant");
+
+			useDefaultLocation = op.getUseDefaultLocation();
+
+			Assert.assertEquals(false, useDefaultLocation.service(EnablementService.class).enablement());
+			Assert.assertEquals(false, useDefaultLocation.enabled());
+		}
+	}
+
+	@Test
+	public void testUseDefaultLocationListener() throws Exception {
+		testUseDefaultLocationListener(false);
+	}
+
+	protected IProject createMavenProject(NewLiferayPluginProjectOp op) throws Exception {
+		IProject project = createProject(op);
+
+		waitForBuildAndValidation(project);
+
+		Assert.assertEquals(true, project.getFolder("src").exists());
+
+		return project;
+	}
+
+	protected void createMavenProjectName(String projectName) throws Exception {
+		NewLiferayPluginProjectOp op = NewLiferayPluginProjectOp.TYPE.instantiate();
+
+		op.setProjectName(projectName);
+		op.setProjectProvider("maven");
+
+		createMavenProject(op);
+	}
+
+	protected void testUseDefaultLocationListener(boolean versionRestriction) throws Exception {
+		NewLiferayPluginProjectOp op = newProjectOp("test-use-default-location-listener");
+
+		String projectName = op.getProjectName().content();
+
+		op.setProjectProvider("maven");
+
+		IPath exceptedLocation = null;
+
+		op.setUseDefaultLocation(true);
+
+		exceptedLocation = CoreUtil.getWorkspaceRootLocation().append(projectName);
+
+		Assert.assertEquals(exceptedLocation, PathBridge.create(op.getLocation().content()));
+
+		op.setUseDefaultLocation(false);
+
+		Assert.assertEquals(null, op.getLocation().content());
+
+		if (versionRestriction) {
+			op.setProjectProvider("ant");
+			op.setPluginType("portlet");
+			op.setUseDefaultLocation(true);
+
+			SDK sdk = SDKUtil.createSDKFromLocation(getLiferayPluginsSdkDir());
+
+			IPath location = sdk.getLocation();
+
+			exceptedLocation = location.append("portlets").append(projectName + "-portlet");
+
+			Assert.assertEquals(exceptedLocation, PathBridge.create(op.getLocation().content()));
+
+			op.setUseDefaultLocation(false);
+
+			Assert.assertEquals(null, op.getLocation().content());
+		}
+	}
+
+	protected final ProjectCoreBase base = new ProjectCoreBase();
+
+	private String _normalize(String val) {
+		return val.replaceAll("\\\\", "/");
+	}
+
 }

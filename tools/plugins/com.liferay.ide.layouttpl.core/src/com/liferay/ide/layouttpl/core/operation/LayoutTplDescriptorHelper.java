@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,10 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- * Contributors:
- * 		Gregory Amerson - initial implementation and ongoing maintenance
- *******************************************************************************/
+ */
 
 package com.liferay.ide.layouttpl.core.operation;
 
@@ -29,6 +26,7 @@ import org.eclipse.core.runtime.Status;
 import org.eclipse.wst.common.frameworks.datamodel.IDataModel;
 import org.eclipse.wst.xml.core.internal.provisional.document.IDOMDocument;
 import org.eclipse.wst.xml.core.internal.provisional.format.FormatProcessorXML;
+
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -37,137 +35,142 @@ import org.w3c.dom.NodeList;
  * @author Gregory Amerson
  * @author Cindy Li
  */
-@SuppressWarnings( "restriction" )
-public class LayoutTplDescriptorHelper extends LiferayDescriptorHelper implements INewLayoutTplDataModelProperties
-{
-    public static final String DESCRIPTOR_FILE = ILiferayConstants.LIFERAY_LAYOUTTPL_XML_FILE;
+@SuppressWarnings("restriction")
+public class LayoutTplDescriptorHelper extends LiferayDescriptorHelper implements INewLayoutTplDataModelProperties {
 
-    private static final String LAYOUT_DESCRIPTOR_TEMPLATE = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" //$NON-NLS-1$
-            + "<!DOCTYPE layout-templates PUBLIC \"-//Liferay//DTD Layout Templates {0}//EN\" \"http://www.liferay.com/dtd/liferay-layout-templates_{1}.dtd\">\n\n<layout-templates>\n</layout-templates>\n"; //$NON-NLS-1$
+	public static final String DESCRIPTOR_FILE = ILiferayConstants.LIFERAY_LAYOUTTPL_XML_FILE;
 
-    public LayoutTplDescriptorHelper( IProject project )
-    {
-        super( project );
-    }
+	public LayoutTplDescriptorHelper(IProject project) {
+		super(project);
+	}
 
-    @Override
-    protected void addDescriptorOperations()
-    {
-        // currently, no descriptor operations for this descriptor
-    }
+	public IStatus addNewLayoutTemplate(IDataModel dm) {
+		DOMModelOperation operation = new DOMModelEditOperation(getDescriptorFile()) {
 
-    public IStatus addNewLayoutTemplate( final IDataModel dm )
-    {
-        final IFile descriptorFile = getDescriptorFile();
+			protected void createDefaultFile() {
+				createDefaultDescriptor(_LAYOUT_DESCRIPTOR_TEMPLATE, getDescriptorVersion());
+			}
 
-        final DOMModelOperation operation = new DOMModelEditOperation( descriptorFile )
-        {
-            protected void createDefaultFile()
-            {
-                createDefaultDescriptor( LAYOUT_DESCRIPTOR_TEMPLATE, getDescriptorVersion() );
-            }
+			protected IStatus doExecute(IDOMDocument document) {
+				return doAddLayoutTemplate(document, dm);
+			}
 
-            protected IStatus doExecute( IDOMDocument document )
-            {
-                return doAddLayoutTemplate( document, dm );
-            }
-        };
+		};
 
-        IStatus status = operation.execute();
+		IStatus status = operation.execute();
 
-        if( !status.isOK() )
-        {
-            return status;
-        }
+		if (!status.isOK()) {
+			return status;
+		}
 
-        return status;
-    }
+		return status;
+	}
 
-    public IStatus doAddLayoutTemplate( IDOMDocument document, IDataModel model )
-    {
-        // <layout-templates> element
-        Element rootElement = document.getDocumentElement();
+	public IStatus doAddLayoutTemplate(IDOMDocument document, IDataModel model) {
+		Element rootElement = document.getDocumentElement();
 
-        Element layoutTemplateElement = document.createElement( "layout-template" ); //$NON-NLS-1$
-        layoutTemplateElement.setAttribute( "id", model.getStringProperty( LAYOUT_TEMPLATE_ID ) ); //$NON-NLS-1$
-        layoutTemplateElement.setAttribute( "name", model.getStringProperty( LAYOUT_TEMPLATE_NAME ) ); //$NON-NLS-1$
+		Element layoutTemplateElement = document.createElement("layout-template");
 
-        // find the <custom> element and if it doesn't exist create it
-        Node customElement = NodeUtil.getFirstNamedChildNode( rootElement, "custom" ); //$NON-NLS-1$
+		layoutTemplateElement.setAttribute("id", model.getStringProperty(LAYOUT_TEMPLATE_ID));
+		layoutTemplateElement.setAttribute("name", model.getStringProperty(LAYOUT_TEMPLATE_NAME));
 
-        if( customElement == null )
-        {
-            // if we are going to create a new <custom> it must be after the <standard>
-            Node standardElement = NodeUtil.getFirstNamedChildNode( rootElement, "standard" ); //$NON-NLS-1$
+		// find the <custom> element and if it doesn't exist create it
 
-            customElement = document.createElement( "custom" ); //$NON-NLS-1$
-            rootElement.insertBefore( customElement, standardElement );
-            NodeUtil.appendTextNode( rootElement, "\n" ); //$NON-NLS-1$
-        }
+		Node customElement = NodeUtil.getFirstNamedChildNode(rootElement, "custom");
 
-        customElement.appendChild( layoutTemplateElement );
+		if (customElement == null) {
 
-        // now that we have the new <layout-template> element added to custom element, add the child nodes to layout
-        String templatePath = model.getStringProperty( LAYOUT_TEMPLATE_FILE );
-        String wapTemplatePath = model.getStringProperty( LAYOUT_WAP_TEMPLATE_FILE );
-        String thumbnailPath = model.getStringProperty( LAYOUT_THUMBNAIL_FILE );
+			// if we are going to create a new <custom> it must be after the <standard>
 
-        NodeUtil.appendChildElement( layoutTemplateElement, "template-path", templatePath ); //$NON-NLS-1$
-        NodeUtil.appendChildElement( layoutTemplateElement, "wap-template-path", wapTemplatePath ); //$NON-NLS-1$
-        NodeUtil.appendChildElement( layoutTemplateElement, "thumbnail-path", thumbnailPath ); //$NON-NLS-1$
+			Node standardElement = NodeUtil.getFirstNamedChildNode(rootElement, "standard");
 
-        // format the new node added to the model;
-        FormatProcessorXML processor = new FormatProcessorXML();
+			customElement = document.createElement("custom");
 
-        processor.formatNode( customElement );
+			rootElement.insertBefore(customElement, standardElement);
 
-        return Status.OK_STATUS;
-    }
+			NodeUtil.appendTextNode(rootElement, "\n");
+		}
 
-    @Override
-    public IFile getDescriptorFile()
-    {
-        return super.getDescriptorFile( DESCRIPTOR_FILE );
-    }
+		customElement.appendChild(layoutTemplateElement);
 
-    public boolean hasTemplateId( final String templateId )
-    {
-        if( CoreUtil.isNullOrEmpty( templateId ) )
-        {
-            return false;
-        }
+		/**
+		 * now that we have the new <layout-template> element added to custom element,
+		 * add the child nodes to layout
+		 */
+		String templatePath = model.getStringProperty(LAYOUT_TEMPLATE_FILE);
+		String wapTemplatePath = model.getStringProperty(LAYOUT_WAP_TEMPLATE_FILE);
+		String thumbnailPath = model.getStringProperty(LAYOUT_THUMBNAIL_FILE);
 
-        final boolean[] retval = new boolean[1];
+		NodeUtil.appendChildElement(layoutTemplateElement, "template-path", templatePath);
 
-        DOMModelOperation operation =
-            new DOMModelReadOperation( getDescriptorFile() )
-            {
-                @Override
-                protected IStatus doExecute( IDOMDocument document )
-                {
-                    NodeList layoutTemplates = document.getElementsByTagName( "layout-template" ); //$NON-NLS-1$
+		if (getDescriptorVersion().equals("6.2.0")) {
+			NodeUtil.appendChildElement(layoutTemplateElement, "wap-template-path", wapTemplatePath);
+		}
 
-                    if( layoutTemplates != null && layoutTemplates.getLength() > 0 )
-                    {
-                        for( int i = 0; i < layoutTemplates.getLength(); i++ )
-                        {
-                            Element layoutTemplate = (Element) layoutTemplates.item( i );
+		NodeUtil.appendChildElement(layoutTemplateElement, "thumbnail-path", thumbnailPath);
 
-                            if( templateId.equals( layoutTemplate.getAttribute( "id" ) ) ) //$NON-NLS-1$
-                            {
-                                retval[0] = true;
-                                break;
-                            }
-                        }
-                    }
+		// format the new node added to the model;
 
-                    return Status.OK_STATUS;
-                }
-            };
+		FormatProcessorXML processor = new FormatProcessorXML();
 
-        operation.execute();
+		processor.formatNode(customElement);
 
-        return retval[0];
-    }
+		return Status.OK_STATUS;
+	}
+
+	@Override
+	public IFile getDescriptorFile() {
+		return super.getDescriptorFile(DESCRIPTOR_FILE);
+	}
+
+	public boolean hasTemplateId(String templateId) {
+		if (CoreUtil.isNullOrEmpty(templateId)) {
+			return false;
+		}
+
+		boolean[] retval = new boolean[1];
+
+		DOMModelOperation operation = new DOMModelReadOperation(getDescriptorFile()) {
+
+			@Override
+			protected IStatus doExecute(IDOMDocument document) {
+				NodeList layoutTemplates = document.getElementsByTagName("layout-template");
+
+				if ((layoutTemplates != null) && (layoutTemplates.getLength() > 0)) {
+					for (int i = 0; i < layoutTemplates.getLength(); i++) {
+						Element layoutTemplate = (Element)layoutTemplates.item(i);
+
+						if (templateId.equals(layoutTemplate.getAttribute("id"))) {
+							retval[0] = true;
+
+							break;
+						}
+					}
+				}
+
+				return Status.OK_STATUS;
+			}
+
+		};
+
+		operation.execute();
+
+		return retval[0];
+	}
+
+	@Override
+	protected void addDescriptorOperations() {
+	}
+
+	private static final String _ADOPT_PUBLIC_ID =
+		"<!DOCTYPE layout-templates PUBLIC \"-//Liferay//DTD Layout Templates {0}//EN\" ";
+
+	private static final String _ADOPT_SYSTEM_ID =
+		"\"http://www.liferay.com/dtd/liferay-layout-templates_{1}.dtd\">\n\n<layout-templates>\n</layout-templates>\n";
+
+	private static final String _ENCODING_AND_VERSION = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+
+	private static final String _LAYOUT_DESCRIPTOR_TEMPLATE =
+		_ENCODING_AND_VERSION + _ADOPT_PUBLIC_ID + _ADOPT_SYSTEM_ID;
 
 }

@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,131 +10,170 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
+
 package com.liferay.ide.server.core.portal;
 
 import com.liferay.ide.core.ILiferayProject;
+import com.liferay.ide.core.IWorkspaceProject;
 import com.liferay.ide.core.LiferayCore;
 import com.liferay.ide.core.util.CoreUtil;
+import com.liferay.ide.core.util.FileUtil;
+import com.liferay.ide.server.core.LiferayServerCore;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
+import java.util.Collection;
 import java.util.List;
-import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Stream;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.ILaunchConfiguration;
+import org.eclipse.debug.core.ILaunchConfigurationType;
+import org.eclipse.debug.core.ILaunchConfigurationWorkingCopy;
+import org.eclipse.debug.core.ILaunchManager;
 import org.eclipse.debug.core.sourcelookup.ISourceContainer;
-import org.eclipse.debug.core.sourcelookup.ISourcePathComputer;
+import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.JavaCore;
-import org.eclipse.jdt.launching.sourcelookup.containers.JavaProjectSourceContainer;
+import org.eclipse.jdt.launching.IJavaLaunchConfigurationConstants;
 import org.eclipse.jdt.launching.sourcelookup.containers.JavaSourcePathComputer;
 import org.eclipse.wst.server.core.IModule;
 import org.eclipse.wst.server.core.IServer;
 import org.eclipse.wst.server.core.ServerUtil;
 
-
 /**
  * @author Gregory Amerson
+ * @author Simon Jiang
  */
-public class PortalSourcePathComputerDelegate extends JavaSourcePathComputer
-{
-    public static final String ID = "";
+public class PortalSourcePathComputerDelegate extends JavaSourcePathComputer {
 
-    @Override
-    public String getId()
-    {
-        return ID;
-    }
+	public static final String ID = "com.liferay.ide.server.core.portal.sourcePathComputer";
 
-    @Override
-    public ISourceContainer[] computeSourceContainers(
-        ILaunchConfiguration configuration, IProgressMonitor monitor ) throws CoreException
-    {
-        final List<ISourceContainer> containers = new ArrayList<ISourceContainer>();
+	@Override
+	public ISourceContainer[] computeSourceContainers(ILaunchConfiguration configuration, IProgressMonitor monitor)
+		throws CoreException {
 
-        // lets use tomcat's source path computer if available
-        final ISourcePathComputer webprojectComputer =
-            DebugPlugin.getDefault().getLaunchManager().getSourcePathComputer(
-                "com.liferay.ide.server.tomcat.portalSourcePathComputer" );
+		List<ISourceContainer> sourceContainers = new ArrayList<>();
 
-        if( webprojectComputer != null )
-        {
-            final ISourceContainer[] webcontainers =
-                webprojectComputer.computeSourceContainers( configuration, monitor );
+		IServer server = ServerUtil.getServer(configuration);
 
-            if( !CoreUtil.isNullOrEmpty( webcontainers ) )
-            {
-                Collections.addAll( containers, webcontainers );
-            }
-        }
-        else
-        {
-            final ISourceContainer[] defaultContainers = super.computeSourceContainers( configuration, monitor );
+		PortalServerBehavior behavior = (PortalServerBehavior)server.loadAdapter(PortalServerBehavior.class, monitor);
 
-            if( !CoreUtil.isNullOrEmpty( defaultContainers ) )
-            {
-                Collections.addAll( containers, defaultContainers );
-            }
-        }
+		Set<IProject> watchProjects = behavior.getWatchProjects();
 
-        collectPortalContainers( containers, configuration, monitor );
+		Stream<IProject> stream = watchProjects.stream();
 
-        return containers.toArray( new ISourceContainer[0] );
-    }
+		stream.map(
+			project -> JavaCore.create(project)
+		).filter(
+			javaProject -> javaProject != null
+		).forEach(
+			javaProject -> _addSourceContainers(configuration, monitor, sourceContainers, javaProject.getProject())
+		);
 
-    private void collectPortalContainers( List<ISourceContainer> collect,
-        ILaunchConfiguration configuration, IProgressMonitor monitor ) throws CoreException
-    {
-        final Map<IProject, ISourceContainer> containers = new HashMap<IProject, ISourceContainer>();
+		Stream.of(
+			CoreUtil.getAllProjects()
+		).map(
+			project -> LiferayCore.create(IWorkspaceProject.class, project)
+		).filter(
+			workspaceProject -> workspaceProject != null
+		).map(
+			workspaceProject -> CoreUtil.getJavaProjects(workspaceProject.getChildProjects())
+		).flatMap(
+			Collection::stream
+		).forEach(
+			childProject -> _addSourceContainers(configuration, monitor, sourceContainers, childProject)
+		);
 
-        final IServer server = ServerUtil.getServer( configuration );
+		IWorkspaceProject workspaceProject = LiferayCore.create(IWorkspaceProject.class, server);
 
-        final IModule[] modules = server.getModules();
+		if (workspaceProject != null) {
+			IProject project = workspaceProject.getProject();
 
-        for( int i = 0; i < modules.length; i++ )
-        {
-            final IProject project = modules[i].getProject();
+			try {
+				IJavaProject javaProject = JavaCore.create(project);
 
-            final ILiferayProject lrproject = LiferayCore.create( project );
+				if ((javaProject != null) && javaProject.isOpen()) {
+					_addSourceContainers(configuration, monitor, sourceContainers, workspaceProject.getProject());
+				}
+			}
+			catch (Exception e) {
+			}
+		}
 
-            if( lrproject != null && lrproject.getSourceFolders() != null )
-            {
-                if( containers.get( project ) == null )
-                {
-                    putProject( containers, project );
-                }
-            }
-        }
+		Stream.of(
+			server.getModules()
+		).map(
+			IModule::getProject
+		).filter(
+			Objects::nonNull
+		).map(
+			project -> LiferayCore.create(ILiferayProject.class, project)
+		).filter(
+			Objects::nonNull
+		).forEach(
+			liferayProject -> _addSourceContainers(
+				configuration, monitor, sourceContainers, liferayProject.getProject())
+		);
 
-        for( IProject project : CoreUtil.getAllProjects() )
-        {
-            if( containers.get( project ) == null )
-            {
-                final ILiferayProject lrproject = LiferayCore.create( project );
+		return sourceContainers.toArray(new ISourceContainer[0]);
+	}
 
-                if( lrproject.getSourceFolders() != null )
-                {
-                    putProject( containers, project );
-                }
-            }
-        }
+	@Override
+	public String getId() {
+		return ID;
+	}
 
+	private void _addSourceContainers(
+		ILaunchConfiguration configuration, IProgressMonitor monitor, List<ISourceContainer> sourceContainers,
+		IProject project) {
 
-        if( containers.size() > 0 )
-        {
-            collect.addAll( containers.values() );
-        }
-    }
+		if (FileUtil.notExists(project)) {
+			return;
+		}
 
-    private void putProject( Map<IProject, ISourceContainer> containers, IProject project )
-    {
-        containers.put( project, new JavaProjectSourceContainer( JavaCore.create( project ) ) );
-    }
+		if (!project.isOpen()) {
+			return;
+		}
+
+		IJavaProject javaProject = JavaCore.create(project);
+
+		if ((javaProject == null) || !javaProject.isOpen()) {
+			return;
+		}
+
+		String projectName = project.getName();
+
+		try {
+			DebugPlugin debugPlugin = DebugPlugin.getDefault();
+
+			ILaunchManager manager = debugPlugin.getLaunchManager();
+
+			ILaunchConfigurationType launchConfigurationType = manager.getLaunchConfigurationType(
+				"org.eclipse.jdt.launching.localJavaApplication");
+
+			ILaunchConfigurationWorkingCopy sourceLookupConfig = launchConfigurationType.newInstance(
+				null, configuration.getName());
+
+			sourceLookupConfig.setAttribute(IJavaLaunchConfigurationConstants.ATTR_PROJECT_NAME, projectName);
+
+			ISourceContainer[] computedSourceContainers = super.computeSourceContainers(sourceLookupConfig, monitor);
+
+			Stream.of(
+				computedSourceContainers
+			).filter(
+				computedSourceContainer -> !sourceContainers.contains(computedSourceContainer)
+			).forEach(
+				sourceContainers::add
+			);
+		}
+		catch (CoreException ce) {
+			LiferayServerCore.logError("Unable to add source container for project " + projectName, ce);
+		}
+	}
 
 }

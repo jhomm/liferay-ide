@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,8 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.portlet.ui.editor;
 
@@ -32,71 +31,68 @@ import org.eclipse.ui.IFileEditorInput;
 import org.eclipse.ui.texteditor.IDocumentProvider;
 
 /**
- * @author Greg Amerson
+ * @author Gregory Amerson
  */
-@SuppressWarnings( { "rawtypes", "restriction" } )
-public class PluginPackageInputContext extends InputContext
-{
+@SuppressWarnings({"rawtypes", "restriction"})
+public class PluginPackageInputContext extends InputContext {
 
-    public static final String CONTEXT_ID = "plugin-package-context"; //$NON-NLS-1$
+	public static final String CONTEXT_ID = "plugin-package-context";
 
-    public PluginPackageInputContext( IDEFormEditor editor, IEditorInput input, boolean primary )
-    {
-        super( editor, input, primary );
-        create();
-    }
+	public PluginPackageInputContext(IDEFormEditor editor, IEditorInput input, boolean primary) {
+		super(editor, input, primary);
 
-    @Override
-    public String getId()
-    {
-        return CONTEXT_ID;
-    }
+		create();
+	}
 
-    @Override
-    protected void addTextEditOperation( ArrayList ops, IModelChangedEvent event )
-    {
-    }
+	@Override
+	public String getId() {
+		return CONTEXT_ID;
+	}
 
-    @Override
-    protected IDocumentProvider createDocumentProvider( IEditorInput input )
-    {
-        return JavaPlugin.getDefault().getPropertiesFileDocumentProvider();
-        // return super.createDocumentProvider(input);
-    }
+	@Override
+	protected void addTextEditOperation(ArrayList ops, IModelChangedEvent event) {
+	}
 
-    @Override
-    protected IBaseModel createModel( IEditorInput input ) throws CoreException
-    {
+	@Override
+	protected IDocumentProvider createDocumentProvider(IEditorInput input) {
+		JavaPlugin plugin = JavaPlugin.getDefault();
 
-        PluginPackageModel model = null;
+		return plugin.getPropertiesFileDocumentProvider();
 
-        if( input instanceof IFileEditorInput )
-        {
-            IDocument document = getDocumentProvider().getDocument( input );
+		// return super.createDocumentProvider(input);
 
-            IFile file = ( (IFileEditorInput) input ).getFile();
+	}
 
-            model = new PluginPackageModel( file, document, true );
+	@Override
+	protected IBaseModel createModel(IEditorInput input) throws CoreException {
+		PluginPackageModel model = null;
 
-            model.setUnderlyingResource( file );
-            model.setCharset( file.getCharset() );
+		if (input instanceof IFileEditorInput) {
+			IDocument document = getDocumentProvider().getDocument(input);
 
-            return model;
-        }
+			IFileEditorInput editorInput = (IFileEditorInput)input;
 
-        return null;
-    }
+			IFile file = editorInput.getFile();
 
-    @Override
-    protected String getDefaultCharset()
-    {
-        return "UTF-8"; //$NON-NLS-1$
-    }
+			model = new PluginPackageModel(file, document, true);
 
-    @Override
-    protected String getPartitionName()
-    {
-        return null;
-    }
+			model.setUnderlyingResource(file);
+			model.setCharset(file.getCharset());
+
+			return model;
+		}
+
+		return null;
+	}
+
+	@Override
+	protected String getDefaultCharset() {
+		return "UTF-8";
+	}
+
+	@Override
+	protected String getPartitionName() {
+		return null;
+	}
 
 }

@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,106 +10,83 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- * Contributors:
- *               Kamesh Sampath - initial implementation
- *******************************************************************************/
+ */
 
 package com.liferay.ide.portlet.core.model.internal;
 
 import org.eclipse.sapphire.Property;
+import org.eclipse.sapphire.PropertyDef;
 import org.eclipse.sapphire.modeling.xml.XmlElement;
 import org.eclipse.sapphire.modeling.xml.XmlNode;
 import org.eclipse.sapphire.modeling.xml.XmlPath;
+import org.eclipse.sapphire.modeling.xml.XmlResource;
 import org.eclipse.sapphire.modeling.xml.XmlValueBindingImpl;
 import org.eclipse.sapphire.modeling.xml.annotations.CustomXmlValueBinding;
 
 /**
  * @author Kamesh Sampath
  */
-public final class TextNodeValueBinding extends XmlValueBindingImpl
-{
+public class TextNodeValueBinding extends XmlValueBindingImpl {
 
-    private XmlPath path;
-    private String[] params;
+	@Override
+	public XmlNode getXmlNode() {
+		XmlElement element = xml(false);
 
-    /*
-     * (non-Javadoc)
-     * @see org.eclipse.sapphire.modeling.PropertyBinding#init(org.eclipse.sapphire.modeling.Element,
-     * org.eclipse.sapphire.modeling.Property, java.lang.String[])
-     */
-    @Override
-    public void init( final Property property )
-    {
-        super.init( property );
+		if (element != null) {
+			return element.getChildNode(_path, false);
+		}
 
-        this.params = property.definition().getAnnotation( CustomXmlValueBinding.class ).params();
-        this.path = new XmlPath( params[0], resource().getXmlNamespaceResolver() );
-    }
+		return null;
+	}
 
-    /*
-     * (non-Javadoc)
-     * @see org.eclipse.sapphire.modeling.ValuePropertyBinding#read()
-     */
-    @Override
-    public String read()
-    {
-        String value = null;
+	@Override
+	public void init(Property property) {
+		super.init(property);
 
-        final XmlElement element = xml( false );
+		PropertyDef propertyDef = property.definition();
 
-        if( element != null )
-        {
+		CustomXmlValueBinding binding = propertyDef.getAnnotation(CustomXmlValueBinding.class);
 
-            value = xml( true ).getText();
+		_params = binding.params();
 
-            // System.out.println( "Reading VALUE ___________________ " + value );
+		XmlResource xmlResource = resource();
 
-            if( value != null )
-            {
-                value = value.trim();
-            }
-        }
+		_path = new XmlPath(_params[0], xmlResource.getXmlNamespaceResolver());
+	}
 
-        return value;
-    }
+	@Override
+	public String read() {
+		String value = "";
 
-    /*
-     * (non-Javadoc)
-     * @see org.eclipse.sapphire.modeling.ValuePropertyBinding#write(java.lang.String)
-     */
-    @Override
-    public void write( final String value )
-    {
-        String val = value;
+		XmlElement xmlElement = xml(false);
 
-        // System.out.println( "VALUE ___________________ " + val );
+		if (xmlElement != null) {
+			xmlElement = xml(true);
 
-        if( val != null )
-        {
-            val = value.trim();
-        }
+			value = xmlElement.getText();
 
-        // System.out.println( "TextNodeValueBinding.write() - Parent " + xml( true ).getParent() );
+			if (value != null) {
+				value = value.trim();
+			}
+		}
 
-        xml( true ).setText( val );
-    }
+		return value;
+	}
 
-    /*
-     * (non-Javadoc)
-     * @see org.eclipse.sapphire.modeling.xml.XmlValuePropertyBinding#getXmlNode()
-     */
-    @Override
-    public XmlNode getXmlNode()
-    {
-        final XmlElement element = xml( false );
+	@Override
+	public void write(String value) {
+		String val = value;
 
-        if( element != null )
-        {
-            return element.getChildNode( this.path, false );
-        }
+		if (val != null) {
+			val = value.trim();
+		}
 
-        return null;
-    }
+		XmlElement xmlElement = xml(true);
+
+		xmlElement.setText(val);
+	}
+
+	private String[] _params;
+	private XmlPath _path;
 
 }

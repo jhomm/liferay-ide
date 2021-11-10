@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,12 +10,11 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.project.ui;
 
-import com.liferay.ide.project.core.BundleProjectNature;
+import com.liferay.ide.core.LiferayNature;
 
 import java.net.URL;
 
@@ -32,205 +31,110 @@ import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.wst.common.project.facet.core.FacetedProjectFramework;
 
 /**
- * @author Greg Amerson
+ * @author Gregory Amerson
  * @author Terry Jia
  */
-public class LiferayPluginProjectDecorator extends LabelProvider implements ILightweightLabelDecorator
-{
+public class LiferayPluginProjectDecorator extends LabelProvider implements ILightweightLabelDecorator {
 
-    private static ImageDescriptor EXT;
+	public void decorate(Object element, IDecoration decoration) {
+		if (element instanceof IProject) {
+			IProject project = (IProject)element;
 
-    private static final String EXT_FACET = "liferay.ext"; //$NON-NLS-1$
+			ImageDescriptor overlay = null;
 
-    private static ImageDescriptor HOOK;
+			if (_hasFacet(project, _PORTLET_FACET)) {
+				overlay = _getLiferay();
+			}
+			else if (_hasFacet(project, _HOOK_FACET)) {
+				overlay = _getLiferay();
+			}
+			else if (_hasFacet(project, _EXT_FACET)) {
+				overlay = _getLiferay();
+			}
+			else if (_hasFacet(project, _LAYOUTTPL_FACET)) {
+				overlay = _getLiferay();
+			}
+			else if (_hasFacet(project, _THEME_FACET)) {
+				overlay = _getLiferay();
+			}
+			else if (_hasFacet(project, _WEB_FACET)) {
+				overlay = _getLiferay();
+			}
+			else if (LiferayNature.hasNature(project)) {
+				overlay = _getLiferay();
+			}
 
-    private static final String HOOK_FACET = "liferay.hook"; //$NON-NLS-1$
+			if (overlay != null) {
 
-    private static final String ICON_DIR = "icons/ovr"; //$NON-NLS-1$
+				// next two lines dangerous!
+				// DecorationContext ctx = (DecorationContext)
+				// decoration.getDecorationContext();
+				// ctx.putProperty( IDecoration.ENABLE_REPLACE, true );
 
-    private static ImageDescriptor LAYOUTTPL;
+				decoration.addOverlay(overlay, IDecoration.TOP_RIGHT);
+			}
+		}
+	}
 
-    private static final String LAYOUTTPL_FACET = "liferay.layouttpl"; //$NON-NLS-1$
+	/**
+	 * This gets a .gif from the icons folder.
+	 */
+	private static ImageDescriptor _getImageDescriptor(String key) {
+		ImageDescriptor imageDescriptor = null;
 
-    private static ImageDescriptor PORTLET;
+		if (key != null) {
+			String gif = "/" + key + ".png";
 
-    private static ImageDescriptor BUNDLE;
+			IPath path = new Path(
+				_ICON_DIR
+			).append(
+				gif
+			);
 
-    /* The constants are duplicated here to avoid plugin loading. */
-    private static final String PORTLET_FACET = "liferay.portlet"; //$NON-NLS-1$
+			URL gifImageURL = FileLocator.find(Platform.getBundle(ProjectUI.PLUGIN_ID), path, null);
 
-    private static ImageDescriptor THEME;
+			if (gifImageURL != null) {
+				imageDescriptor = ImageDescriptor.createFromURL(gifImageURL);
+			}
+		}
 
-    private static final String THEME_FACET = "liferay.theme"; //$NON-NLS-1$
+		return imageDescriptor;
+	}
 
-    private static ImageDescriptor WEB;
+	private static ImageDescriptor _getLiferay() {
+		if (_liferay == null) {
+			_liferay = _getImageDescriptor("liferay_decoration");
+		}
 
-    private static final String WEB_FACET = "liferay.web"; //$NON-NLS-1$
+		return _liferay;
+	}
 
-    private static ImageDescriptor getExt()
-    {
-        if( EXT == null )
-        {
-            EXT = getImageDescriptor( "liferay_ovr" ); //$NON-NLS-1$
-        }
+	private boolean _hasFacet(IProject project, String facet) {
+		try {
+			return FacetedProjectFramework.hasProjectFacet(project, facet);
+		}
+		catch (CoreException ce) {
+			ProjectUI.logError(ce);
 
-        return EXT;
-    }
+			return false;
+		}
+	}
 
-    private static ImageDescriptor getHook()
-    {
-        if( HOOK == null )
-        {
-            HOOK = getImageDescriptor( "liferay_ovr" ); //$NON-NLS-1$
-        }
+	private static final String _EXT_FACET = "liferay.ext";
 
-        return HOOK;
-    }
+	/* The constants are duplicated here to avoid plugin loading. */
+	private static final String _HOOK_FACET = "liferay.hook";
 
-    /**
-     * This gets a .gif from the icons folder.
-     */
-    private static ImageDescriptor getImageDescriptor( String key )
-    {
-        ImageDescriptor imageDescriptor = null;
-        if( key != null )
-        {
-            String gif = "/" + key + ".png"; //$NON-NLS-1$ //$NON-NLS-2$
+	private static final String _ICON_DIR = "icons/ovr";
 
-            IPath path = new Path( ICON_DIR ).append( gif );
+	private static final String _LAYOUTTPL_FACET = "liferay.layouttpl";
 
-            URL gifImageURL = FileLocator.find( Platform.getBundle( ProjectUI.PLUGIN_ID ), path, null );
+	private static final String _PORTLET_FACET = "liferay.portlet";
 
-            if( gifImageURL != null )
-            {
-                imageDescriptor = ImageDescriptor.createFromURL( gifImageURL );
-            }
-        }
+	private static final String _THEME_FACET = "liferay.theme";
 
-        return imageDescriptor;
-    }
+	private static final String _WEB_FACET = "liferay.web";
 
-    private static ImageDescriptor getLayoutTpl()
-    {
-        if( LAYOUTTPL == null )
-        {
-            LAYOUTTPL = getImageDescriptor( "liferay_ovr" ); //$NON-NLS-1$
-        }
+	private static ImageDescriptor _liferay;
 
-        return LAYOUTTPL;
-    }
-
-    private static ImageDescriptor getPortlet()
-    {
-        if( PORTLET == null )
-        {
-            PORTLET = getImageDescriptor( "liferay_ovr" ); //$NON-NLS-1$
-        }
-
-        return PORTLET;
-    }
-
-    private static ImageDescriptor getBundle()
-    {
-        if( BUNDLE == null )
-        {
-            BUNDLE = getImageDescriptor( "liferay_bundle_ovr" ); //$NON-NLS-1$
-        }
-
-        return BUNDLE;
-    }
-
-    private static ImageDescriptor getTheme()
-    {
-        if( THEME == null )
-        {
-            THEME = getImageDescriptor( "liferay_ovr" ); //$NON-NLS-1$
-        }
-
-        return THEME;
-    }
-
-    private static ImageDescriptor getWeb()
-    {
-        if( WEB == null )
-        {
-            WEB = getImageDescriptor( "liferay_ovr" ); //$NON-NLS-1$
-        }
-
-        return WEB;
-    }
-
-    public void decorate( Object element, IDecoration decoration )
-    {
-        if( element instanceof IProject )
-        {
-            IProject project = (IProject) element;
-
-            ImageDescriptor overlay = null;
-
-            if( hasFacet( project, PORTLET_FACET ) )
-            {
-                overlay = getPortlet();
-            }
-            else if( hasFacet( project, HOOK_FACET ) )
-            {
-                overlay = getHook();
-            }
-            else if( hasFacet( project, EXT_FACET ) )
-            {
-                overlay = getExt();
-            }
-            else if( hasFacet( project, LAYOUTTPL_FACET ) )
-            {
-                overlay = getLayoutTpl();
-            }
-            else if( hasFacet( project, THEME_FACET ) )
-            {
-                overlay = getTheme();
-            }
-            else if( hasFacet( project, WEB_FACET ) )
-            {
-                overlay = getWeb();
-            }
-            else if ( hasNature( project, BundleProjectNature.ID ) )
-            {
-                overlay = getBundle();
-            }
-
-            if( overlay != null )
-            {
-                // next two lines dangerous!
-                // DecorationContext ctx = (DecorationContext) decoration.getDecorationContext();
-                // ctx.putProperty( IDecoration.ENABLE_REPLACE, true );
-
-                decoration.addOverlay( overlay );
-            }
-        }
-    }
-
-    private boolean hasNature( IProject project, String id )
-    {
-        try
-        {
-            return project.hasNature( id );
-        }
-        catch( CoreException e )
-        {
-            return false;
-        }
-    }
-
-    private boolean hasFacet( IProject project, String facet )
-    {
-        try
-        {
-            return FacetedProjectFramework.hasProjectFacet( project, facet );
-        }
-        catch( CoreException e )
-        {
-            ProjectUI.logError( e );
-
-            return false;
-        }
-    }
 }

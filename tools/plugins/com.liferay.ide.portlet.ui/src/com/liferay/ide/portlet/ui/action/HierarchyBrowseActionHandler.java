@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,19 +10,15 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- * Contributors:
- * 		Gregory Amerson - initial implementation and ongoing maintenance
- *******************************************************************************/
+ */
 
 package com.liferay.ide.portlet.ui.action;
 
 import com.liferay.ide.core.util.StringPool;
 import com.liferay.ide.portlet.ui.PortletUIPlugin;
 
-import java.util.Arrays;
-
 import org.eclipse.core.resources.IProject;
+import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
@@ -35,6 +31,7 @@ import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.osgi.util.NLS;
 import org.eclipse.sapphire.Element;
 import org.eclipse.sapphire.Property;
+import org.eclipse.sapphire.PropertyDef;
 import org.eclipse.sapphire.java.JavaTypeConstraint;
 import org.eclipse.sapphire.modeling.CapitalizationType;
 import org.eclipse.sapphire.ui.Presentation;
@@ -46,94 +43,101 @@ import org.eclipse.ui.dialogs.SelectionDialog;
 
 /**
  * @author Simon Jiang
+ * @author Seiphon Wang
  */
-public final class HierarchyBrowseActionHandler extends BrowseActionHandler
-{
+public class HierarchyBrowseActionHandler extends BrowseActionHandler {
 
-    public static final String ID = "Hierarchy.Browse.Java.Type"; //$NON-NLS-1$
+	public static final String ID = "Hierarchy.Browse.Java.Type";
 
-    @Override
-    public String browse( final Presentation context )
-    {
-        final Element element = getModelElement();
-        final Property property = property();
-        final IProject project = element.adapt( IProject.class );
+	@Override
+	public String browse(Presentation context) {
+		Element element = getModelElement();
 
-        try
-        {
-            IJavaSearchScope scope = null;
+		Property property = property();
 
-            TypeSelectionExtension extension = null;
+		IProject project = element.adapt(IProject.class);
 
-            final String javaType = getClassReferenceType( property );
+		try {
+			IJavaSearchScope scope = null;
 
-            if( javaType != null )
-            {
-                scope = SearchEngine.createHierarchyScope( JavaCore.create( project ).findType( javaType ) );
-            }
-            else
-            {
-                MessageDialog.openInformation(
-                    ( (SwtPresentation) context ).shell(), Msgs.browseImplementation, Msgs.validClassImplProperty );
+			String[] javaTypes = _getClassReferenceType(property);
 
-                return null;
-            }
+			SwtPresentation swtPresentation = (SwtPresentation)context;
 
-            final SelectionDialog dlg =
-                JavaUI.createTypeDialog(
-                    ( (SwtPresentation) context ).shell(), null, scope, IJavaElementSearchConstants.CONSIDER_CLASSES,
-                    false, StringPool.DOUBLE_ASTERISK, extension );
+			if (javaTypes.length > 0) {
+				IJavaProject javaProject = JavaCore.create(project);
 
-            final String title = property.definition().getLabel( true, CapitalizationType.TITLE_STYLE, false );
-            dlg.setTitle( Msgs.select + title );
+				for (String javaType : javaTypes) {
+					IType type = javaProject.findType(javaType);
 
-            if( dlg.open() == SelectionDialog.OK )
-            {
-                Object results[] = dlg.getResult();
-                assert results != null && results.length == 1;
+					if (type != null) {
+						scope = SearchEngine.createHierarchyScope(type);
+					}
+				}
+			}
+			else {
+				MessageDialog.openInformation(
+					swtPresentation.shell(), Msgs.browseImplementation, Msgs.validClassImplProperty);
 
-                if( results[0] instanceof IType )
-                {
-                    return ( (IType) results[0] ).getFullyQualifiedName();
-                }
-            }
-        }
-        catch( JavaModelException e )
-        {
-            PortletUIPlugin.logError( e );
-        }
+				return null;
+			}
 
-        return null;
-    }
+			TypeSelectionExtension extension = null;
 
-    private String getClassReferenceType( Property property )
-    {
-        JavaTypeConstraint typeConstraint = property.definition().getAnnotation( JavaTypeConstraint.class );
+			SelectionDialog dlg = JavaUI.createTypeDialog(
+				swtPresentation.shell(), null, scope, IJavaElementSearchConstants.CONSIDER_CLASSES, false,
+				StringPool.DOUBLE_ASTERISK, extension);
 
-        final String retval = Arrays.toString( typeConstraint.type() ).replaceAll( "[\\[\\]\\s,]", "" );
+			PropertyDef propertyDef = property.definition();
 
-        return retval;
-    }
+			String title = propertyDef.getLabel(true, CapitalizationType.TITLE_STYLE, false);
 
-    @Override
-    public void init( final SapphireAction action, final ActionHandlerDef def )
-    {
-        super.init( action, def );
+			dlg.setTitle(Msgs.select + title);
 
-        setId( ID );
+			if (dlg.open() == SelectionDialog.OK) {
+				Object[] results = dlg.getResult();
 
-    }
+				assert (results != null) && (results.length == 1);
 
-    private static class Msgs extends NLS
-    {
+				if (results[0] instanceof IType) {
+					IType type = (IType)results[0];
 
-        public static String browseImplementation;
-        public static String select;
-        public static String validClassImplProperty;
+					return type.getFullyQualifiedName();
+				}
+			}
+		}
+		catch (JavaModelException jme) {
+			PortletUIPlugin.logError(jme);
+		}
 
-        static
-        {
-            initializeMessages( HierarchyBrowseActionHandler.class.getName(), Msgs.class );
-        }
-    }
+		return null;
+	}
+
+	@Override
+	public void init(SapphireAction action, ActionHandlerDef def) {
+		super.init(action, def);
+
+		setId(ID);
+	}
+
+	private String[] _getClassReferenceType(Property property) {
+		PropertyDef propertyDef = property.definition();
+
+		JavaTypeConstraint typeConstraint = propertyDef.getAnnotation(JavaTypeConstraint.class);
+
+		return typeConstraint.type();
+	}
+
+	private static class Msgs extends NLS {
+
+		public static String browseImplementation;
+		public static String select;
+		public static String validClassImplProperty;
+
+		static {
+			initializeMessages(HierarchyBrowseActionHandler.class.getName(), Msgs.class);
+		}
+
+	}
+
 }

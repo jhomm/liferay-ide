@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,97 +10,112 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
+
 package com.liferay.ide.project.ui.action;
 
 import com.liferay.ide.core.util.CoreUtil;
+import com.liferay.ide.core.util.ListUtil;
+import com.liferay.ide.core.util.SapphireContentAccessor;
+import com.liferay.ide.core.util.SapphireUtil;
 import com.liferay.ide.project.core.model.NewLiferayPluginProjectOp;
 import com.liferay.ide.project.core.model.NewLiferayPluginProjectOpMethods;
 import com.liferay.ide.project.core.model.Profile;
 import com.liferay.ide.project.ui.wizard.NewLiferayPluginProjectWizard;
 
+import org.eclipse.sapphire.Element;
 import org.eclipse.sapphire.ElementList;
 import org.eclipse.sapphire.ui.Presentation;
 import org.eclipse.sapphire.ui.def.DefinitionLoader;
+import org.eclipse.sapphire.ui.forms.DialogDef;
 import org.eclipse.sapphire.ui.forms.PropertyEditorActionHandler;
 import org.eclipse.sapphire.ui.forms.swt.SapphireDialog;
 import org.eclipse.sapphire.ui.forms.swt.SwtPresentation;
-
+import org.eclipse.swt.widgets.Shell;
 
 /**
  * @author Gregory Amerson
  */
-public class SelectActiveProfilesActionHandler extends PropertyEditorActionHandler
-{
+public class SelectActiveProfilesActionHandler extends PropertyEditorActionHandler implements SapphireContentAccessor {
 
-    @Override
-    protected Object run( Presentation context )
-    {
-        if( context instanceof SwtPresentation )
-        {
-            final SwtPresentation swt = (SwtPresentation) context;
+	@Override
+	protected Object run(Presentation context) {
+		if (context instanceof SwtPresentation) {
+			final SwtPresentation swt = (SwtPresentation)context;
 
-            final NewLiferayPluginProjectOp op = getModelElement().nearest( NewLiferayPluginProjectOp.class );
-            final String previousActiveProfilesValue = op.getActiveProfilesValue().content();
+			final NewLiferayPluginProjectOp op = getModelElement().nearest(NewLiferayPluginProjectOp.class);
 
-            // we need to rebuild the 'selected' list from what is specified in the 'activeProfiles' property
-            op.getSelectedProfiles().clear();
+			final String previousActiveProfilesValue = get(op.getActiveProfilesValue());
 
-            final String activeProfiles = op.getActiveProfilesValue().content();
+			// we need to rebuild the 'selected' list from what is specified in the
+			// 'activeProfiles' property
 
-            if( ! CoreUtil.isNullOrEmpty( activeProfiles ) )
-            {
-                final String[] profileIds = activeProfiles.split( "," );
+			SapphireUtil.clear(op.getSelectedProfiles());
 
-                if( ! CoreUtil.isNullOrEmpty( profileIds ) )
-                {
-                    for( String profileId : profileIds )
-                    {
-                        if( ! CoreUtil.isNullOrEmpty( profileId ) )
-                        {
-                            boolean foundExistingProfile = false;
+			String activeProfiles = get(op.getActiveProfilesValue());
 
-                            for( Profile profile : op.getSelectedProfiles() )
-                            {
-                                if( profileId.equals( profile.getId().content() ) )
-                                {
-                                    foundExistingProfile = true;
-                                    break;
-                                }
-                            }
+			if (CoreUtil.isNotNullOrEmpty(activeProfiles)) {
+				final String[] profileIds = activeProfiles.split(",");
 
-                            if( ! foundExistingProfile )
-                            {
-                                Profile newlySelectedProfile = op.getSelectedProfiles().insert();
-                                newlySelectedProfile.setId( profileId );
-                            }
-                        }
-                    }
-                }
-            }
+				if (ListUtil.isNotEmpty(profileIds)) {
+					for (String profileId : profileIds) {
+						if (!CoreUtil.isNullOrEmpty(profileId)) {
+							boolean foundExistingProfile = false;
 
-            final SapphireDialog dialog =
-                new SapphireDialog( swt.shell(), op, DefinitionLoader.sdef(
-                    NewLiferayPluginProjectWizard.class ).dialog( "SelectActiveProfiles" ) );
+							for (Profile profile : op.getSelectedProfiles()) {
+								if (profileId.equals(get(profile.getId()))) {
+									foundExistingProfile = true;
 
-            dialog.setBlockOnOpen( true );
-            final int result = dialog.open();
+									break;
+								}
+							}
 
-            if( result == SapphireDialog.CANCEL )
-            {
-                // restore previous value
-                op.setActiveProfilesValue( previousActiveProfilesValue );
-            }
-            else
-            {
-                final ElementList<Profile> selectedProfiles = op.getSelectedProfiles();
+							if (!foundExistingProfile) {
+								ElementList<Profile> profiles = op.getSelectedProfiles();
 
-                NewLiferayPluginProjectOpMethods.updateActiveProfilesValue( op, selectedProfiles );
-            }
-        }
+								Profile newlySelectedProfile = profiles.insert();
 
-        return null;
-    }
+								newlySelectedProfile.setId(profileId);
+							}
+						}
+					}
+				}
+			}
+
+			DefinitionLoader loader = DefinitionLoader.sdef(NewLiferayPluginProjectWizard.class);
+
+			final CustomSapphireDialog dialog = new CustomSapphireDialog(
+				swt.shell(), op, loader.dialog("SelectActiveProfiles"));
+
+			dialog.setBlockOnOpen(true);
+
+			int result = dialog.open();
+
+			if (result == SapphireDialog.CANCEL) {
+
+				// restore previous value
+
+				op.setActiveProfilesValue(previousActiveProfilesValue);
+			}
+			else {
+				NewLiferayPluginProjectOpMethods.updateActiveProfilesValue(op, op.getSelectedProfiles());
+			}
+		}
+
+		return null;
+	}
+
+	private static class CustomSapphireDialog extends SapphireDialog {
+
+		public CustomSapphireDialog(Shell shell, Element element, DefinitionLoader.Reference<DialogDef> definition) {
+			super(shell, element, definition);
+		}
+
+		@Override
+		protected boolean performOkOperation() {
+			return true;
+		}
+
+	}
 
 }

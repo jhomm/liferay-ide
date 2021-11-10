@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,10 +10,12 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
+
 package com.liferay.ide.project.core.model.internal;
 
+import com.liferay.ide.core.util.SapphireContentAccessor;
+import com.liferay.ide.core.util.SapphireUtil;
 import com.liferay.ide.project.core.model.NewLiferayPluginProjectOp;
 import com.liferay.ide.project.core.model.NewLiferayPluginProjectOpMethods;
 
@@ -27,52 +29,53 @@ import org.eclipse.sapphire.modeling.Path;
 /**
  * @author Tao Tao
  */
-public class ArtifactVersionDefaultValueService extends DefaultValueService
-{
-    @Override
-    protected String compute()
-    {
-        String data = null;
+public class ArtifactVersionDefaultValueService extends DefaultValueService implements SapphireContentAccessor {
 
-        final Path location = op().getLocation().content();
+	@Override
+	protected String compute() {
+		String data = null;
 
-        if( location != null )
-        {
-            final NewLiferayPluginProjectOp op = op();
-            final String parentProjectLocation = location.toOSString();
-            final IPath parentProjectOsPath = org.eclipse.core.runtime.Path.fromOSString( parentProjectLocation );
-            final String projectName = op().getProjectName().content();
+		NewLiferayPluginProjectOp op = _op();
 
-            data = NewLiferayPluginProjectOpMethods.getMavenParentPomVersion( op, projectName, parentProjectOsPath );
-        }
+		Path location = get(op.getLocation());
 
-        if( data == null )
-        {
-            data = "1.0.0-SNAPSHOT";
-        }
+		if (location != null) {
+			String parentProjectLocation = location.toOSString();
 
-        return data;
-    }
+			IPath parentProjectOsPath = org.eclipse.core.runtime.Path.fromOSString(parentProjectLocation);
 
-    protected void initDefaultValueService()
-    {
-        super.initDefaultValueService();
+			String projectName = get(op.getProjectName());
 
-        final Listener listener = new FilteredListener<PropertyContentEvent>()
-        {
-            @Override
-            protected void handleTypedEvent( PropertyContentEvent event )
-            {
-                refresh();
-            }
-        };
+			data = NewLiferayPluginProjectOpMethods.getMavenParentPomVersion(op, projectName, parentProjectOsPath);
+		}
 
-        op().getLocation().attach( listener );
-        op().getProjectName().attach( listener );
-    }
+		if (data == null) {
+			data = "1.0.0-SNAPSHOT";
+		}
 
-    private NewLiferayPluginProjectOp op()
-    {
-        return context( NewLiferayPluginProjectOp.class );
-    }
+		return data;
+	}
+
+	protected void initDefaultValueService() {
+		super.initDefaultValueService();
+
+		Listener listener = new FilteredListener<PropertyContentEvent>() {
+
+			@Override
+			protected void handleTypedEvent(PropertyContentEvent event) {
+				refresh();
+			}
+
+		};
+
+		NewLiferayPluginProjectOp op = _op();
+
+		SapphireUtil.attachListener(op.getLocation(), listener);
+		SapphireUtil.attachListener(op.getProjectName(), listener);
+	}
+
+	private NewLiferayPluginProjectOp _op() {
+		return context(NewLiferayPluginProjectOp.class);
+	}
+
 }

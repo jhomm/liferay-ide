@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,72 +10,54 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.maven.ui;
 
+import org.eclipse.core.runtime.ILog;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Plugin;
 import org.eclipse.core.runtime.Status;
+
 import org.osgi.framework.BundleContext;
 
 /**
  * @author Gregory Amerson
  */
-public class LiferayMavenUI extends Plugin
-{
+public class LiferayMavenUI extends Plugin {
 
-    // The plug-in ID
-    public static final String PLUGIN_ID = "com.liferay.ide.maven.ui"; //$NON-NLS-1$
+	// The plug-in ID
 
-    // The shared instance
-    private static LiferayMavenUI plugin;
+	public static final String PLUGIN_ID = "com.liferay.ide.maven.ui";
 
-    /**
-     * Returns the shared instance
-     *
-     * @return the shared instance
-     */
-    public static LiferayMavenUI getDefault()
-    {
-        return plugin;
-    }
+	public static LiferayMavenUI getDefault() {
+		return _plugin;
+	}
 
-    public static void logError( Throwable t )
-    {
-        logError( t.getMessage(), t );
-    }
+	public static void logError(String msg, Throwable t) {
+		ILog log = getDefault().getLog();
 
-    public static void logError( String msg, Throwable t )
-    {
-        getDefault().getLog().log( new Status( IStatus.ERROR, PLUGIN_ID, msg, t ) );
-    }
+		log.log(new Status(IStatus.ERROR, PLUGIN_ID, msg, t));
+	}
 
-    /**
-     * The constructor
-     */
-    public LiferayMavenUI()
-    {
-    }
+	public static void logError(Throwable t) {
+		logError(t.getMessage(), t);
+	}
 
-    /*
-     * (non-Javadoc)
-     * @see org.eclipse.ui.plugin.AbstractUIPlugin#start(org.osgi.framework.BundleContext)
-     */
-    public void start( BundleContext context ) throws Exception
-    {
-        super.start( context );
-        plugin = this;
-    }
+	public LiferayMavenUI() {
+	}
 
-    /*
-     * (non-Javadoc)
-     * @see org.eclipse.ui.plugin.AbstractUIPlugin#stop(org.osgi.framework.BundleContext)
-     */
-    public void stop( BundleContext context ) throws Exception
-    {
-        plugin = null;
-        super.stop( context );
-    }
+	public void start(BundleContext context) throws Exception {
+		super.start(context);
+
+		_plugin = this;
+	}
+
+	public void stop(BundleContext context) throws Exception {
+		_plugin = null;
+		super.stop(context);
+	}
+
+	private static LiferayMavenUI _plugin;
+
 }

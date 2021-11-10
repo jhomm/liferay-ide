@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,10 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- * Contributors:
- *               Kamesh Sampath - initial implementation
- *******************************************************************************/
+ */
 
 package com.liferay.ide.portlet.core.model;
 
@@ -28,20 +25,17 @@ import org.eclipse.sapphire.modeling.xml.annotations.XmlBinding;
 /**
  * @author Kamesh Sampath
  */
-public interface PortletName extends Element
-{
+public interface PortletName extends Element {
 
-    ElementType TYPE = new ElementType( PortletName.class );
+	public ElementType TYPE = new ElementType(PortletName.class);
 
-    // *** Name ***
+	public Value<String> getName();
 
-    @Label( standard = "Name" )
-    @XmlBinding( path = "" )
-    @PossibleValues( property = "/Portlets/PortletName" )
-    ValueProperty PROP_NAME = new ValueProperty( TYPE, "Name" ); //$NON-NLS-1$
+	public void setName(String value);
 
-    Value<String> getName();
-
-    void setName( String value );
+	@Label(standard = "Name")
+	@PossibleValues(property = "/Portlets/PortletName")
+	@XmlBinding(path = "")
+	public ValueProperty PROP_NAME = new ValueProperty(TYPE, "Name");
 
 }

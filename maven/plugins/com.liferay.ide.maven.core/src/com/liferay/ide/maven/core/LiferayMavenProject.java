@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,21 +10,30 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
+
 package com.liferay.ide.maven.core;
 
 import com.liferay.ide.core.BaseLiferayProject;
+import com.liferay.ide.core.Event;
+import com.liferay.ide.core.EventListener;
+import com.liferay.ide.core.IProjectBuilder;
 import com.liferay.ide.core.util.CoreUtil;
-import com.liferay.ide.project.core.IProjectBuilder;
+import com.liferay.ide.core.util.FileUtil;
+import com.liferay.ide.core.util.ListUtil;
+import com.liferay.ide.core.util.StringUtil;
+import com.liferay.ide.core.workspace.ProjectChangedEvent;
+import com.liferay.ide.core.workspace.ProjectDeletedEvent;
 import com.liferay.ide.project.core.util.ProjectUtil;
 import com.liferay.ide.server.remote.IRemoteServerPublisher;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.apache.maven.model.Plugin;
 import org.apache.maven.project.MavenProject;
+
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.CoreException;
@@ -34,174 +43,186 @@ import org.eclipse.jdt.core.IClasspathEntry;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.m2e.core.MavenPlugin;
 import org.eclipse.m2e.core.project.IMavenProjectFacade;
+import org.eclipse.m2e.core.project.IMavenProjectRegistry;
 import org.eclipse.m2e.jdt.IClasspathManager;
 import org.eclipse.m2e.jdt.MavenJdtPlugin;
-
 
 /**
  * @author Gregory Amerson
  * @author Simon Jiang
  */
-public abstract class LiferayMavenProject extends BaseLiferayProject  implements IMavenProject
-{
+public abstract class LiferayMavenProject extends BaseLiferayProject implements EventListener, IMavenProject {
 
-    public LiferayMavenProject( IProject project )
-    {
-        super( project );
-    }
+	public LiferayMavenProject(IProject project) {
+		super(project);
 
-    public <T> T adapt( Class<T> adapterType )
-    {
-        T adapter = super.adapt( adapterType );
+		IPath projectPath = project.getFullPath();
 
-        if( adapter != null )
-        {
-            return adapter;
-        }
+		_importantResources = new IPath[] {projectPath.append("pom.xml")};
+	}
 
-        final IMavenProjectFacade facade = MavenUtil.getProjectFacade( getProject(), new NullProgressMonitor() );
+	@Override
+	public <T> T adapt(Class<T> adapterType) {
+		T adapter = super.adapt(adapterType);
 
-        if( facade != null )
-        {
-            if( IProjectBuilder.class.equals( adapterType ) )
-            {
-                final IProjectBuilder projectBuilder = new MavenProjectBuilder( getProject() );
+		if (adapter != null) {
+			return adapter;
+		}
 
-                return adapterType.cast( projectBuilder );
-            }
-            else if( IRemoteServerPublisher.class.equals( adapterType ) )
-            {
-                final IRemoteServerPublisher remoteServerPublisher =
-                    new MavenProjectRemoteServerPublisher( getProject() );
+		IMavenProjectFacade facade = MavenUtil.getProjectFacade(getProject(), new NullProgressMonitor());
 
-                return adapterType.cast( remoteServerPublisher );
-            }
-        }
+		if (facade != null) {
+			if (IProjectBuilder.class.equals(adapterType)) {
+				IProjectBuilder projectBuilder = new MavenProjectBuilder(getProject());
 
-        return null;
-    }
+				return adapterType.cast(projectBuilder);
+			}
+			else if (IRemoteServerPublisher.class.equals(adapterType)) {
+				IRemoteServerPublisher remoteServerPublisher = new MavenProjectRemoteServerPublisher(getProject());
 
-    public IPath getLibraryPath( String filename )
-    {
-        final IPath[] libs = getUserLibs();
+				return adapterType.cast(remoteServerPublisher);
+			}
+		}
 
-        if( ! CoreUtil.isNullOrEmpty( libs ) )
-        {
-            for( IPath lib : libs )
-            {
-                if( lib.removeFileExtension().lastSegment().startsWith( filename ) )
-                {
-                    return lib;
-                }
-            }
-        }
+		return null;
+	}
 
-        return null;
-    }
+	public IPath getLibraryPath(String filename) {
+		IPath[] libs = getUserLibs();
 
-    public String getLiferayMavenPluginVersion()
-    {
-        String retval = null;
+		if (ListUtil.isNotEmpty(libs)) {
+			for (IPath lib : libs) {
+				String lastSegment = FileUtil.getLastSegment(lib.removeFileExtension());
 
-        final IMavenProjectFacade projectFacade = MavenPlugin.getMavenProjectRegistry().getProject( getProject() );
+				if (lastSegment.startsWith(filename)) {
+					return lib;
+				}
+			}
+		}
 
-        if( projectFacade != null )
-        {
-            try
-            {
-                final NullProgressMonitor npm = new NullProgressMonitor();
+		return null;
+	}
 
-                final MavenProject mavenProject = projectFacade.getMavenProject( npm );
+	public String getLiferayMavenPluginVersion() {
+		String retval = null;
 
-                if( mavenProject != null )
-                {
-                    final Plugin liferayMavenPlugin =
-                        MavenUtil.getPlugin( projectFacade, ILiferayMavenConstants.LIFERAY_MAVEN_PLUGIN_KEY, npm );
+		IMavenProjectRegistry registry = MavenPlugin.getMavenProjectRegistry();
 
-                    retval = liferayMavenPlugin.getVersion();
-                }
-            }
-            catch( CoreException e )
-            {
-            }
-        }
+		IMavenProjectFacade projectFacade = registry.getProject(getProject());
 
-        return retval;
-    }
+		if (projectFacade != null) {
+			try {
+				NullProgressMonitor npm = new NullProgressMonitor();
 
-    public String getProperty( String key, String defaultValue )
-    {
-        String retval = defaultValue;
+				MavenProject mavenProject = projectFacade.getMavenProject(npm);
 
-        if( ( "theme.type".equals( key ) || "theme.parent".equals( key ) ) &&
-            ProjectUtil.isThemeProject( getProject() ) )
-        {
-            final IMavenProjectFacade projectFacade = MavenUtil.getProjectFacade( getProject() );
+				if (mavenProject != null) {
+					Plugin liferayMavenPlugin = MavenUtil.getPlugin(
+						projectFacade, ILiferayMavenConstants.LIFERAY_MAVEN_PLUGIN_KEY, npm);
 
-            if( projectFacade != null )
-            {
-                final MavenProject mavenProject = projectFacade.getMavenProject();
+					retval = liferayMavenPlugin.getVersion();
+				}
+			}
+			catch (CoreException ce) {
+			}
+		}
 
-                if( "theme.type".equals( key ) )
-                {
-                    retval =
-                        MavenUtil.getLiferayMavenPluginConfig(
-                            mavenProject, ILiferayMavenConstants.PLUGIN_CONFIG_THEME_TYPE );
-                }
-                else
-                {
-                    retval =
-                        MavenUtil.getLiferayMavenPluginConfig(
-                            mavenProject, ILiferayMavenConstants.PLUGIN_CONFIG_PARENT_THEME );
-                }
-            }
-        }
+		return retval;
+	}
 
-        return retval;
-    }
+	@Override
+	public String getProperty(String key, String defaultValue) {
+		String retval = defaultValue;
 
-    public IFolder getSourceFolder( String classification )
-    {
-        IFolder retval = super.getSourceFolder( classification );
+		if ((key.equals("theme.type") || key.equals("theme.parent")) && ProjectUtil.isThemeProject(getProject())) {
+			IMavenProjectFacade projectFacade = MavenUtil.getProjectFacade(getProject());
 
-        final List<IFolder> sourceFolders = CoreUtil.getSourceFolders( JavaCore.create( getProject() ) );
+			if (projectFacade != null) {
+				MavenProject mavenProject = projectFacade.getMavenProject();
 
-        for( IFolder folder : sourceFolders )
-        {
-            if( folder.getName().equals( classification ) )
-            {
-                retval = folder;
+				if (key.equals("theme.type")) {
+					retval = MavenUtil.getLiferayMavenPluginConfig(
+						mavenProject, ILiferayMavenConstants.PLUGIN_CONFIG_THEME_TYPE);
+				}
+				else {
+					retval = MavenUtil.getLiferayMavenPluginConfig(
+						mavenProject, ILiferayMavenConstants.PLUGIN_CONFIG_PARENT_THEME);
+				}
+			}
+		}
 
-                break;
-            }
-        }
+		return retval;
+	}
 
-        return retval;
-    }
+	@Override
+	public IFolder getSourceFolder(String classification) {
+		IFolder retval = super.getSourceFolder(classification);
 
-    public IPath[] getUserLibs()
-    {
-        final List<IPath> libs = new ArrayList<IPath>();
+		List<IFolder> sourceFolders = CoreUtil.getSourceFolders(JavaCore.create(getProject()));
 
-        final IClasspathManager buildPathManager = MavenJdtPlugin.getDefault().getBuildpathManager();
+		for (IFolder folder : sourceFolders) {
+			if (StringUtil.equals(folder.getName(), classification)) {
+				retval = folder;
 
-        try
-        {
-            final IClasspathEntry[] classpath =
-                buildPathManager.getClasspath(
-                    getProject(), IClasspathManager.CLASSPATH_RUNTIME, true, new NullProgressMonitor() );
+				break;
+			}
+		}
 
-            for( IClasspathEntry entry : classpath )
-            {
-                libs.add( entry.getPath() );
-            }
-        }
-        catch( CoreException e )
-        {
-            LiferayMavenCore.logError( "Unable to get maven classpath.", e ); //$NON-NLS-1$
-        }
+		return retval;
+	}
 
-        return libs.toArray( new IPath[0] );
-    }
+	@Override
+	public IPath[] getUserLibs() {
+		List<IPath> libs = new ArrayList<>();
+
+		MavenJdtPlugin plugin = MavenJdtPlugin.getDefault();
+
+		IClasspathManager buildPathManager = plugin.getBuildpathManager();
+
+		try {
+			IClasspathEntry[] classpath = buildPathManager.getClasspath(
+				getProject(), IClasspathManager.CLASSPATH_RUNTIME, true, new NullProgressMonitor());
+
+			for (IClasspathEntry entry : classpath) {
+				libs.add(entry.getPath());
+			}
+		}
+		catch (CoreException ce) {
+			LiferayMavenCore.logError("Unable to get maven classpath.", ce);
+		}
+
+		return libs.toArray(new IPath[0]);
+	}
+
+	@Override
+	public boolean isStale() {
+		return _stale;
+	}
+
+	@Override
+	public void onEvent(Event event) {
+		if (event instanceof ProjectDeletedEvent) {
+			_stale = true;
+
+			return;
+		}
+
+		Optional.of(
+			event
+		).filter(
+			e -> !isStale()
+		).filter(
+			ProjectChangedEvent.class::isInstance
+		).map(
+			ProjectChangedEvent.class::cast
+		).filter(
+			projectChangedEvent -> hasResourcesAffected(projectChangedEvent, getProject(), _importantResources)
+		).ifPresent(
+			e -> _stale = true
+		);
+	}
+
+	private IPath[] _importantResources;
+	private volatile boolean _stale = false;
 
 }

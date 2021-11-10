@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,82 +10,83 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
+
 package com.liferay.ide.hook.core.model.internal;
 
 import com.liferay.ide.core.IWebProject;
 import com.liferay.ide.core.LiferayCore;
+import com.liferay.ide.core.util.FileUtil;
 import com.liferay.ide.hook.core.model.CustomJspDir;
 import com.liferay.ide.hook.core.model.Hook;
 
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
+import org.eclipse.sapphire.Element;
+import org.eclipse.sapphire.ElementHandle;
 import org.eclipse.sapphire.EnablementService;
 import org.eclipse.sapphire.FilteredListener;
 import org.eclipse.sapphire.Listener;
 import org.eclipse.sapphire.PropertyEvent;
+import org.eclipse.sapphire.Value;
 import org.eclipse.sapphire.modeling.Path;
 import org.eclipse.sapphire.platform.PathBridge;
-
 
 /**
  * @author Gregory Amerson
  */
-public class CustomJspsEnablementService extends EnablementService
-{
+public class CustomJspsEnablementService extends EnablementService {
 
-    @Override
-    protected void initEnablementService()
-    {
-        final Listener listener = new FilteredListener<PropertyEvent>()
-        {
-            protected void handleTypedEvent( PropertyEvent event )
-            {
-                refresh();
-            };
-        };
+	@Override
+	protected Boolean compute() {
+		boolean enablement = true;
 
-        hook().property( Hook.PROP_CUSTOM_JSP_DIR ).attach( listener, CustomJspDir.PROP_VALUE.name() );
-    }
+		ElementHandle<CustomJspDir> elementHandle = _hook().getCustomJspDir();
 
-    @Override
-    protected Boolean compute()
-    {
-        boolean enablement = true;
+		CustomJspDir customJspDir = elementHandle.content();
 
-        final CustomJspDir customJspDir = hook().getCustomJspDir().content();
+		if (customJspDir != null) {
+			IProject project = _hook().adapt(IProject.class);
 
-        if( customJspDir != null )
-        {
-            final IProject project = hook().adapt( IProject.class );
-            final Path customJspDirPath = customJspDir.getValue().content( true );
+			Value<Path> customJspDirValue = customJspDir.getValue();
 
-            if( project != null && customJspDirPath != null )
-            {
-                final IWebProject lrproject = LiferayCore.create( IWebProject.class, project );
+			Path customJspDirPath = customJspDirValue.content(true);
 
-                if( lrproject != null )
-                {
-                    final IFolder defaultWebappDir = lrproject.getDefaultDocrootFolder();
+			if ((project != null) && (customJspDirPath != null)) {
+				IWebProject lrproject = LiferayCore.create(IWebProject.class, project);
 
-                    if( defaultWebappDir != null && defaultWebappDir.exists() )
-                    {
-                        final IFolder customJspFolder =
-                            defaultWebappDir.getFolder( PathBridge.create( customJspDirPath ) );
+				if (lrproject != null) {
+					IFolder defaultWebappDir = lrproject.getDefaultDocrootFolder();
 
-                        enablement = customJspFolder.exists();
-                    }
-                }
-            }
-        }
+					if (FileUtil.exists(defaultWebappDir)) {
+						IFolder customJspFolder = defaultWebappDir.getFolder(PathBridge.create(customJspDirPath));
 
-        return enablement;
-    }
+						enablement = FileUtil.exists(customJspFolder);
+					}
+				}
+			}
+		}
 
-    private Hook hook()
-    {
-        return context( Hook.class );
-    }
+		return enablement;
+	}
+
+	@Override
+	protected void initEnablementService() {
+		Listener listener = new FilteredListener<PropertyEvent>() {
+
+			protected void handleTypedEvent(PropertyEvent event) {
+				refresh();
+			}
+
+		};
+
+		ElementHandle<Element> element = _hook().property(Hook.PROP_CUSTOM_JSP_DIR);
+
+		element.attach(listener, CustomJspDir.PROP_VALUE.name());
+	}
+
+	private Hook _hook() {
+		return context(Hook.class);
+	}
 
 }

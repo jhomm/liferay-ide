@@ -20,13 +20,20 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
 import com.liferay.ide.project.core.ProjectCore;
+import com.liferay.ide.server.core.LiferayServerCore;
+import com.liferay.ide.server.core.portal.PortalBundle;
 import com.liferay.ide.server.core.portal.PortalRuntime;
+import com.liferay.ide.server.core.portal.PortalServer;
 
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.wst.server.core.IRuntimeWorkingCopy;
+import org.eclipse.wst.server.core.IServerType;
+import org.eclipse.wst.server.core.IServerWorkingCopy;
 import org.eclipse.wst.server.core.ServerCore;
+import org.eclipse.wst.server.core.model.ServerDelegate;
+import org.junit.Ignore;
 import org.junit.Test;
 
 /**
@@ -38,13 +45,13 @@ public class PortalBundleTests extends ServerCoreBase
     @Override
     protected IPath getLiferayRuntimeDir()
     {
-        return ProjectCore.getDefault().getStateLocation().append( "liferay-portal-7.0-ce-m4/tomcat-7.0.42" );
+        return ProjectCore.getDefault().getStateLocation().append( "liferay-ce-portal-7.0-ga5/tomcat-8.0.32" );
     }
 
     @Override
     protected IPath getLiferayRuntimeZip()
     {
-        return getLiferayBundlesPath().append( "liferay-portal-tomcat-7.0-ce-m4-20150224120313668.zip" );
+        return getLiferayBundlesPath().append( "liferay-ce-portal-tomcat-7.0-ga5-20171018150113838.zip" );
     }
 
     @Override
@@ -56,6 +63,8 @@ public class PortalBundleTests extends ServerCoreBase
     @Override
     public void setupRuntime() throws Exception
     {
+        if( shouldSkipBundleTests() ) return;
+
         extractRuntime( getLiferayRuntimeZip(), getLiferayRuntimeDir() );
     }
 
@@ -94,14 +103,14 @@ public class PortalBundleTests extends ServerCoreBase
         assertNotNull( portalRuntime.getPortalBundle() );
 
         // set 7.x server with 6.2 location
-        IPath zip = getLiferayBundlesPath().append( "liferay-portal-tomcat-6.2-ce-ga4-20150416163831865.zip" );
-        IPath dir = ProjectCore.getDefault().getStateLocation().append( "liferay-portal-6.2-ce-ga4/tomcat-7.0.42" );
-
-        extractRuntime( zip, dir );
-
-        runtimeWC.setLocation( dir );
-
-        assertNull( portalRuntime.getPortalBundle() );
+//        IPath zip = getLiferayBundlesPath().append( "liferay-portal-tomcat-6.2-ce-ga4-20150416163831865.zip" );
+//        IPath dir = ProjectCore.getDefault().getStateLocation().append( "liferay-portal-6.2-ce-ga4/tomcat-7.0.42" );
+//
+//        extractRuntime( zip, dir );
+//
+//        runtimeWC.setLocation( dir );
+//
+//        assertNull( portalRuntime.getPortalBundle() );
     }
 
     @Test
@@ -179,6 +188,45 @@ public class PortalBundleTests extends ServerCoreBase
         assertNotNull( portalRuntime );
 
         assertNull( portalRuntime.getPortalBundle() );
+    }
+
+    @Test
+    public void testPortalBundleReleaseName() throws Exception
+    {
+        if( shouldSkipBundleTests() )
+            return;
+
+        PortalBundle bundle = LiferayServerCore.newPortalBundle( getLiferayRuntimeDir() );
+
+        assertNotNull( bundle );
+
+        assertEquals( "Liferay Community Edition Portal 7.0.4 GA5", bundle.getServerReleaseInfo() );
+    }
+
+    @Test
+    @Ignore
+    public void testPortalServerDelegateName() throws Exception {
+        if( shouldSkipBundleTests() ) return;
+
+        IServerType portalServerType = ServerCore.findServerType( PortalServer.ID );
+
+        assertNotNull( portalServerType );
+
+        IProgressMonitor monitor = new NullProgressMonitor();
+
+        IServerWorkingCopy newServer = portalServerType.createServer( null, null, monitor );
+
+        assertNotNull( newServer );
+
+        assertEquals( "Liferay 7.x at localhost", newServer.getName() );
+
+        newServer.setHost( "127.0.0.1" );
+
+        ServerDelegate delegate = (ServerDelegate) newServer.loadAdapter( ServerDelegate.class, monitor );
+
+        delegate.newServerDetailsChanged( monitor );
+
+        assertEquals( "Liferay 7.x at 127.0.0.1", newServer.getName() );
     }
 }
 

@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,8 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.project.ui.wizard;
 
@@ -40,297 +39,312 @@ import org.eclipse.wst.common.frameworks.internal.datamodel.ui.DataModelSynchHel
 import org.eclipse.wst.common.frameworks.internal.ui.NewProjectGroup;
 
 /**
- * @author Greg Amerson
+ * @author Gregory Amerson
  */
-@SuppressWarnings( "restriction" )
-public class NewPluginProjectGroup extends NewProjectGroup implements IPluginProjectDataModelProperties
-{
-    protected static final int SIZING_TEXT_FIELD_WIDTH = 305;
-    protected Button customLocationButton;
-    protected Text displayNameField;
-    protected IDataModel model;
-    protected IDataModel nestedModel;
-    protected DataModelSynchHelper nestedSynchHelper;
-    protected Button sdkLocationButton;
-    protected DataModelSynchHelper synchHelper;
-    protected Button workspaceLocationButton;
+@SuppressWarnings("restriction")
+public class NewPluginProjectGroup extends NewProjectGroup implements IPluginProjectDataModelProperties {
 
-    public NewPluginProjectGroup( Composite parent, IDataModel model, IDataModel nestedModel )
-    {
-        super( parent, model );
+	public NewPluginProjectGroup(Composite parent, IDataModel model, IDataModel nestedModel) {
+		super(parent, model);
 
-        this.model = model;
-        this.nestedModel = nestedModel;
-        this.synchHelper = new DataModelSynchHelper( model );
-        this.nestedSynchHelper = new DataModelSynchHelper( nestedModel );
+		this.model = model;
+		this.nestedModel = nestedModel;
+		synchHelper = new DataModelSynchHelper(model);
+		nestedSynchHelper = new DataModelSynchHelper(nestedModel);
 
-        createControl( parent );
-    }
+		createControl(parent);
+	}
 
-    @Override
-    public void buildComposites( Composite parent )
-    {
-    }
+	@Override
+	public void buildComposites(Composite parent) {
+	}
 
-    public void createControl( Composite parent )
-    {
-        createProjectNameGroup( parent );
+	public void createControl(Composite parent) {
+		createProjectNameGroup(parent);
 
-        createDisplayNameGroup( parent );
-        // for 1.0 we are not going to show location
-        // createProjectLocationGroup(parent);
-    }
+		createDisplayNameGroup(parent);
 
-    public void dispose()
-    {
-        model.removeListener( synchHelper );
+		// for 1.0 we are not going to show location
+		// createProjectLocationGroup(parent);
 
-        synchHelper.dispose();
+	}
 
-        model = null;
-    }
+	public void dispose() {
+		model.removeListener(synchHelper);
 
-    protected void createDisplayNameGroup( Composite parent )
-    {
-        Font font = parent.getFont(); // project specification group
+		synchHelper.dispose();
 
-        Composite displayGroup = new Composite( parent, SWT.NONE );
+		model = null;
+	}
 
-        GridLayout layout = new GridLayout();
+	protected void createDisplayNameGroup(Composite parent) {
+		Font font = parent.getFont(); // project specification group
 
-        layout.numColumns = 2;
+		Composite displayGroup = new Composite(parent, SWT.NONE);
 
-        displayGroup.setLayout( layout );
-        displayGroup.setLayoutData( new GridData( GridData.FILL_HORIZONTAL ) );
+		GridLayout layout = new GridLayout();
 
-        // new project label
-        Label displayLabel = new Label( displayGroup, SWT.NONE );
+		layout.numColumns = 2;
 
-        displayLabel.setFont( font );
-        displayLabel.setText( Msgs.displayNameLabel );
+		displayGroup.setLayout(layout);
 
-        // new project name entry field
-        displayNameField = new Text( displayGroup, SWT.BORDER );
+		displayGroup.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
 
-        GridData data = new GridData( GridData.FILL_HORIZONTAL );
+		// new project label
 
-        data.widthHint = SIZING_TEXT_FIELD_WIDTH;
+		Label displayLabel = new Label(displayGroup, SWT.NONE);
 
-        displayNameField.setLayoutData( data );
-        displayNameField.setFont( font );
+		displayLabel.setFont(font);
+		displayLabel.setText(Msgs.displayNameLabel);
 
-        synchHelper.synchText( displayNameField, DISPLAY_NAME, new Control[] { displayLabel } );
+		// new project name entry field
 
-        nestedSynchHelper.getDataModel().addListener( new IDataModelListener()
-        {
-            public void propertyChanged( DataModelEvent event )
-            {
-                if( PROJECT_NAME.equals( event.getPropertyName() ) )
-                {
-                    synchHelper.synchAllUIWithModel();
-                }
-            }
-        } );
-    }
+		displayNameField = new Text(displayGroup, SWT.BORDER);
 
-    protected void createProjectLocationGroup( Composite parent )
-    {
-        Group projectLocationGroup = new Group( parent, SWT.NONE );
+		GridData data = new GridData(GridData.FILL_HORIZONTAL);
 
-        projectLocationGroup.setText( Msgs.location );
+		data.widthHint = SIZING_TEXT_FIELD_WIDTH;
 
-        projectLocationGroup.setLayout( new GridLayout( 3, false ) );
+		displayNameField.setLayoutData(data);
 
-        GridData gd = new GridData( GridData.FILL_HORIZONTAL );
-        gd.horizontalSpan = 2;
+		displayNameField.setFont(font);
 
-        projectLocationGroup.setLayoutData( gd );
+		synchHelper.synchText(displayNameField, DISPLAY_NAME, new Control[] {displayLabel});
 
-        sdkLocationButton = SWTUtil.createRadioButton( projectLocationGroup, Msgs.createNewProjectSDK, null, true, 3 );
+		IDataModel dataModel = nestedSynchHelper.getDataModel();
 
-        this.synchHelper.synchRadio( sdkLocationButton, LIFERAY_USE_SDK_LOCATION, null );
+		dataModel.addListener(
+			new IDataModelListener() {
 
-        workspaceLocationButton =
-            SWTUtil.createRadioButton( projectLocationGroup, Msgs.createNewProjectWorkspace, null, true, 3 );
-        this.nestedSynchHelper.synchRadio( workspaceLocationButton, USE_DEFAULT_LOCATION, null );
+				public void propertyChanged(DataModelEvent event) {
+					if (PROJECT_NAME.equals(event.getPropertyName())) {
+						synchHelper.synchAllUIWithModel();
+					}
+				}
 
-        customLocationButton = SWTUtil.createRadioButton( projectLocationGroup, Msgs.createNewProjectLabel, null, true, 3 );
-        this.synchHelper.synchRadio( customLocationButton, LIFERAY_USE_CUSTOM_LOCATION, null );
+			});
+	}
 
-        createUserSpecifiedProjectLocationField( projectLocationGroup );
-    }
+	protected void createProjectLocationGroup(Composite parent) {
+		Group projectLocationGroup = new Group(parent, SWT.NONE);
 
-    protected void createProjectNameGroup( Composite parent )
-    {
-        Font font = parent.getFont(); // project specification group
+		projectLocationGroup.setText(Msgs.location);
 
-        Composite projectGroup = new Composite( parent, SWT.NONE );
+		projectLocationGroup.setLayout(new GridLayout(3, false));
 
-        GridLayout layout = new GridLayout();
+		GridData gd = new GridData(GridData.FILL_HORIZONTAL);
 
-        layout.numColumns = 2;
+		gd.horizontalSpan = 2;
 
-        projectGroup.setLayout( layout );
-        projectGroup.setLayoutData( new GridData( GridData.FILL_HORIZONTAL ) );
+		projectLocationGroup.setLayoutData(gd);
 
-        // new project label
-        Label projectLabel = new Label( projectGroup, SWT.NONE );
+		sdkLocationButton = SWTUtil.createRadioButton(projectLocationGroup, Msgs.createNewProjectSDK, null, true, 3);
 
-        projectLabel.setFont( font );
-        projectLabel.setText( Msgs.projectNameLabel );
+		this.synchHelper.synchRadio(sdkLocationButton, LIFERAY_USE_SDK_LOCATION, null);
 
-        // new project name entry field
-        projectNameField = new Text( projectGroup, SWT.BORDER );
+		workspaceLocationButton = SWTUtil.createRadioButton(
+			projectLocationGroup, Msgs.createNewProjectWorkspace, null, true, 3);
 
-        GridData data = new GridData( GridData.FILL_HORIZONTAL );
+		this.nestedSynchHelper.synchRadio(workspaceLocationButton, USE_DEFAULT_LOCATION, null);
 
-        data.widthHint = SIZING_TEXT_FIELD_WIDTH;
+		customLocationButton = SWTUtil.createRadioButton(
+			projectLocationGroup, Msgs.createNewProjectLabel, null, true, 3);
 
-        projectNameField.setLayoutData( data );
-        projectNameField.setFont( font );
+		this.synchHelper.synchRadio(customLocationButton, LIFERAY_USE_CUSTOM_LOCATION, null);
 
-        nestedSynchHelper.synchText( projectNameField, PROJECT_NAME, new Control[] { projectLabel } );
-    }
+		createUserSpecifiedProjectLocationField(projectLocationGroup);
+	}
 
-    protected void createUserSpecifiedProjectLocationField( Composite projectGroup )
-    {
-        Font font = projectGroup.getFont();
-        // location label
-        final Label locationLabel = new Label( projectGroup, SWT.NONE );
+	protected void createProjectNameGroup(Composite parent) {
+		Font font = parent.getFont(); // project specification group
 
-        locationLabel.setFont( font );
-        locationLabel.setText( Msgs.WizardNewProjectCreationPage_locationLabel );
+		Composite projectGroup = new Composite(parent, SWT.NONE);
 
-        // project location entry field
-        locationPathField = new Text( projectGroup, SWT.BORDER );
+		GridLayout layout = new GridLayout();
 
-        GridData data = new GridData( GridData.FILL_HORIZONTAL );
+		layout.numColumns = 2;
 
-        data.widthHint = SIZING_TEXT_FIELD_WIDTH;
+		projectGroup.setLayout(layout);
 
-        locationPathField.setLayoutData( data );
-        locationPathField.setFont( font );
+		projectGroup.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
 
-        // browse button
-        browseButton = new Button( projectGroup, SWT.PUSH );
+		// new project label
 
-        browseButton.setFont( font );
-        browseButton.setText( Msgs.browse );
-        browseButton.addSelectionListener( new SelectionAdapter()
-        {
+		Label projectLabel = new Label(projectGroup, SWT.NONE);
 
-            public void widgetSelected( SelectionEvent event )
-            {
-                handleLocationBrowseButtonPressed();
-            }
-        } );
+		projectLabel.setFont(font);
+		projectLabel.setText(Msgs.projectNameLabel);
 
-        final IDataModel localModel = model;
+		// new project name entry field
 
-        final IDataModel localNestedModel = nestedModel;
+		projectNameField = new Text(projectGroup, SWT.BORDER);
 
-        class LocationListener implements ModifyListener, IDataModelListener
-        {
+		GridData data = new GridData(GridData.FILL_HORIZONTAL);
 
-            private boolean propertySet = false;
+		data.widthHint = SIZING_TEXT_FIELD_WIDTH;
 
-            private boolean typing = false;
+		projectNameField.setLayoutData(data);
 
-            public void modifyText( ModifyEvent e )
-            {
-                if( !( localModel.getBooleanProperty( LIFERAY_USE_SDK_LOCATION ) || localNestedModel.getBooleanProperty( USE_DEFAULT_LOCATION ) ) &&
-                    !propertySet )
-                {
+		projectNameField.setFont(font);
 
-                    try
-                    {
-                        typing = true;
+		nestedSynchHelper.synchText(projectNameField, PROJECT_NAME, new Control[] {projectLabel});
+	}
 
-                        localNestedModel.setProperty( USER_DEFINED_LOCATION, locationPathField.getText() );
-                    }
-                    finally
-                    {
-                        typing = false;
-                    }
-                }
-            }
+	protected void createUserSpecifiedProjectLocationField(Composite projectGroup) {
+		Font font = projectGroup.getFont();
 
-            public void propertyChanged( DataModelEvent event )
-            {
-                boolean useDefault = localNestedModel.getBooleanProperty( USE_DEFAULT_LOCATION );
+		// location label
 
-                if( LIFERAY_USE_SDK_LOCATION.equals( event.getPropertyName() ) ||
-                    USE_DEFAULT_LOCATION.equals( event.getPropertyName() ) ||
-                    LIFERAY_USE_CUSTOM_LOCATION.equals( event.getPropertyName() ) ||
-                    LIFERAY_SDK_NAME.equals( event.getPropertyName() ) )
-                {
+		final Label locationLabel = new Label(projectGroup, SWT.NONE);
 
-                    boolean enableLocationField = localModel.getBooleanProperty( LIFERAY_USE_CUSTOM_LOCATION );
+		locationLabel.setFont(font);
+		locationLabel.setText(Msgs.wizardNewProjectCreationPageLocationLabel);
 
-                    locationLabel.setEnabled( enableLocationField );
+		// project location entry field
 
-                    locationPathField.setEnabled( enableLocationField );
+		locationPathField = new Text(projectGroup, SWT.BORDER);
 
-                    browseButton.setEnabled( enableLocationField );
+		GridData data = new GridData(GridData.FILL_HORIZONTAL);
 
-                    propertySet = true;
+		data.widthHint = SIZING_TEXT_FIELD_WIDTH;
 
-                    if( useDefault )
-                    {
-                        locationPathField.setText( localNestedModel.getStringProperty( DEFAULT_LOCATION ) );
-                    }
-                    else if( localModel.getBooleanProperty( LIFERAY_USE_SDK_LOCATION ) )
-                    {
-                        locationPathField.setText( localNestedModel.getStringProperty( PROJECT_LOCATION ) );
-                    }
-                    else if( localModel.getBooleanProperty( LIFERAY_USE_CUSTOM_LOCATION ) )
-                    {
-                        locationPathField.setText( localNestedModel.getStringProperty( USER_DEFINED_LOCATION ) );
-                    }
+		locationPathField.setLayoutData(data);
 
-                    propertySet = false;
-                }
-                else if( !typing )
-                {
-                    if( ( useDefault && DEFAULT_LOCATION.equals( event.getPropertyName() ) ) ||
-                        ( !useDefault && ( USER_DEFINED_LOCATION.equals( event.getPropertyName() ) || PROJECT_LOCATION.equals( event.getPropertyName() ) ) ) )
-                    {
+		locationPathField.setFont(font);
 
-                        propertySet = true;
+		// browse button
 
-                        locationPathField.setText( (String) event.getProperty() );
+		browseButton = new Button(projectGroup, SWT.PUSH);
 
-                        propertySet = false;
-                    }
-                }
-            }
-        }
+		browseButton.setFont(font);
+		browseButton.setText(Msgs.browse);
+		browseButton.addSelectionListener(
+			new SelectionAdapter() {
 
-        LocationListener listener = new LocationListener();
+				public void widgetSelected(SelectionEvent event) {
+					handleLocationBrowseButtonPressed();
+				}
 
-        listener.propertyChanged( new DataModelEvent( model, LIFERAY_USE_SDK_LOCATION, IDataModel.VALUE_CHG ) );
+			});
 
-        locationPathField.addModifyListener( listener );
+		final IDataModel localModel = model;
 
-        model.addListener( listener );
+		final IDataModel localNestedModel = nestedModel;
 
-        nestedModel.addListener( listener );
-    }
+		LocationListener listener = new LocationListener(localModel, localNestedModel, locationLabel);
 
-    private static class Msgs extends NLS
-    {
-        public static String browse;
-        public static String createNewProjectLabel;
-        public static String createNewProjectSDK;
-        public static String createNewProjectWorkspace;
-        public static String displayNameLabel;
-        public static String location;
-        public static String projectNameLabel;
-        public static String WizardNewProjectCreationPage_locationLabel;
+		listener.propertyChanged(new DataModelEvent(model, LIFERAY_USE_SDK_LOCATION, IDataModel.VALUE_CHG));
 
-        static
-        {
-            initializeMessages( NewPluginProjectGroup.class.getName(), Msgs.class );
-        }
-    }
+		locationPathField.addModifyListener(listener);
+
+		model.addListener(listener);
+
+		nestedModel.addListener(listener);
+	}
+
+	protected static final int SIZING_TEXT_FIELD_WIDTH = 305;
+
+	protected Button customLocationButton;
+	protected Text displayNameField;
+	protected IDataModel model;
+	protected IDataModel nestedModel;
+	protected DataModelSynchHelper nestedSynchHelper;
+	protected Button sdkLocationButton;
+	protected DataModelSynchHelper synchHelper;
+	protected Button workspaceLocationButton;
+
+	private static class Msgs extends NLS {
+
+		public static String browse;
+		public static String createNewProjectLabel;
+		public static String createNewProjectSDK;
+		public static String createNewProjectWorkspace;
+		public static String displayNameLabel;
+		public static String location;
+		public static String projectNameLabel;
+		public static String wizardNewProjectCreationPageLocationLabel;
+
+		static {
+			initializeMessages(NewPluginProjectGroup.class.getName(), Msgs.class);
+		}
+
+	}
+
+	private class LocationListener implements ModifyListener, IDataModelListener {
+
+		public LocationListener(IDataModel localModel, IDataModel localNestedModel, Label locationLabel) {
+			_localModel = localModel;
+			_localNestedModel = localNestedModel;
+			_locationLabel = locationLabel;
+		}
+
+		public void modifyText(ModifyEvent e) {
+			if (!(_localModel.getBooleanProperty(LIFERAY_USE_SDK_LOCATION) ||
+				  _localNestedModel.getBooleanProperty(USE_DEFAULT_LOCATION)) &&
+				!_propertySet) {
+
+				try {
+					_typing = true;
+
+					_localNestedModel.setProperty(USER_DEFINED_LOCATION, locationPathField.getText());
+				}
+				finally {
+					_typing = false;
+				}
+			}
+		}
+
+		public void propertyChanged(DataModelEvent event) {
+			boolean useDefault = _localNestedModel.getBooleanProperty(USE_DEFAULT_LOCATION);
+
+			if (LIFERAY_USE_SDK_LOCATION.equals(event.getPropertyName()) ||
+				USE_DEFAULT_LOCATION.equals(event.getPropertyName()) ||
+				LIFERAY_USE_CUSTOM_LOCATION.equals(event.getPropertyName()) ||
+				LIFERAY_SDK_NAME.equals(event.getPropertyName())) {
+
+				boolean enableLocationField = _localModel.getBooleanProperty(LIFERAY_USE_CUSTOM_LOCATION);
+
+				_locationLabel.setEnabled(enableLocationField);
+
+				locationPathField.setEnabled(enableLocationField);
+
+				browseButton.setEnabled(enableLocationField);
+
+				_propertySet = true;
+
+				if (useDefault) {
+					locationPathField.setText(_localNestedModel.getStringProperty(DEFAULT_LOCATION));
+				}
+				else if (_localModel.getBooleanProperty(LIFERAY_USE_SDK_LOCATION)) {
+					locationPathField.setText(_localNestedModel.getStringProperty(PROJECT_LOCATION));
+				}
+				else if (_localModel.getBooleanProperty(LIFERAY_USE_CUSTOM_LOCATION)) {
+					locationPathField.setText(_localNestedModel.getStringProperty(USER_DEFINED_LOCATION));
+				}
+
+				_propertySet = false;
+			}
+			else if (!_typing) {
+				if ((useDefault && DEFAULT_LOCATION.equals(event.getPropertyName())) ||
+					(!useDefault &&
+					 (USER_DEFINED_LOCATION.equals(event.getPropertyName()) ||
+					  PROJECT_LOCATION.equals(event.getPropertyName())))) {
+
+					_propertySet = true;
+
+					locationPathField.setText((String)event.getProperty());
+
+					_propertySet = false;
+				}
+			}
+		}
+
+		private IDataModel _localModel;
+		private IDataModel _localNestedModel;
+		private Label _locationLabel;
+		private boolean _propertySet = false;
+		private boolean _typing = false;
+
+	}
+
 }

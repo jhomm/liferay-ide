@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,39 +10,51 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.service.core.model.internal;
 
+import com.liferay.ide.core.util.SapphireContentAccessor;
 import com.liferay.ide.service.core.model.ServiceBuilder6xx;
 
 import java.util.Set;
 
-import org.eclipse.sapphire.Version;
 import org.eclipse.sapphire.PossibleValuesService;
+import org.eclipse.sapphire.Version;
 
 /**
  * @author Cindy Li
  */
-public class TypePossibleValuesService extends PossibleValuesService
-{
-    private static final String[] DEFAULT_TYPES = { "String", "long", "boolean", "int", "double", "Date", "Collection" }; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$ //$NON-NLS-6$ //$NON-NLS-7$
+public class TypePossibleValuesService extends PossibleValuesService implements SapphireContentAccessor {
 
-    @Override
-    protected void compute( Set<String> values )
-    {
-        for( int i = 0; i < DEFAULT_TYPES.length; i++ )
-        {
-            values.add( DEFAULT_TYPES[i] );
-        }
+	@Override
+	protected void compute(Set<String> values) {
+		for (String type : _DEFAULT_TYPES) {
+			values.add(type);
+		}
 
-        ServiceBuilder6xx serviceBuilder = context( ServiceBuilder6xx.class );
+		ServiceBuilder6xx serviceBuilder6xx = context(ServiceBuilder6xx.class);
 
-        if( serviceBuilder.getVersion().content( true ).compareTo( new Version( "6.2" ) ) >= 0 ) //$NON-NLS-1$
-        {
-            values.add( "Blob" ); //$NON-NLS-1$
-        }
-    }
+		Version version = get(serviceBuilder6xx.getVersion());
+
+		if (version.compareTo(new Version("6.2")) >= 0) {
+			values.add("Blob");
+		}
+
+		if (version.compareTo(new Version("7.0")) >= 0) {
+			values.add("BigDecimal");
+			values.add("Boolean");
+			values.add("Double");
+			values.add("float");
+			values.add("Float");
+			values.add("Integer");
+			values.add("Long");
+			values.add("short");
+			values.add("Short");
+			values.add("Map");
+		}
+	}
+
+	private static final String[] _DEFAULT_TYPES = {"String", "long", "boolean", "int", "double", "Date", "Collection"};
 
 }

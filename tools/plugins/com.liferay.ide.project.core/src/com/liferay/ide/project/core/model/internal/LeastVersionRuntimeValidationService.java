@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,13 +10,13 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.project.core.model.internal;
 
 import com.liferay.ide.core.ILiferayConstants;
 import com.liferay.ide.core.util.CoreUtil;
+import com.liferay.ide.core.util.SapphireContentAccessor;
 import com.liferay.ide.server.core.ILiferayRuntime;
 import com.liferay.ide.server.util.ServerUtil;
 
@@ -28,46 +28,47 @@ import org.eclipse.sapphire.modeling.Status;
 import org.eclipse.sapphire.platform.StatusBridge;
 import org.eclipse.sapphire.services.ValidationService;
 import org.eclipse.wst.server.core.IRuntime;
+
 import org.osgi.framework.Version;
 
 /**
  * @author Simon Jiang
  */
-public class LeastVersionRuntimeValidationService extends ValidationService
-{
+public class LeastVersionRuntimeValidationService extends ValidationService implements SapphireContentAccessor {
 
-    @Override
-    protected Status compute()
-    {
-        Status retval = Status.createOkStatus();
+	@Override
+	protected Status compute() {
+		Element element = context(Element.class);
 
-        final Value<?> value = (Value<?>) context( Element.class ).property( context( Property.class ).definition() );
+		Property p = context(Property.class);
 
-        final String runtimeName = value.content().toString();
+		Property property = element.property(p.definition());
 
-        final IRuntime runtime = ServerUtil.getRuntime( runtimeName );
+		Value<?> value = (Value<?>)property;
 
-        if( runtime == null )
-        {
-            retval = Status.createErrorStatus( "Liferay runtime must be configured." ); //$NON-NLS-1$
-        }
-        else
-        {
-            final ILiferayRuntime liferayRuntime = ServerUtil.getLiferayRuntime( runtime );
-            final Version runtimeVersion = new Version( liferayRuntime.getPortalVersion() );
+		Object o = get(value);
 
-            if( CoreUtil.compareVersions( runtimeVersion, ILiferayConstants.V620 ) < 0 )
-            {
-                retval = Status.createErrorStatus( "Liferay runtime must be greater than 6.2.0." ); //$NON-NLS-1$
-            }
-            else
-            {
-                retval = StatusBridge.create( runtime.validate( new NullProgressMonitor() ) );
-            }
+		String runtimeName = o.toString();
 
-        }
+		IRuntime runtime = ServerUtil.getRuntime(runtimeName);
 
-        return retval;
-    }
+		if (runtime == null) {
+			return Status.createErrorStatus("Liferay runtime must be configured.");
+		}
+
+		ILiferayRuntime liferayRuntime = ServerUtil.getLiferayRuntime(runtime);
+
+		if (liferayRuntime == null) {
+			return Status.createErrorStatus("Liferay runtime should not be null.");
+		}
+
+		Version runtimeVersion = Version.parseVersion(liferayRuntime.getPortalVersion());
+
+		if (CoreUtil.compareVersions(runtimeVersion, ILiferayConstants.V620) < 0) {
+			return Status.createErrorStatus("Liferay runtime must be greater than 6.2.0.");
+		}
+
+		return StatusBridge.create(runtime.validate(new NullProgressMonitor()));
+	}
 
 }

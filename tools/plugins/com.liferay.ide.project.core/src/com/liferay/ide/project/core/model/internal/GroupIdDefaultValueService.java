@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,11 +10,13 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
+
 package com.liferay.ide.project.core.model.internal;
 
 import com.liferay.ide.core.util.CoreUtil;
+import com.liferay.ide.core.util.SapphireContentAccessor;
+import com.liferay.ide.core.util.SapphireUtil;
 import com.liferay.ide.project.core.ProjectCore;
 import com.liferay.ide.project.core.model.NewLiferayPluginProjectOp;
 import com.liferay.ide.project.core.model.NewLiferayPluginProjectOpMethods;
@@ -22,6 +24,7 @@ import com.liferay.ide.project.core.model.NewLiferayPluginProjectOpMethods;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.preferences.DefaultScope;
+import org.eclipse.core.runtime.preferences.IPreferencesService;
 import org.eclipse.core.runtime.preferences.IScopeContext;
 import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.sapphire.DefaultValueService;
@@ -33,68 +36,67 @@ import org.eclipse.sapphire.modeling.Path;
 /**
  * @author Kuo Zhang
  */
-public class GroupIdDefaultValueService extends DefaultValueService
-{
+public class GroupIdDefaultValueService extends DefaultValueService implements SapphireContentAccessor {
 
-    @Override
-    protected String compute()
-    {
-        String groupId = null;
+	@Override
+	protected String compute() {
+		String groupId = null;
 
-        final Path location = op().getLocation().content();
+		NewLiferayPluginProjectOp op = _op();
 
-        if( location != null )
-        {
-            final NewLiferayPluginProjectOp op = op();
-            final String parentProjectLocation = location.toOSString();
-            final IPath parentProjectOsPath = org.eclipse.core.runtime.Path.fromOSString( parentProjectLocation );
-            final String projectName = op().getProjectName().content();
+		Path location = get(op.getLocation());
 
-            groupId = NewLiferayPluginProjectOpMethods.getMavenParentPomGroupId( op, projectName, parentProjectOsPath );
+		if (location != null) {
+			String parentProjectLocation = location.toOSString();
 
-        }
+			IPath parentProjectOsPath = org.eclipse.core.runtime.Path.fromOSString(parentProjectLocation);
 
-        if( groupId == null )
-        {
-            groupId = getDefaultMavenGroupId();
+			String projectName = get(op.getProjectName());
 
-            if( CoreUtil.isNullOrEmpty( groupId ) )
-            {
-                groupId = "com.example.plugins";
-            }
-        }
+			groupId = NewLiferayPluginProjectOpMethods.getMavenParentPomGroupId(op, projectName, parentProjectOsPath);
+		}
 
-        return groupId;
-    }
+		if (groupId == null) {
+			groupId = _getDefaultMavenGroupId();
 
-    private String getDefaultMavenGroupId()
-    {
-        final IScopeContext[] prefContexts = { DefaultScope.INSTANCE, InstanceScope.INSTANCE };
-        final String defaultMavenGroupId =
-            Platform.getPreferencesService().getString(
-                ProjectCore.PLUGIN_ID, ProjectCore.PREF_DEFAULT_PROJECT_MAVEN_GROUPID, null, prefContexts );
-        return defaultMavenGroupId;
-    }
+			if (CoreUtil.isNullOrEmpty(groupId)) {
+				groupId = "com.example.plugins";
+			}
+		}
 
-    protected void initDefaultValueService()
-    {
-        super.initDefaultValueService();
+		return groupId;
+	}
 
-        final Listener listener = new FilteredListener<PropertyContentEvent>()
-        {
-            @Override
-            protected void handleTypedEvent( PropertyContentEvent event )
-            {
-                refresh();
-            }
-        };
+	@Override
+	protected void initDefaultValueService() {
+		super.initDefaultValueService();
 
-        op().getLocation().attach( listener );
-        op().getProjectName().attach( listener );
-    }
+		Listener listener = new FilteredListener<PropertyContentEvent>() {
 
-    private NewLiferayPluginProjectOp op()
-    {
-        return context( NewLiferayPluginProjectOp.class );
-    }
+			@Override
+			protected void handleTypedEvent(PropertyContentEvent event) {
+				refresh();
+			}
+
+		};
+
+		NewLiferayPluginProjectOp op = _op();
+
+		SapphireUtil.attachListener(op.getLocation(), listener);
+		SapphireUtil.attachListener(op.getProjectName(), listener);
+	}
+
+	private String _getDefaultMavenGroupId() {
+		IScopeContext[] prefContexts = {DefaultScope.INSTANCE, InstanceScope.INSTANCE};
+
+		IPreferencesService preferencesService = Platform.getPreferencesService();
+
+		return preferencesService.getString(
+			ProjectCore.PLUGIN_ID, ProjectCore.PREF_DEFAULT_PLUGIN_PROJECT_MAVEN_GROUPID, null, prefContexts);
+	}
+
+	private NewLiferayPluginProjectOp _op() {
+		return context(NewLiferayPluginProjectOp.class);
+	}
+
 }

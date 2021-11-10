@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,10 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- * Contributors:
- *               Kamesh Sampath - initial implementation
- *******************************************************************************/
+ */
 
 package com.liferay.ide.portlet.core.model.internal;
 
@@ -21,7 +18,10 @@ import com.liferay.ide.core.util.StringPool;
 import com.liferay.ide.portlet.core.util.PortletAppModelConstants;
 import com.liferay.ide.portlet.core.util.PortletUtil;
 
+import java.util.Objects;
+
 import org.eclipse.sapphire.Property;
+import org.eclipse.sapphire.PropertyDef;
 import org.eclipse.sapphire.modeling.xml.XmlElement;
 import org.eclipse.sapphire.modeling.xml.XmlNode;
 import org.eclipse.sapphire.modeling.xml.XmlPath;
@@ -31,135 +31,104 @@ import org.eclipse.sapphire.modeling.xml.annotations.CustomXmlValueBinding;
 /**
  * @author Kamesh Sampath
  */
-public final class QNameLocalPartValueBinding extends XmlValueBindingImpl
-{
+public class QNameLocalPartValueBinding extends XmlValueBindingImpl {
 
-    private XmlPath path;
-    private String[] params;
+	@Override
+	public XmlNode getXmlNode() {
+		XmlElement element = xml(false);
 
-    /*
-     * (non-Javadoc)
-     * @see org.eclipse.sapphire.modeling.PropertyBinding#init(org.eclipse.sapphire.modeling.Element,
-     * org.eclipse.sapphire.modeling.Property, java.lang.String[])
-     */
-    @Override
-    public void init( final Property property )
-    {
-        super.init( property );
+		if (element != null) {
+			return element.getChildNode(_path, false);
+		}
 
-        this.params = property.definition().getAnnotation( CustomXmlValueBinding.class ).params();
-        this.path = new XmlPath( params[0], resource().getXmlNamespaceResolver() );
-    }
+		return null;
+	}
 
-    /*
-     * (non-Javadoc)
-     * @see org.eclipse.sapphire.modeling.ValuePropertyBinding#read()
-     */
-    @Override
-    public String read()
-    {
-        String value = null;
+	@Override
+	public void init(Property property) {
+		super.init(property);
 
-        final XmlElement parent = xml( false );
+		PropertyDef propertyDef = property.definition();
 
-        // Fix for Alias QName not displayed in list
-        XmlElement qNameElement = null;
-        if( parent.getLocalName().equals( params[0] ) )
-        {
-            qNameElement = parent;
-        }
-        else
-        {
-            qNameElement = parent.getChildElement( params[0], false );
-        }
+		CustomXmlValueBinding customXmlValueBinding = propertyDef.getAnnotation(CustomXmlValueBinding.class);
 
-        // System.out.println( "Reading VALUE for Element  ___________________ " + qNameElement );
+		_params = customXmlValueBinding.params();
 
-        if( qNameElement != null )
-        {
+		_path = new XmlPath(_params[0], resource().getXmlNamespaceResolver());
+	}
 
-            value = qNameElement.getText();
+	@Override
+	public String read() {
+		String value = null;
 
-            if( value != null )
-            {
-                value = value.trim();
-                value = PortletUtil.stripPrefix( value );
-            }
+		XmlElement parent = xml(false);
 
-        }
+		// Fix for Alias QName not displayed in list
 
-        return value;
-    }
+		XmlElement qNameElement = null;
 
-    /*
-     * (non-Javadoc)
-     * @see org.eclipse.sapphire.modeling.ValuePropertyBinding#write(java.lang.String)
-     */
-    @Override
-    public void write( final String value )
-    {
-        String val = value;
-        XmlElement parent = xml( true );
+		if (_params[0].equals(parent.getLocalName())) {
+			qNameElement = parent;
+		}
+		else {
+			qNameElement = parent.getChildElement(_params[0], false);
+		}
 
-        /*
-         * In some cases the parent node and the child nodes will be same, we need to ensure that we dont create them
-         * accidentally again
-         */
-        // System.out.println( "QNameLocalPartValueBinding.write() - Parent local name:" + parent.getLocalName() );
-        XmlElement qNameElement = null;
-        if( parent.getLocalName().equals( params[0] ) )
-        {
-            qNameElement = parent;
-        }
-        else
-        {
-            qNameElement = parent.getChildElement( params[0], true );
-        }
+		if (qNameElement != null) {
+			value = qNameElement.getText();
 
-        // System.out.println( "TextNodeValueBinding.write() - Parent " + xml( true ).getParent() );
-        if( qNameElement != null )
-        {
-            val = val != null ? value.trim() : StringPool.EMPTY;
-            if( params.length == 2 && "localpart".equals( params[1] ) ) //$NON-NLS-1$
-            { // update only local part
-                // System.out.println( "VALUE ___________________ " + val );
-                String existingText = qNameElement.getText();
-                if( existingText != null && existingText.indexOf( ":" ) != -1 ) //$NON-NLS-1$
-                {
-                    String updatedLocalPart = existingText.substring( 0, ( existingText.indexOf( ":" ) + 1 ) ); //$NON-NLS-1$
-                    updatedLocalPart = updatedLocalPart + val;
-                    // System.out.println( "Updated value ___________________ " + updatedLocalPart );
-                    qNameElement.setText( updatedLocalPart );
-                }
-                else
-                {
-                    qNameElement.setText( PortletAppModelConstants.DEFAULT_QNAME_PREFIX + ":" + val ); //$NON-NLS-1$
-                }
+			if (value != null) {
+				value = PortletUtil.stripPrefix(value.trim());
+			}
+		}
 
-            }
-            else
-            {
-                qNameElement.setText( PortletAppModelConstants.DEFAULT_QNAME_PREFIX + ":" + val ); //$NON-NLS-1$
-            }
-        }
+		return value;
+	}
 
-    }
+	@Override
+	public void write(String value) {
+		String val = value;
+		XmlElement parent = xml(true);
 
-    /*
-     * (non-Javadoc)
-     * @see org.eclipse.sapphire.modeling.xml.XmlValuePropertyBinding#getXmlNode()
-     */
-    @Override
-    public XmlNode getXmlNode()
-    {
-        final XmlElement element = xml( false );
+		/**
+		 * In some cases the parent node and the child nodes will be same, we need to
+		 * ensure that we dont create them accidentally again
+		 */
+		XmlElement qNameElement = null;
 
-        if( element != null )
-        {
-            return element.getChildNode( this.path, false );
-        }
+		if (_params[0].equals(parent.getLocalName())) {
+			qNameElement = parent;
+		}
+		else {
+			qNameElement = parent.getChildElement(_params[0], true);
+		}
 
-        return null;
-    }
+		if (qNameElement != null) {
+			val = (val != null) ? value.trim() : StringPool.EMPTY;
+
+			// update only local part
+
+			if ((_params.length == 2) && Objects.equals("localpart", _params[1])) {
+				String existingText = qNameElement.getText();
+
+				if ((existingText != null) && (existingText.indexOf(":") != -1)) {
+					String updatedLocalPart = existingText.substring(0, existingText.indexOf(":") + 1);
+
+					updatedLocalPart = updatedLocalPart + val;
+
+					qNameElement.setText(updatedLocalPart);
+				}
+				else {
+					qNameElement.setText(PortletAppModelConstants.DEFAULT_QNAME_PREFIX + ":" + val);
+				}
+			}
+			else {
+				qNameElement.setText(PortletAppModelConstants.DEFAULT_QNAME_PREFIX + ":" + val);
+			}
+		}
+	}
+
+	private String[] _params;
+	private XmlPath _path;
 
 }

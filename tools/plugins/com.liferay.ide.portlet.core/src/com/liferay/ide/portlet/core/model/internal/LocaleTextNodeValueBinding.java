@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,10 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- * Contributors:
- *               Kamesh Sampath - initial implementation
- *******************************************************************************/
+ */
 
 package com.liferay.ide.portlet.core.model.internal;
 
@@ -27,67 +24,48 @@ import org.eclipse.sapphire.modeling.xml.XmlValueBindingImpl;
 /**
  * @author Kamesh Sampath
  */
-public class LocaleTextNodeValueBinding extends XmlValueBindingImpl
-{
+public class LocaleTextNodeValueBinding extends XmlValueBindingImpl {
 
-    final Locale[] AVAILABLE_LOCALES = Locale.getAvailableLocales();
+	@Override
+	public String read() {
+		String value = null;
 
-    /*
-     * (non-Javadoc)
-     * @see org.eclipse.sapphire.modeling.ValuePropertyBinding#read()
-     */
-    @Override
-    public String read()
-    {
-        String value = null;
+		XmlElement xmlElement = xml(false);
 
-        final XmlElement element = xml( false );
+		if (xmlElement != null) {
+			xmlElement = xml(true);
 
-        if( element != null )
-        {
+			value = xmlElement.getText();
 
-            value = xml( true ).getText();
+			if (!value.isEmpty()) {
+				value = value.trim();
 
-            // System.out.println( "Locale Reading VALUE ___________________ " + value );
+				for (Locale locale : _availableLocales) {
+					if (value.equals(locale.toString())) {
+						value = PortletUtil.buildLocaleDisplayString(locale.getDisplayName(), locale);
 
-            if( !value.isEmpty() )
-            {
-                value = value.trim();
-                for( int i = 0; i < AVAILABLE_LOCALES.length; i++ )
-                {
-                    Locale locale = AVAILABLE_LOCALES[i];
-                    if( value.equals( locale.toString() ) )
-                    {
-                        value = PortletUtil.buildLocaleDisplayString( locale.getDisplayName(), locale );
-                        break;
-                    }
-                }
-            }
-        }
+						break;
+					}
+				}
+			}
+		}
 
-        return value;
-    }
+		return value;
+	}
 
-    /*
-     * (non-Javadoc)
-     * @see org.eclipse.sapphire.modeling.ValuePropertyBinding#write(java.lang.String)
-     */
-    @Override
-    public void write( String value )
-    {
-        String val = value;
+	@Override
+	public void write(String value) {
+		String val = value;
 
-        // System.out.println( "Locale : VALUE ___________________ " + val );
+		if (val != null) {
+			val = PortletUtil.localeString(value.trim());
 
-        if( val != null )
-        {
-            val = PortletUtil.localeString( value.trim() );
-            xml( true ).setText( val );
+			XmlElement xmlElement = xml(true);
 
-        }
+			xmlElement.setText(val);
+		}
+	}
 
-        // System.out.println( "LocaleTextNodeValueBinding.write() - Parent " + xml( true ).getParent() );
-
-    }
+	private Locale[] _availableLocales = Locale.getAvailableLocales();
 
 }

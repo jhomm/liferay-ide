@@ -1,16 +1,17 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0"?>
 <feature
-      id="com.liferay.ide.hidden"
-      label="Liferay IDE Hidden"
-      version="3.0.0.qualifier"
-      provider-name="Liferay, Inc.">
+	id="com.liferay.ide.hidden"
+	label="Liferay IDE Hidden"
+	provider-name="Liferay, Inc."
+	version="4.0.0.qualifier"
+>
 
-   <description url="http://www.liferay.com/community/liferay-projects/liferay-ide/overview">
-      Liferay IDE is the official set of Eclipse plugins for supporting Liferay Portal development platorm.
-   </description>
+	<description url="http://www.liferay.com/community/liferay-projects/liferay-ide/overview">
+	  Liferay IDE is the official set of Eclipse plugins for supporting Liferay Portal development platform.
+	</description>
 
-   <copyright url="http://www.liferay.com/products/liferay-portal/lgpl">
-      /**
+	<copyright url="http://www.liferay.com/products/liferay-portal/lgpl">
+	  /**
 * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
 *
 * This library is free software; you can redistribute it and/or
@@ -24,94 +25,144 @@
 * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
 * the GNU Lesser General Public License for more details.
 */
-   </copyright>
+	</copyright>
 
-   <license url="http://www.gnu.org/licenses/lgpl-2.1.html">
-      Liferay IDE is free software distributed under the terms of the Lesser GNU Public License. See URL for full license text.  http://www.gnu.org/licenses/lgpl-2.1.html
-   </license>
+	<license url="http://www.gnu.org/licenses/lgpl-2.1.html">
+	  Liferay IDE is free software distributed under the terms of the Lesser GNU Public License. See URL for full license text. http://www.gnu.org/licenses/lgpl-2.1.html
+	</license>
 
-   <plugin
-         id="com.google.guava"
-         download-size="0"
-         install-size="0"
-         version="0.0.0"
-         unpack="false"/>
+	<includes
+		id="bndtools.main.feature"
+		version="0.0.0"
+	/>
 
-   <plugin
-         id="minimal-json"
-         download-size="0"
-         install-size="0"
-         version="0.0.0"
-         unpack="false"/>
+	<includes
+		id="bndtools.m2e.feature"
+		version="0.0.0"
+	/>
 
-   <plugin
-         id="org.apache.commons.codec"
-         download-size="0"
-         install-size="0"
-         version="0.0.0"
-         unpack="false"/>
+	<includes
+		id="org.eclipse.buildship"
+		version="0.0.0"
+	/>
 
-   <plugin
-         id="org.apache.commons.collections"
-         download-size="0"
-         install-size="0"
-         version="0.0.0"
-         unpack="false"/>
+	<plugin
+		download-size="0"
+		id="com.google.guava"
+		install-size="0"
+		unpack="false"
+		version="0.0.0"
+	/>
 
-   <plugin
-         id="org.apache.commons.io"
-         download-size="0"
-         install-size="0"
-         version="0.0.0"
-         unpack="false"/>
+	<plugin
+		download-size="0"
+		id="com.google.gson"
+		install-size="0"
+		unpack="false"
+		version="0.0.0"
+	/>
 
-   <plugin
-         id="org.apache.commons.lang"
-         download-size="0"
-         install-size="0"
-         version="0.0.0"
-         unpack="false"/>
+	<plugin
+		download-size="0"
+		id="org.apache.commons.codec"
+		install-size="0"
+		unpack="false"
+		version="0.0.0"
+	/>
 
-   <plugin
-         id="org.apache.commons.logging"
-         download-size="0"
-         install-size="0"
-         version="0.0.0"
-         unpack="false"/>
+	<plugin
+		download-size="0"
+		id="org.apache.commons.collections"
+		install-size="0"
+		unpack="false"
+		version="0.0.0"
+	/>
 
-   <plugin
-         id="org.eclipse.jst.jsp.search.editor"
-         download-size="0"
-         install-size="0"
-         version="0.0.0"
-         unpack="false"/>
+	<plugin
+		download-size="0"
+		id="org.apache.commons.io"
+		install-size="0"
+		unpack="false"
+		version="0.0.0"
+	/>
 
-   <plugin
-         id="org.eclipse.wst.html.search.editor"
-         download-size="0"
-         install-size="0"
-         version="0.0.0"
-         unpack="false"/>
+	<plugin
+		download-size="0"
+		id="org.apache.commons.lang"
+		install-size="0"
+		unpack="false"
+		version="0.0.0"
+	/>
 
-   <plugin
-         id="org.json"
-         download-size="0"
-         install-size="0"
-         version="0.0.0"
-         unpack="false"/>
+	<plugin
+		download-size="0"
+		id="org.apache.commons.logging"
+		install-size="0"
+		unpack="false"
+		version="0.0.0"
+	/>
 
-   <plugin
-         id="org.objectweb.asm"
-         download-size="0"
-         install-size="0"
-         version="0.0.0"
-         unpack="false"/>
+	<plugin
+		download-size="0"
+		id="org.eclipse.jst.jsp.search.editor"
+		install-size="0"
+		unpack="false"
+		version="0.0.0"
+	/>
 
-   <plugin
-         id="biz.aQute.remote.api"
-         download-size="0"
-         install-size="0"
-         version="0.0.0"
-         unpack="false"/>
+	<plugin
+		download-size="0"
+		id="org.eclipse.wst.html.search.editor"
+		install-size="0"
+		unpack="false"
+		version="0.0.0"
+	/>
 
+	<plugin
+		download-size="0"
+		id="org.gradle.toolingapi"
+		install-size="0"
+		unpack="false"
+		version="0.0.0"
+	/>
+
+	<plugin
+		download-size="0"
+		id="org.json"
+		install-size="0"
+		unpack="false"
+		version="0.0.0"
+	/>
+
+	<plugin
+		download-size="0"
+		id="org.objectweb.asm"
+		install-size="0"
+		unpack="false"
+		version="5.2.0.v20170126-0011"
+	/>
+
+	<plugin
+		download-size="0"
+		id="com.fasterxml.jackson.core.jackson-annotations"
+		install-size="0"
+		unpack="false"
+		version="0.0.0"
+	/>
+
+	<plugin
+		download-size="0"
+		id="com.fasterxml.jackson.core.jackson-core"
+		install-size="0"
+		unpack="false"
+		version="0.0.0"
+	/>
+
+	<plugin
+		download-size="0"
+		id="com.fasterxml.jackson.core.jackson-databind"
+		install-size="0"
+		unpack="false"
+		version="0.0.0"
+	/>
 </feature>

@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,10 +10,11 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *******************************************************************************/
+ */
 
 package com.liferay.ide.layouttpl.core.model.internal;
 
+import com.liferay.ide.core.util.SapphireContentAccessor;
 import com.liferay.ide.layouttpl.core.model.LayoutTplElement;
 import com.liferay.ide.layouttpl.core.model.PortletColumnElement;
 import com.liferay.ide.layouttpl.core.model.PortletLayoutElement;
@@ -21,57 +22,65 @@ import com.liferay.ide.layouttpl.core.model.PortletLayoutElement;
 import org.eclipse.sapphire.Element;
 import org.eclipse.sapphire.ElementList;
 import org.eclipse.sapphire.InitialValueService;
-
+import org.eclipse.sapphire.Value;
 
 /**
  * @author Kuo Zhang
- *
  */
-public class PortletColumnWeightInitialValueService extends InitialValueService
-{
+public class PortletColumnWeightInitialValueService extends InitialValueService implements SapphireContentAccessor {
 
-    @Override
-    protected String compute()
-    {
-        final PortletColumnElement column = (PortletColumnElement)context( Element.class );
+	@Override
+	protected String compute() {
+		PortletColumnElement column = (PortletColumnElement)context(Element.class);
 
-        final PortletLayoutElement parentLayout = column.nearest( PortletLayoutElement.class );
-        final LayoutTplElement layoutTpl = column.nearest( LayoutTplElement.class );
+		PortletLayoutElement parentLayout = column.nearest(PortletLayoutElement.class);
+		LayoutTplElement layoutTpl = column.nearest(LayoutTplElement.class);
 
-        int weightSum = 0;
+		int weightSum = 0;
 
-        ElementList<PortletColumnElement> portletColumns = parentLayout.getPortletColumns();
-        for( PortletColumnElement col : portletColumns )
-        {
-            if( col != column )
-            {
-                weightSum += col.getWeight().content().intValue();
-            }
-        }
+		ElementList<PortletColumnElement> portletColumns = parentLayout.getPortletColumns();
 
-        final int fullWeight = column.getFullWeight().content().intValue();
-        int initialWeight = layoutTpl.getBootstrapStyle().content() ? 3 : 25;
+		for (PortletColumnElement col : portletColumns) {
+			if (col != column) {
+				Integer colWeightContent = get(col.getWeight());
 
-        if( weightSum >=0 && weightSum < fullWeight )
-        {
-            initialWeight = fullWeight - weightSum;
-        }
-        else if( weightSum == fullWeight )
-        {
-            // the index of last valid column is portletColumns.size() - 2
-            // because portletColumns().size() -1 is the new inserted column
-            PortletColumnElement lastValidColumn = portletColumns.get( portletColumns.size() - 2 );
-            int lastValidWeight = lastValidColumn.getWeight().content().intValue();
+				weightSum += colWeightContent.intValue();
+			}
+		}
 
-            if( lastValidWeight > 1 )
-            {
-                initialWeight = lastValidWeight / 2;
-                lastValidWeight = lastValidWeight - initialWeight;
-                lastValidColumn.setWeight( lastValidWeight );
-            }
-        }
+		Integer fullWeightContent = get(column.getFullWeight());
 
-        return String.valueOf( initialWeight );
-    }
+		int fullWeight = fullWeightContent.intValue();
+
+		int initialWeight = get(layoutTpl.getBootstrapStyle()) ? 3 : 25;
+
+		if ((weightSum >= 0) && (weightSum < fullWeight)) {
+			initialWeight = fullWeight - weightSum;
+		}
+		else if (weightSum == fullWeight) {
+
+			/**
+			 * the index of last valid column is portletColumns.size() - 2, because
+			 * portletColumns().size() -1 is the new inserted column
+			 */
+			PortletColumnElement lastValidColumn = portletColumns.get(portletColumns.size() - 2);
+
+			Value<Integer> lvColumnWeight = lastValidColumn.getWeight();
+
+			Integer lvWeightContent = lvColumnWeight.content();
+
+			int lastValidWeight = lvWeightContent.intValue();
+
+			if (lastValidWeight > 1) {
+				initialWeight = lastValidWeight / 2;
+
+				lastValidWeight = lastValidWeight - initialWeight;
+
+				lastValidColumn.setWeight(lastValidWeight);
+			}
+		}
+
+		return String.valueOf(initialWeight);
+	}
 
 }

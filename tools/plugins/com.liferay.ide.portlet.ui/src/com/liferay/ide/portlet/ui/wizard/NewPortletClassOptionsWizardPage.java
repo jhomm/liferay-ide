@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,8 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.portlet.ui.wizard;
 
@@ -27,143 +26,170 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.wst.common.frameworks.datamodel.IDataModel;
 
 /**
- * @author Greg Amerson
+ * @author Gregory Amerson
  * @author Cindy Li
  */
-@SuppressWarnings( "restriction" )
-public class NewPortletClassOptionsWizardPage extends NewWebClassOptionsWizardPage
-    implements INewPortletClassDataModelProperties
-{
-    protected Button destroyButton;
-    protected Button doAboutButton;
-    protected Button doConfigButton;
-    protected Button doEditButton;
-    protected Button doEditDefaultsButton;
-    protected Button doEditGuestButton;
-    protected Button doHelpButton;
-    protected Button doPreviewButton;
-    protected Button doPrintButton;
-    protected Button doViewButton;
-    protected boolean fragment;
-    protected Button initButton;
-    protected Button processActionButton;
-    protected Button serveResourceButton;
+@SuppressWarnings("restriction")
+public class NewPortletClassOptionsWizardPage
+	extends NewWebClassOptionsWizardPage implements INewPortletClassDataModelProperties {
 
-    public NewPortletClassOptionsWizardPage(
-        IDataModel model, String pageName, String pageDesc, String pageTitle, boolean fragment )
-    {
-        super( model, pageName, pageDesc, pageTitle );
-        this.fragment = fragment;
-    }
+	public NewPortletClassOptionsWizardPage(
+		IDataModel model, String pageName, String pageDesc, String pageTitle, boolean fragment) {
 
-    @Override
-    protected void createStubsComposite( Composite parent )
-    {
-        super.createStubsComposite( parent );
+		super(model, pageName, pageDesc, pageTitle);
 
-        Composite comp = new Composite( methodStubs, SWT.NULL );
+		this.fragment = fragment;
+	}
 
-        GridLayout layout = new GridLayout( 4, false );
-        layout.marginWidth = 0;
-        layout.makeColumnsEqualWidth = true;
+	@Override
+	protected void createStubsComposite(Composite parent) {
+		super.createStubsComposite(parent);
 
-        comp.setLayout( layout );
+		Composite comp = new Composite(methodStubs, SWT.NULL);
 
-        GridData data = new GridData( GridData.FILL_BOTH );
+		GridLayout layout = new GridLayout(4, false);
 
-        comp.setLayoutData( data );
+		layout.marginWidth = 0;
+		layout.makeColumnsEqualWidth = true;
 
-        initButton = new Button( comp, SWT.CHECK );
-        initButton.setText( "&init" ); //$NON-NLS-1$
-        synchHelper.synchCheckbox( initButton, INewPortletClassDataModelProperties.INIT_OVERRIDE, null );
+		comp.setLayout(layout);
 
-        destroyButton = new Button( comp, SWT.CHECK );
-        destroyButton.setText( "destro&y" ); //$NON-NLS-1$
-        synchHelper.synchCheckbox( destroyButton, INewPortletClassDataModelProperties.DESTROY_OVERRIDE, null );
+		GridData data = new GridData(GridData.FILL_BOTH);
 
-        doViewButton = new Button( comp, SWT.CHECK );
-        doViewButton.setText( "doVie&w" ); //$NON-NLS-1$
-        synchHelper.synchCheckbox( doViewButton, INewPortletClassDataModelProperties.DOVIEW_OVERRIDE, null );
+		comp.setLayoutData(data);
 
-        doEditButton = new Button( comp, SWT.CHECK );
-        doEditButton.setText( "doEdi&t" ); //$NON-NLS-1$
-        synchHelper.synchCheckbox( doEditButton, INewPortletClassDataModelProperties.DOEDIT_OVERRIDE, null );
+		initButton = new Button(comp, SWT.CHECK);
 
-        doHelpButton = new Button( comp, SWT.CHECK );
-        doHelpButton.setText( "doHel&p" ); //$NON-NLS-1$
-        synchHelper.synchCheckbox( doHelpButton, INewPortletClassDataModelProperties.DOHELP_OVERRIDE, null );
+		initButton.setText("&init");
 
-        doAboutButton = new Button( comp, SWT.CHECK );
-        doAboutButton.setText( "doA&bout" ); //$NON-NLS-1$
-        synchHelper.synchCheckbox( doAboutButton, INewPortletClassDataModelProperties.DOABOUT_OVERRIDE, null );
+		synchHelper.synchCheckbox(initButton, INewPortletClassDataModelProperties.INIT_OVERRIDE, null);
 
-        doConfigButton = new Button( comp, SWT.CHECK );
-        doConfigButton.setText( "doCon&fig" ); //$NON-NLS-1$
-        synchHelper.synchCheckbox( doConfigButton, INewPortletClassDataModelProperties.DOCONFIG_OVERRIDE, null );
+		destroyButton = new Button(comp, SWT.CHECK);
 
-        doEditDefaultsButton = new Button( comp, SWT.CHECK );
-        doEditDefaultsButton.setText( "doEditDefa&ults" ); //$NON-NLS-1$
-        synchHelper.synchCheckbox(
-            doEditDefaultsButton, INewPortletClassDataModelProperties.DOEDITDEFAULTS_OVERRIDE, null );
+		destroyButton.setText("destro&y");
 
-        doEditGuestButton = new Button( comp, SWT.CHECK );
-        doEditGuestButton.setText( "doEditGu&est" ); //$NON-NLS-1$
-        synchHelper.synchCheckbox( doEditGuestButton, INewPortletClassDataModelProperties.DOEDITGUEST_OVERRIDE, null );
+		synchHelper.synchCheckbox(destroyButton, INewPortletClassDataModelProperties.DESTROY_OVERRIDE, null);
 
-        doPreviewButton = new Button( comp, SWT.CHECK );
-        doPreviewButton.setText( "doPre&view" ); //$NON-NLS-1$
-        synchHelper.synchCheckbox( doPreviewButton, INewPortletClassDataModelProperties.DOPREVIEW_OVERRIDE, null );
+		doViewButton = new Button(comp, SWT.CHECK);
 
-        doPrintButton = new Button( comp, SWT.CHECK );
-        doPrintButton.setText( "doP&rint" ); //$NON-NLS-1$
-        synchHelper.synchCheckbox( doPrintButton, INewPortletClassDataModelProperties.DOPRINT_OVERRIDE, null );
+		doViewButton.setText("doVie&w");
 
-        processActionButton = new Button( comp, SWT.CHECK );
-        processActionButton.setText( "&processAction" ); //$NON-NLS-1$
-        synchHelper.synchCheckbox(
-            processActionButton, INewPortletClassDataModelProperties.PROCESSACTION_OVERRIDE, null );
+		synchHelper.synchCheckbox(doViewButton, INewPortletClassDataModelProperties.DOVIEW_OVERRIDE, null);
 
-        serveResourceButton = new Button(comp, SWT.CHECK);
-        serveResourceButton.setText( "&serveResource" ); //$NON-NLS-1$
-        synchHelper.synchCheckbox( serveResourceButton, INewPortletClassDataModelProperties.SERVERESOURCE_OVERRIDE, null );
-    }
+		doEditButton = new Button(comp, SWT.CHECK);
 
-    @Override
-    protected void enter()
-    {
-        super.enter();
+		doEditButton.setText("doEdi&t");
 
-        boolean mvcPortlet = PortletSupertypesValidator.isMVCPortletSuperclass( getDataModel() );
+		synchHelper.synchCheckbox(doEditButton, INewPortletClassDataModelProperties.DOEDIT_OVERRIDE, null);
 
-        boolean liferayPortlet = PortletSupertypesValidator.isLiferayPortletSuperclass( getDataModel() );
+		doHelpButton = new Button(comp, SWT.CHECK);
 
-        inheritButton.setEnabled( !mvcPortlet );
+		doHelpButton.setText("doHel&p");
 
-        destroyButton.setEnabled( !mvcPortlet );
+		synchHelper.synchCheckbox(doHelpButton, INewPortletClassDataModelProperties.DOHELP_OVERRIDE, null);
 
-        doViewButton.setEnabled( !mvcPortlet && !getDataModel().getBooleanProperty( VIEW_MODE ) );
+		doAboutButton = new Button(comp, SWT.CHECK);
 
-        doEditButton.setEnabled( !mvcPortlet && !getDataModel().getBooleanProperty( EDIT_MODE ) );
+		doAboutButton.setText("doA&bout");
 
-        doHelpButton.setEnabled( !mvcPortlet && !getDataModel().getBooleanProperty( HELP_MODE ) );
+		synchHelper.synchCheckbox(doAboutButton, INewPortletClassDataModelProperties.DOABOUT_OVERRIDE, null);
 
-        doAboutButton.setEnabled( !mvcPortlet && liferayPortlet && !getDataModel().getBooleanProperty( ABOUT_MODE ) );
+		doConfigButton = new Button(comp, SWT.CHECK);
 
-        doConfigButton.setEnabled( !mvcPortlet && liferayPortlet && !getDataModel().getBooleanProperty( CONFIG_MODE ) );
+		doConfigButton.setText("doCon&fig");
 
-        doEditDefaultsButton.setEnabled( !mvcPortlet && liferayPortlet &&
-            !getDataModel().getBooleanProperty( EDITDEFAULTS_MODE ) );
+		synchHelper.synchCheckbox(doConfigButton, INewPortletClassDataModelProperties.DOCONFIG_OVERRIDE, null);
 
-        doEditGuestButton.setEnabled( !mvcPortlet && liferayPortlet &&
-            !getDataModel().getBooleanProperty( EDITGUEST_MODE ) );
+		doEditDefaultsButton = new Button(comp, SWT.CHECK);
 
-        doPreviewButton.setEnabled( !mvcPortlet && liferayPortlet && !getDataModel().getBooleanProperty( PREVIEW_MODE ) );
+		doEditDefaultsButton.setText("doEditDefa&ults");
 
-        doPrintButton.setEnabled( !mvcPortlet && liferayPortlet && !getDataModel().getBooleanProperty( PRINT_MODE ) );
+		synchHelper.synchCheckbox(
+			doEditDefaultsButton, INewPortletClassDataModelProperties.DOEDITDEFAULTS_OVERRIDE, null);
 
-        processActionButton.setEnabled( !mvcPortlet );
+		doEditGuestButton = new Button(comp, SWT.CHECK);
 
-        serveResourceButton.setEnabled(!mvcPortlet);
-    }
+		doEditGuestButton.setText("doEditGu&est");
+
+		synchHelper.synchCheckbox(doEditGuestButton, INewPortletClassDataModelProperties.DOEDITGUEST_OVERRIDE, null);
+
+		doPreviewButton = new Button(comp, SWT.CHECK);
+
+		doPreviewButton.setText("doPre&view");
+
+		synchHelper.synchCheckbox(doPreviewButton, INewPortletClassDataModelProperties.DOPREVIEW_OVERRIDE, null);
+
+		doPrintButton = new Button(comp, SWT.CHECK);
+
+		doPrintButton.setText("doP&rint");
+
+		synchHelper.synchCheckbox(doPrintButton, INewPortletClassDataModelProperties.DOPRINT_OVERRIDE, null);
+
+		processActionButton = new Button(comp, SWT.CHECK);
+
+		processActionButton.setText("&processAction");
+
+		synchHelper.synchCheckbox(
+			processActionButton, INewPortletClassDataModelProperties.PROCESSACTION_OVERRIDE, null);
+
+		serveResourceButton = new Button(comp, SWT.CHECK);
+
+		serveResourceButton.setText("&serveResource");
+
+		synchHelper.synchCheckbox(
+			serveResourceButton, INewPortletClassDataModelProperties.SERVERESOURCE_OVERRIDE, null);
+	}
+
+	@Override
+	protected void enter() {
+		super.enter();
+
+		boolean mvcPortlet = PortletSupertypesValidator.isMVCPortletSuperclass(getDataModel());
+
+		boolean liferayPortlet = PortletSupertypesValidator.isLiferayPortletSuperclass(getDataModel());
+
+		inheritButton.setEnabled(!mvcPortlet);
+
+		destroyButton.setEnabled(!mvcPortlet);
+
+		doViewButton.setEnabled(!mvcPortlet && !getDataModel().getBooleanProperty(VIEW_MODE));
+
+		doEditButton.setEnabled(!mvcPortlet && !getDataModel().getBooleanProperty(EDIT_MODE));
+
+		doHelpButton.setEnabled(!mvcPortlet && !getDataModel().getBooleanProperty(HELP_MODE));
+
+		doAboutButton.setEnabled(!mvcPortlet && liferayPortlet && !getDataModel().getBooleanProperty(ABOUT_MODE));
+
+		doConfigButton.setEnabled(!mvcPortlet && liferayPortlet && !getDataModel().getBooleanProperty(CONFIG_MODE));
+
+		doEditDefaultsButton.setEnabled(
+			!mvcPortlet && liferayPortlet && !getDataModel().getBooleanProperty(EDITDEFAULTS_MODE));
+
+		doEditGuestButton.setEnabled(
+			!mvcPortlet && liferayPortlet && !getDataModel().getBooleanProperty(EDITGUEST_MODE));
+
+		doPreviewButton.setEnabled(!mvcPortlet && liferayPortlet && !getDataModel().getBooleanProperty(PREVIEW_MODE));
+
+		doPrintButton.setEnabled(!mvcPortlet && liferayPortlet && !getDataModel().getBooleanProperty(PRINT_MODE));
+
+		processActionButton.setEnabled(!mvcPortlet);
+
+		serveResourceButton.setEnabled(!mvcPortlet);
+	}
+
+	protected Button destroyButton;
+	protected Button doAboutButton;
+	protected Button doConfigButton;
+	protected Button doEditButton;
+	protected Button doEditDefaultsButton;
+	protected Button doEditGuestButton;
+	protected Button doHelpButton;
+	protected Button doPreviewButton;
+	protected Button doPrintButton;
+	protected Button doViewButton;
+	protected boolean fragment;
+	protected Button initButton;
+	protected Button processActionButton;
+	protected Button serveResourceButton;
 
 }

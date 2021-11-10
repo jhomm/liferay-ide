@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,10 +10,7 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- * Contributors:
- *      Gregory Amerson - initial implementation and ongoing maintenance
- *******************************************************************************/
+ */
 
 package com.liferay.ide.hook.core.util;
 
@@ -29,6 +26,8 @@ import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
+import org.eclipse.sapphire.ElementHandle;
+import org.eclipse.sapphire.Value;
 import org.eclipse.wst.validation.Validator;
 import org.eclipse.wst.validation.internal.ConfigurationManager;
 import org.eclipse.wst.validation.internal.ProjectConfiguration;
@@ -38,6 +37,7 @@ import org.eclipse.wst.validation.internal.ValidatorMutable;
 import org.eclipse.wst.validation.internal.model.FilterGroup;
 import org.eclipse.wst.validation.internal.model.FilterRule;
 import org.eclipse.wst.validation.internal.model.ProjectPreferences;
+
 import org.w3c.dom.Document;
 import org.w3c.dom.DocumentType;
 
@@ -45,180 +45,178 @@ import org.w3c.dom.DocumentType;
  * @author Gregory Amerson
  * @author Simon Jiang
  */
-@SuppressWarnings( "restriction" )
-public class HookUtil
-{
+@SuppressWarnings("restriction")
+public class HookUtil {
 
-    public static boolean configureJSPSyntaxValidationExclude(
-        IProject project, IFolder customFolder, boolean configureRule )
-    {
-        boolean retval = false;
+	public static boolean configureJSPSyntaxValidationExclude(
+		IProject project, IFolder customFolder, boolean configureRule) {
 
-        try
-        {
-            final Validator validator = ValManager.getDefault().getValidator( HookCore.VALIDATOR_ID, project );
+		boolean retval = false;
 
-            final ValidatorMutable validatorTable = new ValidatorMutable( validator );
+		try {
+			ValManager valManager = ValManager.getDefault();
 
-            // check for exclude group
-            FilterGroup excludeGroup = null;
+			Validator validator = valManager.getValidator(HookCore.VALIDATOR_ID, project);
 
-            for( FilterGroup group : validatorTable.getGroups() )
-            {
-                if( group.isExclude() )
-                {
-                    excludeGroup = group;
-                    break;
-                }
-            }
+			ValidatorMutable validatorTable = new ValidatorMutable(validator);
 
-            final String customJSPFolderPattern =
-                customFolder.getFullPath().makeRelativeTo( customFolder.getProject().getFullPath() ).toPortableString();
+			// check for exclude group
 
-            final FilterRule folderRule =
-                FilterRule.createFile( customJSPFolderPattern, true, FilterRule.File.FileTypeFolder );
+			FilterGroup excludeGroup = null;
 
-            if( excludeGroup == null )
-            {
-                if( configureRule )
-                {
-                    excludeGroup = FilterGroup.create( true, new FilterRule[] { folderRule } );
-                    validatorTable.add( excludeGroup );
-                    retval = true;
-                }
-            }
-            else
-            {
-                boolean hasCustomJSPFolderRule = false;
+			for (FilterGroup group : validatorTable.getGroups()) {
+				if (group.isExclude()) {
+					excludeGroup = group;
 
-                for( FilterRule rule : excludeGroup.getRules() )
-                {
-                    if( customJSPFolderPattern.equals( rule.getPattern() ) )
-                    {
-                        if( configureRule )
-                        {
-                            FilterGroup newExcludeGroup = FilterGroup.removeRule( excludeGroup, rule );
-                            validatorTable.replaceFilterGroup(
-                                excludeGroup, FilterGroup.addRule( newExcludeGroup, folderRule ) );
-                        }
-                        hasCustomJSPFolderRule = true;
-                        break;
-                    }
-                }
+					break;
+				}
+			}
 
-                if( !hasCustomJSPFolderRule )
-                {
-                    if( configureRule )
-                    {
-                        validatorTable.replaceFilterGroup(
-                            excludeGroup, FilterGroup.addRule( excludeGroup, folderRule ) );
+			IPath customFolderPath = customFolder.getFullPath();
 
-                        hasCustomJSPFolderRule = true;
-                    }
-                }
+			IProject p = customFolder.getProject();
 
-                retval = hasCustomJSPFolderRule;
-            }
+			IPath projectPath = p.getFullPath();
 
-            if( configureRule )
-            {
-                final ProjectConfiguration pc =
-                    ConfigurationManager.getManager().getProjectConfiguration( project );
-                pc.setDoesProjectOverride( true );
+			IPath path = customFolderPath.makeRelativeTo(projectPath);
 
-                final ProjectPreferences pp = new ProjectPreferences( project, true, false, null );
+			String customJSPFolderPattern = path.toPortableString();
 
-                final ValPrefManagerProject vpm = new ValPrefManagerProject( project );
+			FilterRule folderRule = FilterRule.createFile(customJSPFolderPattern, true, FilterRule.File.FileTypeFolder);
 
-                final ValidatorMutable[] validatorTables = new ValidatorMutable[] { validatorTable };
+			if (excludeGroup == null) {
+				if (configureRule) {
+					excludeGroup = FilterGroup.create(true, new FilterRule[] {folderRule});
 
-                vpm.savePreferences( pp, validatorTables );
-            }
-        }
-        catch( Exception e )
-        {
-            HookCore.logError( "Unable to configure jsp syntax validation folder exclude rule.", e ); //$NON-NLS-1$
-        }
+					validatorTable.add(excludeGroup);
 
-        return retval;
-    }
+					retval = true;
+				}
+			}
+			else {
+				boolean hasCustomJSPFolderRule = false;
 
-    public static IFolder getCustomJspFolder( Hook hook, IProject project )
-    {
-        CustomJspDir element = hook.getCustomJspDir().content();
+				for (FilterRule rule : excludeGroup.getRules()) {
+					if (customJSPFolderPattern.equals(rule.getPattern())) {
+						if (configureRule) {
+							FilterGroup newExcludeGroup = FilterGroup.removeRule(excludeGroup, rule);
 
-        if( element != null && ( !element.getValue().empty() ) )
-        {
-            // IDE-110 IDE-648
-            final IWebProject webproject = LiferayCore.create( IWebProject.class, project );
+							validatorTable.replaceFilterGroup(
+								excludeGroup, FilterGroup.addRule(newExcludeGroup, folderRule));
+						}
 
-            if( webproject != null && webproject.getDefaultDocrootFolder() != null )
-            {
-                final IFolder defaultDocroot = webproject.getDefaultDocrootFolder();
+						hasCustomJSPFolderRule = true;
 
-                if( defaultDocroot != null )
-                {
-                    org.eclipse.sapphire.modeling.Path customJspDir = element.getValue().content();
+						break;
+					}
+				}
 
-                    return defaultDocroot.getFolder( customJspDir.toPortableString() );
-                }
-            }
-        }
+				if (!hasCustomJSPFolderRule && configureRule) {
+					validatorTable.replaceFilterGroup(excludeGroup, FilterGroup.addRule(excludeGroup, folderRule));
 
-        return null;
-    }
+					hasCustomJSPFolderRule = true;
+				}
 
-    public static IPath getCustomJspPath( IProject project )
-    {
-        final HookDescriptorHelper hookDescriptor = new HookDescriptorHelper( project );
-        final String customJSPFolder = hookDescriptor.getCustomJSPFolder( null );
+				retval = hasCustomJSPFolderRule;
+			}
 
-        if( customJSPFolder != null )
-        {
-            final IFolder docFolder = CoreUtil.getDefaultDocrootFolder( project );
+			if (configureRule) {
+				ConfigurationManager configurationManager = ConfigurationManager.getManager();
 
-            if( docFolder != null )
-            {
-                final IPath newPath = Path.fromOSString( customJSPFolder );
-                final IPath pathValue = docFolder.getFullPath().append( newPath );
+				ProjectConfiguration pc = configurationManager.getProjectConfiguration(project);
 
-                return pathValue;
-            }
-        }
+				pc.setDoesProjectOverride(true);
 
-        return null;
-    }
+				ProjectPreferences pp = new ProjectPreferences(project, true, false, null);
 
-    /**
-     * A small utility method used to compute the DTD version
-     *
-     * @param document
-     *            - the document that is loaded by the editor
-     */
-    public static String getDTDVersion( Document document )
-    {
-        String dtdVersion = null;
-        DocumentType docType = document.getDoctype();
+				ValPrefManagerProject vpm = new ValPrefManagerProject(project);
 
-        if( docType != null )
-        {
-            String publicId = docType.getPublicId();
-            String systemId = docType.getSystemId();
+				ValidatorMutable[] validatorTables = {validatorTable};
 
-            if( publicId != null && systemId != null )
-            {
-                if( publicId.contains( "6.0.0" ) || systemId.contains( "6.0.0" ) ) //$NON-NLS-1$ //$NON-NLS-2$
-                {
-                    dtdVersion = "6.0.0"; //$NON-NLS-1$
-                }
-                else if( publicId.contains( "6.1.0" ) || systemId.contains( "6.1.0" ) ) //$NON-NLS-1$ //$NON-NLS-2$
-                {
-                    dtdVersion = "6.1.0"; //$NON-NLS-1$
-                }
-            }
-        }
+				vpm.savePreferences(pp, validatorTables);
+			}
+		}
+		catch (Exception e) {
+			HookCore.logError("Unable to configure jsp syntax validation folder exclude rule.", e);
+		}
 
-        return dtdVersion;
-    }
+		return retval;
+	}
+
+	public static IFolder getCustomJspFolder(Hook hook, IProject project) {
+		ElementHandle<CustomJspDir> customJspDirHandle = hook.getCustomJspDir();
+
+		CustomJspDir element = customJspDirHandle.content();
+
+		if (element != null) {
+			Value<org.eclipse.sapphire.modeling.Path> pathValue = element.getValue();
+
+			if (!pathValue.empty()) {
+
+				// IDE-110 IDE-648
+
+				IWebProject webproject = LiferayCore.create(IWebProject.class, project);
+
+				if ((webproject != null) && (webproject.getDefaultDocrootFolder() != null)) {
+					IFolder defaultDocroot = webproject.getDefaultDocrootFolder();
+
+					if (defaultDocroot != null) {
+						org.eclipse.sapphire.modeling.Path customJspDir = pathValue.content();
+
+						return defaultDocroot.getFolder(customJspDir.toPortableString());
+					}
+				}
+			}
+		}
+
+		return null;
+	}
+
+	public static IPath getCustomJspPath(IProject project) {
+		HookDescriptorHelper hookDescriptor = new HookDescriptorHelper(project);
+
+		String customJSPFolder = hookDescriptor.getCustomJSPFolder(null);
+
+		if (customJSPFolder != null) {
+			IFolder docFolder = CoreUtil.getDefaultDocrootFolder(project);
+
+			if (docFolder != null) {
+				IPath newPath = Path.fromOSString(customJSPFolder);
+
+				IPath pathValue = docFolder.getFullPath();
+
+				return pathValue.append(newPath);
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * A small utility method used to compute the DTD version
+	 *
+	 * @param document
+	 *            - the document that is loaded by the editor
+	 */
+	public static String getDTDVersion(Document document) {
+		String dtdVersion = null;
+		DocumentType docType = document.getDoctype();
+
+		if (docType != null) {
+			String publicId = docType.getPublicId();
+			String systemId = docType.getSystemId();
+
+			if ((publicId != null) && (systemId != null)) {
+				if (publicId.contains("6.0.0") || systemId.contains("6.0.0")) {
+					dtdVersion = "6.0.0";
+				}
+				else if (publicId.contains("6.1.0") || systemId.contains("6.1.0")) {
+					dtdVersion = "6.1.0";
+				}
+			}
+		}
+
+		return dtdVersion;
+	}
 
 }

@@ -1,4 +1,4 @@
-/*******************************************************************************
+/**
  * Copyright (c) 2000-present Liferay, Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or modify it under
@@ -10,12 +10,12 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
  * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
  * details.
- *
- *******************************************************************************/
+ */
 
 package com.liferay.ide.service.ui.actions;
 
 import com.liferay.ide.core.util.CoreUtil;
+import com.liferay.ide.core.util.SapphireContentAccessor;
 import com.liferay.ide.service.core.model.Entity;
 import com.liferay.ide.service.core.operation.ServiceBuilderDescriptorHelper;
 import com.liferay.ide.ui.util.UIUtil;
@@ -25,43 +25,45 @@ import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.sapphire.Element;
 import org.eclipse.sapphire.ui.Presentation;
 import org.eclipse.sapphire.ui.SapphireActionHandler;
+import org.eclipse.sapphire.ui.SapphirePart;
 
 /**
  * @author Kuo Zhang
  */
-public class AddDefaultColumnsAction extends SapphireActionHandler
-{
+public class AddDefaultColumnsAction extends SapphireActionHandler implements SapphireContentAccessor {
 
-    public AddDefaultColumnsAction()
-    {
-        super();
-    }
+	public AddDefaultColumnsAction() {
+	}
 
-    @Override
-    protected Object run( Presentation context )
-    {
-        final Element element = context.part().getLocalModelElement();
+	@Override
+	protected Object run(Presentation context) {
+		SapphirePart sapphirePart = context.part();
 
-        if( element instanceof Entity )
-        {
-            final String entityName = ( (Entity) element ).getName().content();
+		Element element = sapphirePart.getLocalModelElement();
 
-            if( CoreUtil.isNullOrEmpty( entityName ) )
-            {
-                final String title = "Add Liferay Default Columns";
-                final String message = "The entity name must be specified.";
+		if (element instanceof Entity) {
+			Entity entityElement = (Entity)element;
 
-                MessageDialog.openInformation( UIUtil.getActiveShell(), title, message );
-            }
-            else
-            {
-                final IFile serviceXML = element.adapt( IFile.class );
+			String entityName = get(entityElement.getName());
 
-                new ServiceBuilderDescriptorHelper( serviceXML.getProject() ).addDefaultColumns( entityName );
-            }
-        }
+			if (CoreUtil.isNullOrEmpty(entityName)) {
+				String title = "Add Liferay Default Columns";
+				String message = "The entity name must be specified.";
 
-        return null;
-    }
+				MessageDialog.openInformation(UIUtil.getActiveShell(), title, message);
+			}
+			else {
+				IFile serviceXML = element.adapt(IFile.class);
+
+				new ServiceBuilderDescriptorHelper(
+					serviceXML
+				).addDefaultColumns(
+					entityName
+				);
+			}
+		}
+
+		return null;
+	}
 
 }
