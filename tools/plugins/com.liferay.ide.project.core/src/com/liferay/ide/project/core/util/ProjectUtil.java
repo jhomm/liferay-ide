@@ -14,17 +14,12 @@
 
 package com.liferay.ide.project.core.util;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
-import com.google.gson.stream.JsonReader;
-
 import com.liferay.ide.core.IBundleProject;
 import com.liferay.ide.core.ILiferayConstants;
 import com.liferay.ide.core.ILiferayProject;
 import com.liferay.ide.core.IWebProject;
 import com.liferay.ide.core.IWorkspaceProject;
 import com.liferay.ide.core.LiferayCore;
-import com.liferay.ide.core.ProductInfo;
 import com.liferay.ide.core.adapter.NoopLiferayProject;
 import com.liferay.ide.core.util.CoreUtil;
 import com.liferay.ide.core.util.FileUtil;
@@ -59,12 +54,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 
-import java.nio.file.Files;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -97,6 +91,8 @@ import org.eclipse.jdt.core.IClasspathEntry;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
+import org.eclipse.jdt.launching.IVMInstall;
+import org.eclipse.jdt.launching.IVMInstall2;
 import org.eclipse.jst.common.project.facet.core.JavaFacet;
 import org.eclipse.jst.j2ee.classpathdep.IClasspathDependencyConstants;
 import org.eclipse.jst.j2ee.project.facet.IJ2EEFacetConstants;
@@ -1041,24 +1037,6 @@ public class ProjectUtil {
 		return null;
 	}
 
-	public static Map<String, ProductInfo> getProductInfos() {
-		try (JsonReader jsonReader = new JsonReader(Files.newBufferedReader(_workspaceCacheFile.toPath()))) {
-			Gson gson = new Gson();
-
-			TypeToken<Map<String, ProductInfo>> typeToken = new TypeToken<Map<String, ProductInfo>>() {
-			};
-
-			return gson.fromJson(jsonReader, typeToken.getType());
-		}
-		catch (Exception ce) {
-			ProjectCore.logError("Cannot Find Product Info", ce);
-		}
-
-		return null;
-	}
-
-	// IDE-270
-
 	public static IProject getProject(IDataModel model) {
 		if (model == null) {
 			return null;
@@ -1113,6 +1091,8 @@ public class ProjectUtil {
 		return "/" + retval;
 	}
 
+	// IDE-270
+
 	public static String getRequiredSuffix(IProject project) {
 		String requiredSuffix = null;
 
@@ -1133,6 +1113,110 @@ public class ProjectUtil {
 		}
 
 		return requiredSuffix;
+	}
+
+	public static String getVmCompliance(IVMInstall defaultVMInstall) {
+		if (defaultVMInstall instanceof IVMInstall2) {
+			IVMInstall2 vmInstall2 = (IVMInstall2)defaultVMInstall;
+
+			String javaVersion = vmInstall2.getJavaVersion();
+
+			if (javaVersion != null) {
+				String compliance = null;
+
+				if (javaVersion.startsWith(JavaCore.VERSION_1_5)) {
+					compliance = JavaCore.VERSION_1_5;
+				}
+				else if (javaVersion.startsWith(JavaCore.VERSION_1_6)) {
+					compliance = JavaCore.VERSION_1_6;
+				}
+				else if (javaVersion.startsWith(JavaCore.VERSION_1_7)) {
+					compliance = JavaCore.VERSION_1_7;
+				}
+				else if (javaVersion.startsWith(JavaCore.VERSION_1_8)) {
+					compliance = JavaCore.VERSION_1_8;
+				}
+				else if (javaVersion.startsWith(JavaCore.VERSION_9) &&
+						 ((javaVersion.length() == JavaCore.VERSION_9.length()) ||
+						  (javaVersion.charAt(JavaCore.VERSION_9.length()) == '.'))) {
+
+					compliance = JavaCore.VERSION_9;
+				}
+				else if (javaVersion.startsWith(JavaCore.VERSION_10) &&
+						 ((javaVersion.length() == JavaCore.VERSION_10.length()) ||
+						  (javaVersion.charAt(JavaCore.VERSION_10.length()) == '.'))) {
+
+					compliance = JavaCore.VERSION_10;
+				}
+				else if (javaVersion.startsWith(JavaCore.VERSION_11) &&
+						 ((javaVersion.length() == JavaCore.VERSION_11.length()) ||
+						  (javaVersion.charAt(JavaCore.VERSION_11.length()) == '.'))) {
+
+					compliance = JavaCore.VERSION_11;
+				}
+				else if (javaVersion.startsWith(JavaCore.VERSION_12) &&
+						 ((javaVersion.length() == JavaCore.VERSION_12.length()) ||
+						  (javaVersion.charAt(JavaCore.VERSION_12.length()) == '.'))) {
+
+					compliance = JavaCore.VERSION_12;
+				}
+				else if (javaVersion.startsWith(JavaCore.VERSION_13) &&
+						 ((javaVersion.length() == JavaCore.VERSION_13.length()) ||
+						  (javaVersion.charAt(JavaCore.VERSION_13.length()) == '.'))) {
+
+					compliance = JavaCore.VERSION_13;
+				}
+				else if (javaVersion.startsWith(JavaCore.VERSION_14) &&
+						 ((javaVersion.length() == JavaCore.VERSION_14.length()) ||
+						  (javaVersion.charAt(JavaCore.VERSION_14.length()) == '.'))) {
+
+					compliance = JavaCore.VERSION_14;
+				}
+				else if (javaVersion.startsWith(JavaCore.VERSION_15) &&
+						 ((javaVersion.length() == JavaCore.VERSION_15.length()) ||
+						  (javaVersion.charAt(JavaCore.VERSION_15.length()) == '.'))) {
+
+					compliance = JavaCore.VERSION_15;
+				}
+				else if (javaVersion.startsWith(JavaCore.VERSION_16) &&
+						 ((javaVersion.length() == JavaCore.VERSION_16.length()) ||
+						  (javaVersion.charAt(JavaCore.VERSION_16.length()) == '.'))) {
+
+					compliance = JavaCore.VERSION_16;
+				}
+				else if (javaVersion.startsWith(JavaCore.VERSION_17) &&
+						 ((javaVersion.length() == JavaCore.VERSION_17.length()) ||
+						  (javaVersion.charAt(JavaCore.VERSION_17.length()) == '.'))) {
+
+					compliance = JavaCore.VERSION_17;
+				}
+				else if (javaVersion.startsWith(JavaCore.VERSION_18) &&
+						 ((javaVersion.length() == JavaCore.VERSION_18.length()) ||
+						  (javaVersion.charAt(JavaCore.VERSION_18.length()) == '.'))) {
+
+					compliance = JavaCore.VERSION_18;
+				}
+				else if (javaVersion.startsWith(JavaCore.VERSION_19) &&
+						 ((javaVersion.length() == JavaCore.VERSION_19.length()) ||
+						  (javaVersion.charAt(JavaCore.VERSION_19.length()) == '.'))) {
+
+					compliance = JavaCore.VERSION_19;
+				}
+				else if (javaVersion.startsWith(JavaCore.VERSION_20) &&
+						 ((javaVersion.length() == JavaCore.VERSION_20.length()) ||
+						  (javaVersion.charAt(JavaCore.VERSION_20.length()) == '.'))) {
+
+					compliance = JavaCore.VERSION_20;
+				}
+				else {
+					compliance = JavaCore.VERSION_20; // use latest by default
+				}
+
+				return compliance;
+			}
+		}
+
+		return JavaCore.VERSION_1_8;
 	}
 
 	public static String guessPluginType(IFacetedProjectWorkingCopy fpwc) {
@@ -1710,6 +1794,22 @@ public class ProjectUtil {
 		}
 	}
 
+	public static void updateComplianceSettings(IJavaProject project, String compliance) {
+		HashMap<String, String> defaultOptions = new HashMap<>();
+
+		JavaCore.setComplianceOptions(compliance, defaultOptions);
+
+		Set<Map.Entry<String, String>> entrySet = defaultOptions.entrySet();
+
+		Iterator<Map.Entry<String, String>> it = entrySet.iterator();
+
+		while (it.hasNext()) {
+			Map.Entry<String, String> pair = it.next();
+
+			project.setOption(pair.getKey(), pair.getValue());
+		}
+	}
+
 	private static boolean _checkGradleThemePlugin(IProject project) {
 		IFile buildGradleFile = project.getFile("build.gradle");
 
@@ -1847,16 +1947,12 @@ public class ProjectUtil {
 		return retval;
 	}
 
-	private static final String _DEFAULT_WORKSPACE_CACHE_FILE = ".liferay/workspace/.product_info.json";
-
 	private static final SapphireContentAccessor _getter = new SapphireContentAccessor() {
 	};
 	private static final Pattern _themeBuilderPlugin = Pattern.compile(
 		".*apply.*plugin.*:.*[\'\"]com\\.liferay\\.portal\\.tools\\.theme\\.builder[\'\"].*",
 		Pattern.MULTILINE | Pattern.DOTALL);
 	private static final Pattern _warPlugin = Pattern.compile(".*apply.*war.*", Pattern.MULTILINE | Pattern.DOTALL);
-	private static final File _workspaceCacheFile = new File(
-		System.getProperty("user.home"), _DEFAULT_WORKSPACE_CACHE_FILE);
 
 	private static class Msgs extends NLS {
 

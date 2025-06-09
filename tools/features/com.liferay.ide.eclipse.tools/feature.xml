@@ -4,7 +4,7 @@
 	label="Liferay IDE"
 	plugin="com.liferay.ide.ui"
 	provider-name="Liferay, Inc."
-	version="4.0.0.qualifier"
+	version="3.10.4.qualifier"
 >
 
 	<description url="http://www.liferay.com/community/liferay-projects/liferay-ide/overview">
@@ -33,9 +33,7 @@
 	</license>
 
 	<requires>
-		<import feature="bndtools.main.feature" match="perfect" version="5.2.0.REL-202010142003-gc979114" />
-		<import feature="org.apache.ivy.feature" match="greaterOrEqual" version="2.3.0" />
-		<import feature="org.apache.ivyde.feature" match="greaterOrEqual" version="2.2.0" />
+		<import feature="bndtools.main.feature" match="greaterOrEqual" version="5.2.0.REL-202010142003-gc979114" />
 		<import feature="org.eclipse.buildship" match="greaterOrEqual" version="2.1.1" />
 		<import feature="org.eclipse.jsf.feature" match="greaterOrEqual" version="3.2.0" />
 		<import feature="org.eclipse.jst.common.fproj.enablement.jdt" match="greaterOrEqual" version="3.2.0" />
@@ -44,7 +42,6 @@
 		<import feature="org.eclipse.jst.server_adapters.feature" match="greaterOrEqual" version="3.2.0" />
 		<import feature="org.eclipse.jst.server_ui.feature" match="greaterOrEqual" version="3.2.0" />
 		<import feature="org.eclipse.jst.web_ui.feature" match="greaterOrEqual" version="3.2.0" />
-		<import feature="org.eclipse.mylyn.commons.notifications" match="greaterOrEqual" version="1.0.0" />
 		<import feature="org.eclipse.sapphire" match="compatible" version="9.1.0" />
 		<import feature="org.eclipse.sapphire.java" match="compatible" version="9.1.0" />
 		<import feature="org.eclipse.sapphire.java.jdt" match="compatible" version="9.1.0" />
@@ -86,13 +83,6 @@
 
 	<plugin
 		download-size="0"
-		id="com.liferay.ide.portlet.ui"
-		install-size="0"
-		version="0.0.0"
-	/>
-
-	<plugin
-		download-size="0"
 		id="com.liferay.ide.project.core"
 		install-size="0"
 		unpack="false"
@@ -117,22 +107,6 @@
 
 	<plugin
 		download-size="0"
-		id="com.liferay.ide.server.tomcat.core"
-		install-size="0"
-		unpack="false"
-		version="0.0.0"
-	/>
-
-	<plugin
-		download-size="0"
-		id="com.liferay.ide.server.tomcat.ui"
-		install-size="0"
-		unpack="false"
-		version="0.0.0"
-	/>
-
-	<plugin
-		download-size="0"
 		id="com.liferay.ide.server.ui"
 		install-size="0"
 		unpack="false"
@@ -142,14 +116,6 @@
 	<plugin
 		download-size="0"
 		id="com.liferay.ide.layouttpl.core"
-		install-size="0"
-		unpack="false"
-		version="0.0.0"
-	/>
-
-	<plugin
-		download-size="0"
-		id="com.liferay.ide.layouttpl.ui"
 		install-size="0"
 		unpack="false"
 		version="0.0.0"
@@ -173,14 +139,6 @@
 
 	<plugin
 		download-size="0"
-		id="com.liferay.ide.service.ui"
-		install-size="0"
-		unpack="false"
-		version="0.0.0"
-	/>
-
-	<plugin
-		download-size="0"
 		id="com.liferay.ide.hook.core"
 		install-size="0"
 		unpack="false"
@@ -189,23 +147,7 @@
 
 	<plugin
 		download-size="0"
-		id="com.liferay.ide.hook.ui"
-		install-size="0"
-		unpack="false"
-		version="0.0.0"
-	/>
-
-	<plugin
-		download-size="0"
 		id="com.liferay.ide.sdk.core"
-		install-size="0"
-		unpack="false"
-		version="0.0.0"
-	/>
-
-	<plugin
-		download-size="0"
-		id="com.liferay.ide.ui.snippets"
 		install-size="0"
 		unpack="false"
 		version="0.0.0"

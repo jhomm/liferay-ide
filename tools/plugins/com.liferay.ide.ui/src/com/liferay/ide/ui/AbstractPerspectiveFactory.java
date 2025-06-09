@@ -92,8 +92,6 @@ public abstract class AbstractPerspectiveFactory implements IPerspectiveFactory 
 
 	public static final String ID_SERVERS_VIEW = "org.eclipse.wst.server.ui.ServersView";
 
-	public static final String ID_TASKLIST_VIEW = "org.eclipse.mylyn.tasks.ui.views.tasks";
-
 	public static final String ID_WST_SNIPPETS_VIEW = "org.eclipse.wst.common.snippets.internal.ui.SnippetsView";
 
 	public void addViewIfExist(IPageLayout page, IFolderLayout bottomRight, String viewId) {
@@ -149,10 +147,8 @@ public abstract class AbstractPerspectiveFactory implements IPerspectiveFactory 
 		layout.addShowViewShortcut(IPageLayout.ID_BOOKMARKS);
 		layout.addShowViewShortcut(IPageLayout.ID_OUTLINE);
 		layout.addShowViewShortcut(IPageLayout.ID_PROP_SHEET);
-		layout.addShowViewShortcut(IPageLayout.ID_RES_NAV);
 		layout.addShowViewShortcut(ID_WST_SNIPPETS_VIEW);
 		layout.addShowViewShortcut(ID_MARKERS_VIEW);
-		layout.addShowViewShortcut(ID_TASKLIST_VIEW);
 		layout.addShowViewShortcut(ID_SEARCH_VIEW);
 		layout.addShowViewShortcut(ID_CONSOLE_VIEW);
 

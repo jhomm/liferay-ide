@@ -268,6 +268,8 @@ public interface UI {
 
 	public final String DOABOUT = "doAbout";
 
+	public final String DOCKER_CONFIGURATION = "Docker Configuration";
+
 	public final String DOCKER_DEPLOY = "Docker Deploy";
 
 	public final String DOCONFIG = "doConfig";

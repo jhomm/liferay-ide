@@ -16,9 +16,12 @@ package com.liferay.ide.server.core.portal;
 
 import com.liferay.ide.server.util.JavaUtil;
 
+import java.io.File;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.launching.IVMInstall;
@@ -64,16 +67,32 @@ public class PortalJBossEapBundle extends PortalJBossBundle {
 
 		Version jdkVersion = Version.parseVersion(JavaUtil.getJDKVersion(vmInstall));
 		Version jdk8Version = Version.parseVersion("1.8");
+		File wildflyCommonLib = getJbossLib(bundlePath, "/modules/system/layers/base/org/wildfly/common/main/");
 
 		if (jdkVersion.compareTo(jdk8Version) <= 0) {
-			args.add(
-				"-Xbootclasspath/p:\"" + bundlePath +
-					"/modules/system/layers/base/org/jboss/logmanager/main/jboss-logmanager-1.5.4.Final-redhat-" +
-						"1.jar\"");
-			args.add(
-				"-Xbootclasspath/p:\"" + bundlePath +
-					"/modules/system/layers/base/org/jboss/log4j/logmanager/main/log4j-jboss-logmanager-1.1.1.Final-" +
-						"redhat-1.jar\"");
+			File log4jJbossLogmanager = getJbossLib(
+				bundlePath, "/modules/system/layers/base/org/jboss/log4j/logmanager/main/");
+
+			if (Objects.nonNull(log4jJbossLogmanager)) {
+				args.add("-Xbootclasspath/p:" + log4jJbossLogmanager.getAbsolutePath());
+			}
+
+			if (Objects.nonNull(wildflyCommonLib)) {
+				args.add("-Xbootclasspath/p:\"" + wildflyCommonLib.getAbsolutePath() + "\"");
+			}
+
+			File jbossLogManagerLib = getJbossLib(bundlePath, "/modules/system/layers/base/org/jboss/logmanager/main/");
+
+			if (Objects.nonNull(jbossLogManagerLib)) {
+				args.add("-Xbootclasspath/p:\"" + jbossLogManagerLib.getAbsolutePath() + "\"");
+			}
+		}
+		else {
+			if (Objects.nonNull(wildflyCommonLib)) {
+				args.add("-Xbootclasspath/a:\"" + wildflyCommonLib.getAbsolutePath() + "\"");
+			}
+
+			args.add("--add-modules=java.se");
 		}
 
 		args.add("-Djboss.modules.system.pkgs=org.jboss.logmanager");
@@ -84,6 +103,7 @@ public class PortalJBossEapBundle extends PortalJBossBundle {
 		args.add("-Djboss.bind.address.management=localhost");
 		args.add("-Duser.timezone=GMT");
 		args.add("-Dorg.jboss.logmanager.nocolor=true");
+		args.add("-Djdk.util.zip.disableZip64ExtraFieldValidation=true");
 
 		return args.toArray(new String[0]);
 	}

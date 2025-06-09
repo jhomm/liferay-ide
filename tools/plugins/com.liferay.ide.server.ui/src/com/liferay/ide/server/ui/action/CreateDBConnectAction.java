@@ -38,6 +38,7 @@ import java.security.ProtectionDomain;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Properties;
 
 import org.eclipse.core.runtime.IPath;
@@ -53,16 +54,17 @@ import org.eclipse.datatools.connectivity.drivers.DriverManager;
 import org.eclipse.datatools.connectivity.drivers.IPropertySet;
 import org.eclipse.datatools.connectivity.drivers.jdbc.IJDBCDriverDefinitionConstants;
 import org.eclipse.jface.action.IAction;
-import org.eclipse.jface.viewers.ISelection;
-import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.osgi.util.NLS;
 import org.eclipse.ui.IViewPart;
 import org.eclipse.wst.server.core.IRuntime;
 import org.eclipse.wst.server.core.IServer;
 
+import org.osgi.framework.Version;
+
 /**
  * @author Simon Jiang
  * @author Charles Wu
+ * @author Seiphon Wang
  */
 public class CreateDBConnectAction extends AbstractServerRunningAction {
 
@@ -118,7 +120,7 @@ public class CreateDBConnectAction extends AbstractServerRunningAction {
 								).getAbsolutePath();
 
 								LiferayDatabaseConnection dbConnection = _getLiferayDBConnection(
-									driverName, userName, password, connectionUrl);
+									driverName, userName, password, connectionUrl, liferayRuntime);
 
 								if (dbConnection != null) {
 									if (!dbConnection.addDatabaseConnectionProfile(connectionName, driverPath)) {
@@ -142,6 +144,8 @@ public class CreateDBConnectAction extends AbstractServerRunningAction {
 						}
 						catch (Exception e) {
 							LiferayServerCore.logError(Msgs.addProfileError, e);
+
+							return LiferayServerUI.createErrorStatus("The " + driverName + " class can not be found.");
 						}
 
 						return Status.OK_STATUS;
@@ -151,21 +155,6 @@ public class CreateDBConnectAction extends AbstractServerRunningAction {
 			}
 			catch (Exception e) {
 				LiferayServerCore.logError(Msgs.noDBConnectDriver, e);
-			}
-		}
-	}
-
-	@Override
-	public void selectionChanged(IAction action, ISelection selection) {
-		super.selectionChanged(action, selection);
-
-		if (!selection.isEmpty() && (selection instanceof IStructuredSelection)) {
-			IStructuredSelection sel = (IStructuredSelection)selection;
-
-			List<?> selList = sel.toList();
-
-			if (selList.size() > 1) {
-				action.setEnabled(selList.size() == 1);
 			}
 		}
 	}
@@ -240,33 +229,49 @@ public class CreateDBConnectAction extends AbstractServerRunningAction {
 	}
 
 	private LiferayDatabaseConnection _getLiferayDBConnection(
-		String driverClass, String userName, String password, String connectionUrl) {
+		String driverClass, String userName, String password, String connectionUrl, ILiferayRuntime liferayRuntime) {
 
-		if (driverClass.equals("com.mysql.jdbc.Driver")) {
-			String defaultDriverClass = "com.mysql.jdbc.Driver";
-			String providerId = "org.eclipse.datatools.enablement.mysql.connectionProfile";
-			String connectionDesc = "Mysql Connection Profile";
-			String driverTemplate = "org.eclipse.datatools.enablement.mysql.5_1.driverTemplate";
+		if (driverClass.startsWith("com.mysql.")) {
+			if (CoreUtil.compareVersions(_getMysqlBundleVersion(liferayRuntime), new Version("8.0")) < 0) {
+				if (driverClass.equals("com.mysql.jdbc.Driver")) {
+					String providerId = "org.eclipse.datatools.enablement.mysql.connectionProfile";
+					String connectionDesc = "Mysql Connection Profile";
+					String driverTemplate = "org.eclipse.datatools.enablement.mysql.5_1.driverTemplate";
 
-			return new MysqlLiferayDatabaseConnection(
-				defaultDriverClass, providerId, connectionDesc, driverTemplate, userName, password, connectionUrl);
+					return new MysqlLiferayDatabaseConnection(
+						driverClass, providerId, connectionDesc, driverTemplate, userName, password, connectionUrl);
+				}
+			}
+			else {
+				if (driverClass.equals("com.mysql.cj.jdbc.Driver")) {
+					String providerId = "org.eclipse.datatools.enablement.mysql.connectionProfile";
+					String connectionDesc = "Mysql Connection Profile";
+					String driverTemplate = "org.eclipse.datatools.enablement.mysql.5_1.driverTemplate";
+
+					return new MysqlLiferayDatabaseConnection(
+						driverClass, providerId, connectionDesc, driverTemplate, userName, password, connectionUrl);
+				}
+			}
 		}
 		else if (driverClass.equals("org.postgresql.Driver")) {
-			String defaultDriverClass = "org.postgresql.Driver";
 			String providerId = "org.eclipse.datatools.enablement.postgresql.connectionProfile";
 			String connectionDesc = "Posgresql Connection Profile";
 			String driverTemplate = "org.eclipse.datatools.enablement.postgresql.postgresqlDriverTemplate";
 
 			return new PostgresqlLiferayDatabaseConnection(
-				defaultDriverClass, providerId, connectionDesc, driverTemplate, userName, password, connectionUrl);
+				driverClass, providerId, connectionDesc, driverTemplate, userName, password, connectionUrl);
 		}
 		else if ((driverClass == null) || driverClass.equals("org.hsqldb.jdbcDriver")) {
-			String defaultDriverClass = "org.hsqldb.jdbcDriver";
 			String providerId = "org.eclipse.datatools.enablement.hsqldb.connectionProfile";
 			String connectionDesc = "Hsql Connection Profile";
 			String driverTemplate = "org.eclipse.datatools.enablement.hsqldb.1_8.driver";
 
-			return new HsqlLiferayDatabaseConnection(defaultDriverClass, providerId, connectionDesc, driverTemplate);
+			if (Objects.nonNull(connectionUrl) && Objects.nonNull(userName) && Objects.nonNull(password)) {
+				return new HsqlLiferayDatabaseConnection(
+					driverClass, providerId, connectionDesc, driverTemplate, userName, password, connectionUrl);
+			}
+
+			return new HsqlLiferayDatabaseConnection(driverClass, providerId, connectionDesc, driverTemplate);
 		}
 
 		return null;
@@ -287,6 +292,28 @@ public class CreateDBConnectAction extends AbstractServerRunningAction {
 		}
 
 		return libUrlList.toArray(new URL[0]);
+	}
+
+	private Version _getMysqlBundleVersion(ILiferayRuntime liferayRuntime) {
+		IPath libGlobalDir = liferayRuntime.getAppServerLibGlobalDir();
+
+		IPath mysqlJarPath = libGlobalDir.append("mysql.jar");
+
+		if (!FileUtil.exists(mysqlJarPath)) {
+			IPath appServerDir = liferayRuntime.getAppServerDir();
+
+			mysqlJarPath = appServerDir.append("webapps/ROOT/WEB-INF/shielded-container-lib/mysql.jar");
+		}
+
+		File mysqlJar = mysqlJarPath.toFile();
+
+		String[] version = FileUtil.readMainFestProsFromJar(mysqlJar, "Bundle-Version");
+
+		if (Objects.isNull(version)) {
+			return new Version("0.0.0");
+		}
+
+		return new Version(version[0]);
 	}
 
 	private static final String _JDBC_DRIVER_CLASS_NAME = "jdbc.default.driverClassName";
@@ -318,6 +345,13 @@ public class CreateDBConnectAction extends AbstractServerRunningAction {
 				_DEFAULT_CONNECTION_URL);
 		}
 
+		public HsqlLiferayDatabaseConnection(
+			String driverClass, String providerId, String connectinDesc, String driverTemplate, String userName,
+			String password, String connectionURL) {
+
+			super(driverClass, providerId, connectinDesc, driverTemplate, userName, password, connectionURL);
+		}
+
 		@Override
 		protected String getDatabaseName(String connectionUrl) {
 			String retval = "lportal";
@@ -337,7 +371,7 @@ public class CreateDBConnectAction extends AbstractServerRunningAction {
 			return retval;
 		}
 
-		private static final String _DEFAULT_CONNECTION_URL = "jdbc:hsqldb:lportal";
+		private static final String _DEFAULT_CONNECTION_URL = "jdbc:hsqldb:lportal;hsqldb.lock_file=false";
 
 		private static final String _DEFAULT_PASSWORD = "";
 

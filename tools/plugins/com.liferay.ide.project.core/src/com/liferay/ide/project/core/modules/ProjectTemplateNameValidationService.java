@@ -20,13 +20,14 @@ import aQute.bnd.version.VersionRange;
 import com.liferay.ide.core.IWorkspaceProject;
 import com.liferay.ide.core.util.CoreUtil;
 import com.liferay.ide.core.util.FileUtil;
+import com.liferay.ide.core.util.ReleaseUtil;
 import com.liferay.ide.core.util.SapphireContentAccessor;
 import com.liferay.ide.core.util.SapphireUtil;
 import com.liferay.ide.core.util.StringUtil;
-import com.liferay.ide.core.util.VersionUtil;
 import com.liferay.ide.core.workspace.LiferayWorkspaceUtil;
 import com.liferay.ide.project.core.NewLiferayProjectProvider;
 import com.liferay.ide.project.core.ProjectCore;
+import com.liferay.release.util.ReleaseEntry;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -78,15 +79,12 @@ public class ProjectTemplateNameValidationService extends ValidationService impl
 
 		NewLiferayModuleProjectOp op = context(NewLiferayModuleProjectOp.class);
 
-		String targetPlatformVersionString = VersionUtil.simplifyTargetPlatformVersion(
-			liferayWorkspaceProject.getTargetPlatformVersion());
+		String liferayVersionString = get(op.getLiferayVersion());
 
-		String liferayVersion = get(op.getLiferayVersion());
+		ReleaseEntry releaseEntry = ReleaseUtil.getReleaseEntry(liferayWorkspaceProject.getTargetPlatformVersion());
 
-		if (CoreUtil.isNotNullOrEmpty(targetPlatformVersionString)) {
-			Version targetPlatformVersion = Version.parseVersion(targetPlatformVersionString);
-
-			liferayVersion = new String(targetPlatformVersion.getMajor() + "." + targetPlatformVersion.getMinor());
+		if (releaseEntry != null) {
+			liferayVersionString = releaseEntry.getProductGroupVersion();
 		}
 
 		String projectTemplateName = get(op.getProjectTemplateName());
@@ -97,6 +95,8 @@ public class ProjectTemplateNameValidationService extends ValidationService impl
 					"import here.");
 		}
 
+		Version liferayVersion = new Version(CoreUtil.parseVersion(liferayVersionString));
+
 		if (projectTemplateName.startsWith("form-field")) {
 			NewLiferayProjectProvider<BaseModuleOp> newLiferayProjectProvider = get(op.getProjectProvider());
 
@@ -104,7 +104,7 @@ public class ProjectTemplateNameValidationService extends ValidationService impl
 				VersionRange requiredVersionRange = new VersionRange(
 					true, new Version("7.0"), new Version("7.2"), false);
 
-				if (!requiredVersionRange.includes(new Version(liferayVersion))) {
+				if (!requiredVersionRange.includes(liferayVersion)) {
 					return Status.createErrorStatus("Form Field project is only supported 7.0 and 7.1 for Maven");
 				}
 			}
@@ -112,40 +112,35 @@ public class ProjectTemplateNameValidationService extends ValidationService impl
 
 		boolean warCoreExt = projectTemplateName.equals("war-core-ext");
 
+		if (warCoreExt) {
+			NewLiferayProjectProvider<BaseModuleOp> newLiferayProjectProvider = get(op.getProjectProvider());
+
+			if (StringUtil.equalsIgnoreCase(newLiferayProjectProvider.getDisplayName(), "maven")) {
+				return Status.createErrorStatus("Creating war-core-ext project with Maven is not supported.");
+			}
+		}
+
 		boolean npm = projectTemplateName.startsWith("npm");
 
 		projectTemplateName = projectTemplateName.replace("-", ".");
 
 		VersionRange versionRange = _projectTemplateVersionRangeMap.get(projectTemplateName);
 
-		if (versionRange != null) {
-			boolean include = versionRange.includes(new Version(liferayVersion));
-
-			if (!include) {
-				if (npm) {
-					retval = Status.createErrorStatus(
-						"NPM portlet project templates generated from this tool are not supported for specified " +
-							"Liferay version. See LPS-97950 for full details.");
-				}
-				else {
-					retval = Status.createErrorStatus(
-						"Specified Liferay version is invaild. Must be in range " + versionRange);
-				}
-			}
-		}
-		else {
-			retval = Status.createWarningStatus("Unable to get supported Liferay version.");
+		if (versionRange == null) {
+			return Status.createWarningStatus("Unable to get supported Liferay version.");
 		}
 
-		if (warCoreExt && retval.ok()) {
-			NewLiferayProjectProvider<BaseModuleOp> newLiferayProjectProvider = get(op.getProjectProvider());
-
-			if (StringUtil.equalsIgnoreCase(newLiferayProjectProvider.getDisplayName(), "maven")) {
-				retval = Status.createErrorStatus("Not support to create maven war-core-ext project.");
-			}
+		if (versionRange.includes(liferayVersion)) {
+			return retval;
 		}
 
-		return retval;
+		if (npm) {
+			return Status.createErrorStatus(
+				"NPM portlet project templates generated from this tool are not supported for specified Liferay " +
+					"version. See LPS-97950 for full details.");
+		}
+
+		return Status.createErrorStatus("Specified Liferay version is invaild. Must be in range " + versionRange);
 	}
 
 	@Override

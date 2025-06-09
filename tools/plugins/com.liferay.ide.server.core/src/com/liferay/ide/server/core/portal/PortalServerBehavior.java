@@ -33,8 +33,11 @@ import java.io.File;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -396,6 +399,8 @@ public class PortalServerBehavior
 				Lists.newArrayList(DebugPlugin.splitArguments(existingVMArgs)));
 
 			if (ListUtil.isNotEmpty(parsedExistingVMArgs)) {
+				List<String> changedExistedArguments = new ArrayList<>();
+
 				for (String parsedArg : parsedExistingVMArgs) {
 					if (parsedArg.startsWith("-Xm")) {
 						parsedExistingVMArgs.remove(parsedArg);
@@ -404,7 +409,22 @@ public class PortalServerBehavior
 					if (parsedArg.startsWith("-Dexternal-properties")) {
 						parsedExistingVMArgs.remove(parsedArg);
 					}
+
+					int eqaulsPostion = parsedArg.indexOf("=");
+
+					if (eqaulsPostion != -1) {
+						String existedArgumentKey = parsedArg.substring(0, eqaulsPostion);
+						String existedArgumentValue = parsedArg.substring(eqaulsPostion + 1);
+
+						for (String newConfig : configVMArgs) {
+							if (newConfig.startsWith(existedArgumentKey) && !newConfig.endsWith(existedArgumentValue)) {
+								changedExistedArguments.add(parsedArg);
+							}
+						}
+					}
 				}
+
+				parsedExistingVMArgs.removeAll(changedExistedArguments);
 			}
 
 			launch.setAttribute(
@@ -458,14 +478,64 @@ public class PortalServerBehavior
 				_replaceJREConatiner(oldCp, newJRECp);
 			}
 			catch (Exception e) {
-
-				// ignore
-
 			}
 
 			File vmInstallLocation = vmInstall.getInstallLocation();
 
 			IPath jrePath = new Path(vmInstallLocation.getAbsolutePath());
+
+			Map<String, String> launchEnvrionment = launch.getAttribute(
+				ILaunchManager.ATTR_ENVIRONMENT_VARIABLES, (Map<String, String>)null);
+
+			if (launchEnvrionment == null) {
+				launchEnvrionment = new HashMap<>();
+			}
+
+			launchEnvrionment.put("JAVA_HOME", vmInstallLocation.getAbsolutePath());
+
+			DebugPlugin debugplugin = DebugPlugin.getDefault();
+
+			ILaunchManager launchManager = debugplugin.getLaunchManager();
+
+			Map<String, String> nativeEnvrionment = launchManager.getNativeEnvironmentCasePreserved();
+
+			String pathEnvironment = nativeEnvrionment.get("PATH");
+
+			if (Objects.nonNull(pathEnvironment)) {
+				try {
+					launchEnvrionment.put("PATH", jrePath.toOSString() + "/bin:" + pathEnvironment);
+				}
+				catch (Exception exception) {
+				}
+			}
+
+			List<String> opens = new ArrayList<>();
+
+			opens.add("--add-opens=java.base/java.io=ALL-UNNAMED");
+			opens.add("--add-opens=java.base/java.lang.invoke=ALL-UNNAMED");
+			opens.add("--add-opens=java.base/java.lang.ref=ALL-UNNAMED");
+			opens.add("--add-opens=java.base/java.lang.reflect=ALL-UNNAMED");
+			opens.add("--add-opens=java.base/java.lang=ALL-UNNAMED");
+			opens.add("--add-opens=java.base/java.net=ALL-UNNAMED");
+			opens.add("--add-opens=java.base/java.nio.charset=ALL-UNNAMED");
+			opens.add("--add-opens=java.base/java.nio=ALL-UNNAMED");
+			opens.add("--add-opens=java.base/java.text=ALL-UNNAMED");
+			opens.add("--add-opens=java.base/java.util.concurrent.locks=ALL-UNNAMED");
+			opens.add("--add-opens=java.base/java.util.concurrent=ALL-UNNAMED");
+			opens.add("--add-opens=java.base/java.util=ALL-UNNAMED");
+			opens.add("--add-opens=java.base/sun.net.www.protocol.http=ALL-UNNAMED");
+			opens.add("--add-opens=java.base/sun.net.www.protocol.https=ALL-UNNAMED");
+			opens.add("--add-opens=java.base/sun.nio.ch=ALL-UNNAMED");
+			opens.add("--add-opens=java.base/sun.nio.cs=ALL-UNNAMED");
+			opens.add("--add-opens=java.base/sun.util.calendar=ALL-UNNAMED");
+			opens.add("--add-opens=java.xml/com.sun.org.apache.xerces.internal.util=ALL-UNNAMED");
+			opens.add("--add-opens=jdk.zipfs/jdk.nio.zipfs=ALL-UNNAMED");
+
+			launchEnvrionment.put("JDK_JAVA_OPTIONS", String.join(" ", opens));
+
+			launch.setAttribute(ILaunchManager.ATTR_ENVIRONMENT_VARIABLES, launchEnvrionment);
+
+			launch.setAttribute(ILaunchManager.ATTR_APPEND_ENVIRONMENT_VARIABLES, Boolean.FALSE);
 
 			if (jrePath != null) {
 				IPath toolsPath = jrePath.append("lib/tools.jar");
@@ -746,7 +816,13 @@ public class PortalServerBehavior
 			ServerUtil.setupPortalDevelopModeConfiguration(_getPortalRuntime(), portalServer);
 		}
 		else {
-			Collections.addAll(retval, PortalServerConstants.DEFAULT_MEMORY_ARGS);
+			String args = new String(PortalServerConstants.DEFAULT_MEMORY_ARGS);
+
+			if (!CoreUtil.isNullOrEmpty(args)) {
+				String[] defaultVmArgs = args.split(" ");
+
+				Collections.addAll(retval, defaultVmArgs);
+			}
 		}
 
 		PortalBundle portalBundle = _getPortalRuntime().getPortalBundle();
@@ -968,8 +1044,20 @@ public class PortalServerBehavior
 	}
 
 	private void _mergeClasspath(List<IRuntimeClasspathEntry> oldCpEntries, IRuntimeClasspathEntry cpEntry) {
-		for (IRuntimeClasspathEntry oldCpEntry : oldCpEntries) {
+		Iterator<IRuntimeClasspathEntry> runtimeClassPathiterator = oldCpEntries.iterator();
+
+		while (runtimeClassPathiterator.hasNext()) {
+			IRuntimeClasspathEntry oldCpEntry = runtimeClassPathiterator.next();
+
 			IPath oldCpEntryPath = oldCpEntry.getPath();
+
+			if (Objects.nonNull(oldCpEntryPath) && (oldCpEntry.getType() == IRuntimeClasspathEntry.ARCHIVE) &&
+				FileUtil.notExists(oldCpEntryPath.toFile())) {
+
+				runtimeClassPathiterator.remove();
+
+				continue;
+			}
 
 			if (oldCpEntryPath.equals(cpEntry.getPath())) {
 				return;

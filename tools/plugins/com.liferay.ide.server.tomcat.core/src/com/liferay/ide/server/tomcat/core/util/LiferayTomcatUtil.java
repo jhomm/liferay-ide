@@ -23,13 +23,13 @@ import com.liferay.ide.project.core.util.ProjectUtil;
 import com.liferay.ide.server.core.ILiferayRuntime;
 import com.liferay.ide.server.core.IPluginPublisher;
 import com.liferay.ide.server.core.LiferayServerCore;
+import com.liferay.ide.server.core.PortalContext;
 import com.liferay.ide.server.tomcat.core.ILiferayTomcatConstants;
 import com.liferay.ide.server.tomcat.core.ILiferayTomcatRuntime;
 import com.liferay.ide.server.tomcat.core.ILiferayTomcatServer;
 import com.liferay.ide.server.tomcat.core.LiferayTomcatPlugin;
 import com.liferay.ide.server.tomcat.core.LiferayTomcatRuntime70;
 import com.liferay.ide.server.tomcat.core.LiferayTomcatServerBehavior;
-import com.liferay.ide.server.tomcat.core.PortalContext;
 import com.liferay.ide.server.util.LiferayPortalValueLoader;
 import com.liferay.ide.server.util.ServerUtil;
 
@@ -97,7 +97,7 @@ public class LiferayTomcatUtil {
 
 		ILiferayRuntime runtime = ServerUtil.getLiferayRuntime(currentServer);
 
-		Version portalVersion = Version.parseVersion(getVersion(runtime));
+		Version portalVersion = CoreUtil.parseVersion(getVersion(runtime));
 
 		if (CoreUtil.compareVersions(portalVersion, LiferayTomcatRuntime70.leastSupportedVersion) < 0) {
 			runtimeVMArgs.add("-Djava.security.auth.login.config=\"" + configPath.toOSString() + "/conf/jaas.config\"");
@@ -178,6 +178,7 @@ public class LiferayTomcatUtil {
 		IPath libFolder = runtimeLocation.append("lib");
 		IPath extLibFolder = runtimeLocation.append("lib/ext");
 		IPath webinfLibFolder = portalDir.append("WEB-INF/lib");
+		IPath shieldedContainerLibFolder = runtimeLocation.append("shielded-container-lib");
 
 		try {
 			List<File> libFiles = FileListing.getFileListing(new File(libFolder.toOSString()));
@@ -207,6 +208,19 @@ public class LiferayTomcatUtil {
 			libFiles = FileListing.getFileListing(new File(webinfLibFolder.toOSString()));
 
 			for (File lib : libFiles) {
+				if (FileUtil.exists(lib)) {
+					String libName = lib.getName();
+
+					if (libName.endsWith(".jar")) {
+						libs.add(new Path(lib.getPath()));
+					}
+				}
+			}
+
+			List<File> shieldedContainerLibFiles = FileListing.getFileListing(
+				new File(shieldedContainerLibFolder.toOSString()));
+
+			for (File lib : shieldedContainerLibFiles) {
 				if (FileUtil.exists(lib)) {
 					String libName = lib.getName();
 
@@ -321,22 +335,30 @@ public class LiferayTomcatUtil {
 	public static String getVersion(ILiferayRuntime runtime) {
 		String version = getConfigInfoFromCache(CONFIG_TYPE_VERSION, runtime.getAppServerPortalDir());
 
+		if (version != null) {
+			return version;
+		}
+
+		if (version == null) {
+			version = _getVersionFromLiferayVersionFile(runtime);
+		}
+
 		if (version == null) {
 			version = getConfigInfoFromManifest(CONFIG_TYPE_VERSION, runtime.getAppServerPortalDir());
+		}
 
-			if (version == null) {
-				LiferayPortalValueLoader loader = new LiferayPortalValueLoader(runtime.getUserLibs());
+		if (version == null) {
+			LiferayPortalValueLoader loader = new LiferayPortalValueLoader(runtime.getUserLibs());
 
-				Version loadedVersion = loader.loadVersionFromClass();
+			Version loadedVersion = loader.loadVersionFromClass();
 
-				if (loadedVersion != null) {
-					version = loadedVersion.toString();
-				}
+			if (loadedVersion != null) {
+				version = loadedVersion.toString();
 			}
+		}
 
-			if (version != null) {
-				saveConfigInfoIntoCache(CONFIG_TYPE_VERSION, version, runtime.getAppServerPortalDir());
-			}
+		if (version != null) {
+			saveConfigInfoIntoCache(CONFIG_TYPE_VERSION, version, runtime.getAppServerPortalDir());
 		}
 
 		return version;
@@ -746,6 +768,20 @@ public class LiferayTomcatUtil {
 		}
 
 		return retval;
+	}
+
+	private static String _getVersionFromLiferayVersionFile(ILiferayRuntime runtime) {
+		IPath liferayHomeIPath = runtime.getLiferayHome();
+
+		IPath liferayVersionIPath = liferayHomeIPath.append(".liferay-version");
+
+		String versionString = FileUtil.readContents(liferayVersionIPath.toFile());
+
+		if (versionString != null) {
+			return versionString.trim();
+		}
+
+		return null;
 	}
 
 	private static File _setupExternalPropertiesFile(File portalIdePropFile, String externalPropertiesPath) {

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?pde version="3.5"?>
 
-<product name="Liferay Upgrade Planner" uid="com.liferay.ide.upgrade.planner" id="com.liferay.ide.upgrade.planner" application="org.eclipse.ui.ide.workbench" version="4.0.0.qualifier" useFeatures="true" includeLaunchers="true">
+<product name="Liferay Upgrade Planner" uid="com.liferay.ide.upgrade.planner" id="com.liferay.ide.upgrade.planner" application="org.eclipse.ui.ide.workbench" version="3.10.4.qualifier" useFeatures="true" includeLaunchers="true">
 
    <aboutInfo>
       <image path="images/about.png"/>
@@ -37,7 +37,6 @@ openFile
 -Xms40m
 -Xmx1024m
 -Xdock:icon=../Resources/UpgradePlanner.icns
--XstartOnFirstThread
 -Dorg.eclipse.swt.internal.carbon.smallFonts
       </vmArgsMac>
    </launcherArgs>
@@ -90,7 +89,6 @@ to distribution rights of the Software.
       <feature id="org.eclipse.jst.web_ui.feature" installMode="root"/>
       <feature id="org.eclipse.m2e.feature" installMode="root"/>
       <feature id="org.eclipse.m2e.wtp.feature" installMode="root"/>
-      <feature id="org.eclipse.mylyn_feature" installMode="root"/>
       <feature id="org.eclipse.tm.terminal.feature" installMode="root"/>
       <feature id="org.eclipse.wst.common.fproj" installMode="root"/>
       <feature id="org.eclipse.wst.jsdt.feature" installMode="root"/>
@@ -103,7 +101,7 @@ to distribution rights of the Software.
       <plugin id="com.liferay.ide.upgrade.planner.ui" autoStart="false" startLevel="5" />
       <plugin id="org.eclipse.core.runtime" autoStart="true" startLevel="4" />
       <plugin id="org.eclipse.equinox.common" autoStart="true" startLevel="2" />
-      <plugin id="org.eclipse.equinox.ds" autoStart="true" startLevel="2" />
+      <plugin id="org.apache.felix.scr" autoStart="true" startLevel="2" />
       <plugin id="org.eclipse.equinox.p2.reconciler.dropins" autoStart="true" startLevel="4" />
       <plugin id="org.eclipse.equinox.simpleconfigurator" autoStart="true" startLevel="1" />
       <plugin id="org.eclipse.update.configurator" autoStart="true" startLevel="4" />

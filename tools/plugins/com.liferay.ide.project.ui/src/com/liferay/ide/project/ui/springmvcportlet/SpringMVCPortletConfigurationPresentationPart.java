@@ -14,9 +14,9 @@
 
 package com.liferay.ide.project.ui.springmvcportlet;
 
+import com.liferay.ide.core.util.ReleaseUtil;
 import com.liferay.ide.core.util.SapphireContentAccessor;
 import com.liferay.ide.core.util.SapphireUtil;
-import com.liferay.ide.core.workspace.WorkspaceConstants;
 import com.liferay.ide.project.core.springmvcportlet.NewSpringMVCPortletProjectOp;
 import com.liferay.ide.project.core.springmvcportlet.SpringMVCPortletProjectConstants;
 import com.liferay.ide.ui.util.SWTUtil;
@@ -70,31 +70,32 @@ public class SpringMVCPortletConfigurationPresentationPart
 
 								String version = get(op.getLiferayVersion());
 
-								if (value.equals(SpringMVCPortletProjectConstants.SPRING_FRAMEWORK[0])) {
-									_frameworkDependenciesCombo.removeAll();
+								_frameworkDependenciesCombo.removeAll();
 
-									if (version.equals(WorkspaceConstants.LIFERAY_VERSIONS[3])) {
-										_frameworkDependenciesCombo.setItems(
-											SpringMVCPortletProjectConstants.SPRING_FRAMEWORK_DEPENDENCIES);
-									}
-									else {
+								switch (version) {
+									case "7.0":
 										_frameworkDependenciesCombo.setItems(
 											SpringMVCPortletProjectConstants.SPRING_FRAMEWORK_DEPENDENCIES[0]);
-									}
-								}
-								else if (value.equals(SpringMVCPortletProjectConstants.SPRING_FRAMEWORK[1])) {
-									_frameworkDependenciesCombo.removeAll();
 
-									if (version.equals(WorkspaceConstants.LIFERAY_VERSIONS[1]) ||
-										version.equals(WorkspaceConstants.LIFERAY_VERSIONS[2])) {
+										break;
+									case "7.1":
+									case "7.2":
+										if (value.equals(SpringMVCPortletProjectConstants.SPRING_FRAMEWORK[0])) {
+											_frameworkDependenciesCombo.setItems(
+												SpringMVCPortletProjectConstants.SPRING_FRAMEWORK_DEPENDENCIES[0]);
+										}
+										else {
+											_frameworkDependenciesCombo.setItems(
+												SpringMVCPortletProjectConstants.SPRING_FRAMEWORK_DEPENDENCIES);
+										}
 
-										_frameworkDependenciesCombo.setItems(
-											SpringMVCPortletProjectConstants.SPRING_FRAMEWORK_DEPENDENCIES);
-									}
-									else {
+										break;
+									case "7.3":
+									case "7.4":
 										_frameworkDependenciesCombo.setItems(
 											SpringMVCPortletProjectConstants.SPRING_FRAMEWORK_DEPENDENCIES[0]);
-									}
+
+										break;
 								}
 
 								_frameworkDependenciesCombo.select(0);
@@ -227,16 +228,15 @@ public class SpringMVCPortletConfigurationPresentationPart
 
 		String liferayVersion = get(_op().getLiferayVersion());
 
-		if (liferayVersion.equals(WorkspaceConstants.LIFERAY_VERSIONS[0])) {
+		if (liferayVersion.equals(ReleaseUtil.getProductGroupVersions()[0])) {
 			_op().setFramework(SpringMVCPortletProjectConstants.SPRING_FRAMEWORK[1]);
-			_op().setFrameworkDependencies(SpringMVCPortletProjectConstants.SPRING_FRAMEWORK_DEPENDENCIES[0]);
-			_op().setViewType(SpringMVCPortletProjectConstants.SPRING_VIEW_TYPE[0]);
 		}
 		else {
 			_op().setFramework(SpringMVCPortletProjectConstants.SPRING_FRAMEWORK[0]);
-			_op().setFrameworkDependencies(SpringMVCPortletProjectConstants.SPRING_FRAMEWORK_DEPENDENCIES[0]);
-			_op().setViewType(SpringMVCPortletProjectConstants.SPRING_VIEW_TYPE[0]);
 		}
+
+		_op().setFrameworkDependencies(SpringMVCPortletProjectConstants.SPRING_FRAMEWORK_DEPENDENCIES[0]);
+		_op().setViewType(SpringMVCPortletProjectConstants.SPRING_VIEW_TYPE[0]);
 
 		_projectNameListener = new FilteredListener<PropertyContentEvent>() {
 
@@ -292,16 +292,16 @@ public class SpringMVCPortletConfigurationPresentationPart
 	private void _intializeSpringConfigurationData(String liferayVersion) {
 		_clearSpringConfigurationData();
 
-		if (liferayVersion.equals(WorkspaceConstants.LIFERAY_VERSIONS[0])) {
+		if (liferayVersion.equals(ReleaseUtil.getProductGroupVersions()[0])) {
 			_frameworkCombo.setItems(SpringMVCPortletProjectConstants.SPRING_FRAMEWORK[1]);
 			_frameworkDependenciesCombo.setItems(SpringMVCPortletProjectConstants.SPRING_FRAMEWORK_DEPENDENCIES[0]);
-			_viewTypeCombo.setItems(SpringMVCPortletProjectConstants.SPRING_VIEW_TYPE);
 		}
 		else {
 			_frameworkCombo.setItems(SpringMVCPortletProjectConstants.SPRING_FRAMEWORK);
 			_frameworkDependenciesCombo.setItems(SpringMVCPortletProjectConstants.SPRING_FRAMEWORK_DEPENDENCIES);
-			_viewTypeCombo.setItems(SpringMVCPortletProjectConstants.SPRING_VIEW_TYPE);
 		}
+
+		_viewTypeCombo.setItems(SpringMVCPortletProjectConstants.SPRING_VIEW_TYPE);
 
 		_frameworkCombo.select(0);
 		_frameworkDependenciesCombo.select(0);

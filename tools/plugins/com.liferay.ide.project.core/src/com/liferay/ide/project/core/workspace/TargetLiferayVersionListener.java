@@ -14,13 +14,15 @@
 
 package com.liferay.ide.project.core.workspace;
 
+import com.liferay.ide.core.util.ReleaseUtil;
 import com.liferay.ide.core.util.SapphireContentAccessor;
-import com.liferay.ide.core.workspace.WorkspaceConstants;
+import com.liferay.release.util.ReleaseEntry;
 
 import org.eclipse.sapphire.Element;
 import org.eclipse.sapphire.FilteredListener;
 import org.eclipse.sapphire.Property;
 import org.eclipse.sapphire.PropertyContentEvent;
+import org.eclipse.sapphire.Value;
 
 /**
  * @author Haoyi Sun
@@ -39,7 +41,13 @@ public class TargetLiferayVersionListener
 
 		NewLiferayWorkspaceOp op = newLiferayWorkspaceOp.adapt(NewLiferayWorkspaceOp.class);
 
-		op.setTargetPlatform(WorkspaceConstants.liferayTargetPlatformVersions.get(liferayVersion)[0]);
+		Value<String> targetPlatform = op.getTargetPlatform();
+
+		targetPlatform.clear();
+
+		ReleaseEntry releaseEntry = ReleaseUtil.getReleaseEntry(liferayVersion);
+
+		op.setTargetPlatform(releaseEntry.getTargetPlatformVersion());
 	}
 
 }

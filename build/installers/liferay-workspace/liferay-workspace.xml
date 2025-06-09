@@ -23,19 +23,19 @@
                         <distributionFile>
                             <origin>../shared/download/blade.jar</origin>
                         </distributionFile>
-                        <distributionFile>
-                            <origin>../shared/download/biz.aQute.bnd.jar</origin>
-                        </distributionFile>
-                        <distributionFile>
-                            <origin>../shared/download/gw.jar</origin>
-                        </distributionFile>
                     </distributionFileList>
                 </folder>
                 <folder>
                     <description>Program Files</description>
                     <destination>${installdir}</destination>
-                    <name>programfileslinux</name>
-                    <platforms>linux</platforms>
+                    <name>programfileslinux_arm64</name>
+                    <platforms>linux-arm64</platforms>
+                </folder>
+                <folder>
+                    <description>Program Files</description>
+                    <destination>${installdir}</destination>
+                    <name>programfileslinux_x64</name>
+                    <platforms>linux-x64</platforms>
                 </folder>
                 <folder>
                     <description>Program Files</description>
@@ -55,9 +55,6 @@
     <preInstallationActionList>
         <include>
             <file>../components/autodetect-java.xml</file>
-        </include>
-        <include>
-            <file>../components/autodetect-java-windows.xml</file>
         </include>
     </preInstallationActionList>
     <postInstallationActionList>
@@ -239,6 +236,21 @@
             <path>${java_executable}/..</path>
             <variable>java_bin_dir</variable>
         </pathManipulation>
+        <if>
+            <actionList>
+                <setInstallerVariable name="extraArgumentForJdk17And21" value="--add-opens java.prefs/java.util.prefs=ALL-UNNAMED"/>
+            </actionList>
+            <conditionRuleList>
+                <regExMatch>
+                    <logic>matches</logic>
+                    <pattern>.*(17|21).*</pattern>
+                    <text>${java_version}</text>
+                </regExMatch>
+            </conditionRuleList>
+            <elseActionList>
+                <setInstallerVariable name="extraArgumentForJdk17And21" value=""/>
+            </elseActionList>
+        </if>
         <include>
             <file>../components/run-java-jpm-win.xml</file>
         </include>
@@ -254,12 +266,6 @@
         </include>
         <include>
             <file>../components/set-installer-variable-blade.xml</file>
-        </include>
-        <include>
-            <file>../components/set-installer-variable-gw.xml</file>
-        </include>
-        <include>
-            <file>../components/set-installer-variable-bnd.xml</file>
         </include>
         <include>
             <file>../components/run-jpm-install-blade-win.xml</file>
@@ -344,18 +350,6 @@
                 </compareValues>
             </ruleList>
         </if>
-        <include>
-            <file>../components/run-jpm-install-gw-win.xml</file>
-        </include>
-        <include>
-            <file>../components/run-jpm-install-gw.xml</file>
-        </include>
-        <include>
-            <file>../components/run-jpm-install-bnd-win.xml</file>
-        </include>
-        <include>
-            <file>../components/run-jpm-install-bnd.xml</file>
-        </include>
         <runProgram>
             <program>chown</program>
             <programArguments>-R ${env(SUDO_USER)} "${userHome}/jpm"</programArguments>

@@ -22,7 +22,7 @@
     <parent>
         <groupId>com.liferay.ide.build</groupId>
         <artifactId>installers</artifactId>
-        <version>4.0.0-SNAPSHOT</version>
+        <version>3.10.4-SNAPSHOT</version>
     </parent>
 
     <artifactId>liferay.workspace.with.devstudio.installer</artifactId>
@@ -31,7 +31,8 @@
     <name>Liferay Workspace with DevStudio Installer</name>
 
     <properties>
-        <studio-installer-version>${maven.build.timestamp}</studio-installer-version>
+        <maven.build.timestamp.format>yyyyMMddHHmm</maven.build.timestamp.format>
+        <studio-installer-version>3.10.4-${maven.build.timestamp}</studio-installer-version>
     </properties>
 
     <build>
@@ -78,20 +79,6 @@
                         </configuration>
                     </execution>
                     <execution>
-                        <id>download-gw</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>wget</goal>
-                        </goals>
-                        <configuration>
-                            <url>${gw-latest-download-url}</url>
-                            <outputDirectory>../shared/download/</outputDirectory>
-                            <outputFileName>gw.jar</outputFileName>
-                            <md5>${gw-latest-md5}</md5>
-                            <checkSignature>true</checkSignature>
-                        </configuration>
-                    </execution>
-                    <execution>
                         <id>download-jpmcli</id>
                         <phase>package</phase>
                         <goals>
@@ -102,20 +89,6 @@
                             <outputDirectory>../shared/download/</outputDirectory>
                             <outputFileName>biz.aQute.jpm.run.jar</outputFileName>
                             <md5>${jpmcli-latest-md5}</md5>
-                            <checkSignature>true</checkSignature>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>download-bnd</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>wget</goal>
-                        </goals>
-                        <configuration>
-                            <url>${bnd-latest-download-url}</url>
-                            <outputDirectory>../shared/download/</outputDirectory>
-                            <outputFileName>biz.aQute.bnd.jar</outputFileName>
-                            <md5>${bnd-latest-md5}</md5>
                             <checkSignature>true</checkSignature>
                         </configuration>
                     </execution>
@@ -144,6 +117,23 @@
                         </configuration>
                     </execution>
                     <execution>
+                        <id>linux_arm64</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>${install-builder-executable}</executable>
+                            <arguments>
+                                <argument>build</argument>
+                                <argument>./liferay-workspace-with-devstudio.xml</argument>
+                                <argument>linux-arm64</argument>
+                                <argument>--setvars</argument>
+                                <argument>project.version=${studio-installer-version}</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
                         <id>windows</id>
                         <phase>package</phase>
                         <goals>
@@ -154,7 +144,7 @@
                             <arguments>
                                 <argument>build</argument>
                                 <argument>./liferay-workspace-with-devstudio.xml</argument>
-                                <argument>windows</argument>
+                                <argument>windows-x64</argument>
                                 <argument>--setvars</argument>
                                 <argument>project.version=${studio-installer-version}</argument>
                             </arguments>
@@ -180,9 +170,18 @@
                 </executions>
             </plugin>
             <plugin>
-                <groupId>org.codehaus.gmaven</groupId>
-                <artifactId>groovy-maven-plugin</artifactId>
-                <version>2.0</version>
+                <groupId>org.codehaus.gmavenplus</groupId>
+                <artifactId>gmavenplus-plugin</artifactId>
+                <version>2.1.0</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.apache.groovy</groupId>
+                        <artifactId>groovy-all</artifactId>
+                        <version>4.0.7</version>
+                        <type>pom</type>
+                        <scope>runtime</scope>
+                    </dependency>
+                </dependencies>
                 <executions>
                     <execution>
                         <id>sign-app</id>
@@ -190,19 +189,23 @@
                         <goals>
                             <goal>execute</goal>
                         </goals>
+                        <configuration>
+                            <properties>
+                                <appPath>${pom.basedir}/../outputs/LiferayWorkspacewithDevStudio-${studio-installer-version}-osx-installer.app</appPath>
+                                <signingServerURL>${signingServerURL}</signingServerURL>
+                                <signApps>${signApps}</signApps>
+                                <certificate>Developer+ID+Application%3A+Liferay%2C+Inc.+%287H3SPU5TB9%29</certificate>
+                                <createDmg>true</createDmg>
+                                <signingServerSearchPath>${signingServerSearchPath}</signingServerSearchPath>
+                                <signingServerReplacePath>${signingServerReplacePath}</signingServerReplacePath>
+                            </properties>
+                        </configuration>
                     </execution>
                 </executions>
                 <configuration>
-                    <properties>
-                        <appPath>${pom.basedir}/../outputs/LiferayWorkspacewithDevStudio-${studio-installer-version}-osx-installer.app</appPath>
-                        <signingServerURL>${signingServerURL}</signingServerURL>
-                        <signApps>${signApps}</signApps>
-                        <certificate>Developer+ID+Application%3A+Liferay%2C+Inc.+%287H3SPU5TB9%29</certificate>
-                        <createDmg>true</createDmg>
-                        <signingServerSearchPath>${signingServerSearchPath}</signingServerSearchPath>
-                        <signingServerReplacePath>${signingServerReplacePath}</signingServerReplacePath>
-                    </properties>
-                    <source>${pom.basedir}/../shared/scripts/SignApp.groovy</source>
+                    <scripts>
+                        <script>${pom.basedir}/../shared/scripts/SignApp.groovy</script>
+                    </scripts>
                 </configuration>
             </plugin>
             <plugin>

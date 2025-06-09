@@ -14,15 +14,21 @@
 
 package com.liferay.ide.project.core.workspace;
 
+import com.liferay.ide.core.util.ReleaseUtil;
 import com.liferay.ide.core.util.SapphireContentAccessor;
 import com.liferay.ide.core.util.SapphireUtil;
-import com.liferay.ide.core.workspace.WorkspaceConstants;
+import com.liferay.ide.project.core.ProjectCore;
+import com.liferay.release.util.ReleaseEntry;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.sapphire.FilteredListener;
 import org.eclipse.sapphire.PossibleValuesService;
 import org.eclipse.sapphire.PropertyContentEvent;
@@ -45,23 +51,46 @@ public class TargetPlatformPossibleValuesService extends PossibleValuesService i
 	}
 
 	@Override
+	public boolean ordered() {
+		return true;
+	}
+
+	@Override
 	protected void compute(Set<String> values) {
-		List<String> possibleValues = new ArrayList<>();
+		Stream<ReleaseEntry> releaseEntryStream = ReleaseUtil.getReleaseEntryStream();
 
-		WorkspaceConstants.liferayTargetPlatformVersions.forEach(
-			(liferayVersion, targetPlatformVersion) -> {
-				String version = get(_op.getLiferayVersion());
-
-				if (liferayVersion.equals(version)) {
-					Collections.addAll(possibleValues, targetPlatformVersion);
-				}
-			});
-
-		values.addAll(possibleValues);
+		values.addAll(
+			releaseEntryStream.filter(
+				releaseEntry -> Objects.equals(releaseEntry.getProductGroupVersion(), get(_op.getLiferayVersion()))
+			).map(
+				ReleaseEntry::getTargetPlatformVersion
+			).collect(
+				Collectors.toUnmodifiableList()
+			));
 	}
 
 	@Override
 	protected void initPossibleValuesService() {
+		Job getTargetPlatformVersions = new Job("Get target platform versions") {
+
+			@Override
+			protected IStatus run(IProgressMonitor monitor) {
+				try {
+					refresh();
+				}
+				catch (Exception exception) {
+					ProjectCore.logError("Failed to init product version list.", exception);
+				}
+
+				return Status.OK_STATUS;
+			}
+
+		};
+
+		getTargetPlatformVersions.setSystem(true);
+
+		getTargetPlatformVersions.schedule();
+
 		_listener = new FilteredListener<PropertyContentEvent>() {
 
 			@Override

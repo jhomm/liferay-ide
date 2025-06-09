@@ -1,5 +1,5 @@
-def oldVersion = "3.9.4"
-def newVersion = "4.0.0"
+def oldVersion = "3.10.3"
+def newVersion = "3.10.4"
 
 def oldQualVersion = "${oldVersion}.qualifier"
 def newQualVersion = "${newVersion}.qualifier"
@@ -79,7 +79,15 @@ new File("../").eachDirRecurse
 			&& contents.contains( "<version>${oldPomVersion}" ) )
 		{
 			println "Found pom: " + pom.getAbsolutePath()
-			pom.text = contents.replaceAll( "<version>${oldPomVersion}", "<version>${newPomVersion}" )
+			contents = contents.replaceAll( "<version>${oldPomVersion}", "<version>${newPomVersion}" )
 		}
+
+		if( (contents.contains("-installer-version>${oldVersion}-")) )
+		{
+			println "Found pom: " + pom.getAbsolutePath()
+			contents = contents.replaceAll( "-installer-version>${oldVersion}-", "-installer-version>${newVersion}-")
+		}
+
+		pom.text = contents
 	}
 }

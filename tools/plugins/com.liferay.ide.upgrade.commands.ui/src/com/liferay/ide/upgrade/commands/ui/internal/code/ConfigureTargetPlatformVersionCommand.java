@@ -15,10 +15,10 @@
 package com.liferay.ide.upgrade.commands.ui.internal.code;
 
 import com.liferay.ide.core.util.FileUtil;
+import com.liferay.ide.core.util.ReleaseUtil;
 import com.liferay.ide.core.workspace.WorkspaceConstants;
 import com.liferay.ide.ui.util.UIUtil;
 import com.liferay.ide.upgrade.commands.core.code.ConfigureTargetPlatformVersionCommandKeys;
-import com.liferay.ide.upgrade.commands.ui.internal.UpgradeCommandsUIPlugin;
 import com.liferay.ide.upgrade.plan.core.ResourceSelection;
 import com.liferay.ide.upgrade.plan.core.UpgradeCommand;
 import com.liferay.ide.upgrade.plan.core.UpgradeCommandPerformedEvent;
@@ -26,12 +26,12 @@ import com.liferay.ide.upgrade.plan.core.UpgradeCompare;
 import com.liferay.ide.upgrade.plan.core.UpgradePlan;
 import com.liferay.ide.upgrade.plan.core.UpgradePlanner;
 import com.liferay.ide.upgrade.plan.core.UpgradePreview;
+import com.liferay.release.util.ReleaseEntry;
 
 import java.io.File;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
@@ -110,32 +110,26 @@ public class ConfigureTargetPlatformVersionCommand implements UpgradeCommand, Up
 	private IStatus _updateTargetPlatformValue(File gradeProperties) {
 		UpgradePlan upgradePlan = _upgradePlanner.getCurrentUpgradePlan();
 
-		String targetPlatformVersion = WorkspaceConstants.liferayTargetPlatformVersions.get("7.1")[0];
+		String upgradePlanTargetVersion = upgradePlan.getTargetVersion();
 
-		String targetVersion = upgradePlan.getTargetVersion();
+		ReleaseEntry releaseEntry = ReleaseUtil.getReleaseEntry(upgradePlanTargetVersion);
 
-		if (Objects.equals(targetVersion, "7.0")) {
-			targetPlatformVersion = WorkspaceConstants.liferayTargetPlatformVersions.get("7.0")[0];
-		}
-		else if (Objects.equals(targetVersion, "7.1")) {
-			targetPlatformVersion = WorkspaceConstants.liferayTargetPlatformVersions.get("7.1")[0];
-		}
-		else if (Objects.equals(targetVersion, "7.2")) {
-			targetPlatformVersion = WorkspaceConstants.liferayTargetPlatformVersions.get("7.2")[0];
+		if (releaseEntry == null) {
+			releaseEntry = ReleaseUtil.getReleaseEntry("7.1");
 		}
 
 		try {
 			PropertiesConfiguration config = new PropertiesConfiguration(gradeProperties);
 
-			config.setProperty(WorkspaceConstants.TARGET_PLATFORM_VERSION_PROPERTY, targetPlatformVersion);
+			config.setProperty(
+				WorkspaceConstants.TARGET_PLATFORM_VERSION_PROPERTY, releaseEntry.getTargetPlatformVersion());
 
 			config.save();
-
-			return Status.OK_STATUS;
 		}
 		catch (ConfigurationException ce) {
-			return UpgradeCommandsUIPlugin.createErrorStatus("Unable to configure target platform", ce);
 		}
+
+		return Status.OK_STATUS;
 	}
 
 	@Reference

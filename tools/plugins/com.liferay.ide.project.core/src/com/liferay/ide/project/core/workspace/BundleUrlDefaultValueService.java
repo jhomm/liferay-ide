@@ -14,11 +14,10 @@
 
 package com.liferay.ide.project.core.workspace;
 
+import com.liferay.ide.core.util.ReleaseUtil;
 import com.liferay.ide.core.util.SapphireContentAccessor;
 import com.liferay.ide.core.util.SapphireUtil;
-import com.liferay.ide.core.workspace.WorkspaceConstants;
-
-import java.util.Map;
+import com.liferay.release.util.ReleaseEntry;
 
 import org.eclipse.sapphire.DefaultValueService;
 import org.eclipse.sapphire.Event;
@@ -57,9 +56,13 @@ public class BundleUrlDefaultValueService extends DefaultValueService implements
 
 		String targetPlatform = get(op.getTargetPlatform());
 
-		Map<String, String> liferayBundleUrlVersions = WorkspaceConstants.liferayBundleUrlVersions;
+		ReleaseEntry releaseEntry = ReleaseUtil.getReleaseEntry(targetPlatform);
 
-		return liferayBundleUrlVersions.get(targetPlatform);
+		if (releaseEntry != null) {
+			return releaseEntry.getBundleURL();
+		}
+
+		return null;
 	}
 
 	protected void initDefaultValueService() {
